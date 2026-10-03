@@ -28,7 +28,7 @@ Where this plan departs from `report.md`, it says so. One change in particular: 
 | U1  | Find **Bob** and see his seat highlighted on the right floor                                              | dir → map |
 | U2  | Select **HR** and see the seats of every member of HR and its sub-teams, with a count per floor           | map       |
 | U3  | See that **Bob reports to Max, and Max reports to Jane**                                                  | org       |
-| U4  | See that **Jane is CA-based and also has a desk** in SF                                                   | dir, map  |
+| U4  | See that **Jane is based in Ontario, Canada (`CA-ON`) and also has a desk** in SF                         | dir, map  |
 | U5  | See which meeting rooms are busy (red) or free (green) right now                                          | map       |
 | U6  | Open the **South Wing** as a zoomed area view of its floor                                                | map       |
 | U7  | Chat with one person, start a group DM with 2–8 people, or open a team's channel                          | all       |
@@ -37,6 +37,7 @@ Where this plan departs from `report.md`, it says so. One change in particular: 
 | U10 | An admin imports the existing spreadsheets, then edits people, teams, and seats in the app                | admin     |
 | U11 | An admin uploads a new floor SVG and sees a diff of added, removed, and orphaned seats before applying it | admin     |
 | U12 | An admin imports the brand's design tokens, maps them, previews them, and applies them. The directory, map, and org chart pick up the new colors, fonts, logo, and density | admin |
+| U13 | In their own settings, a user chooses how locations appear: the **ISO 3166 code** (`US-CA`), the **country name** (United States), the **region name** (California), or the **region and country name** (California, United States). Other users are unaffected | settings, all |
 
 ---
 
@@ -124,6 +125,7 @@ apps/
       (app)/directory/page.tsx
       (app)/map/page.tsx
       (app)/org/page.tsx
+      (app)/settings/{page,actions}.ts(x)  -- per-user settings (§7.1)
       admin/{people,teams,locations,floors,rooms,presence-rules,import,integrations,branding,audit}/
       api/{rooms/status,presence,search,slack/oauth/*,slack/group-dm,brand-assets/[id]}/route.ts
       theme.css/route.ts          -- active theme as a cached stylesheet (§9.1)
@@ -135,6 +137,7 @@ packages/
   db/        schema.ts, migrations/, queries/{people,teams,spaces,presence}.ts, seed.ts
   core/      presence/{rules.ts,resolve.ts}, svg/{parse.ts,sanitize.ts,diff.ts},
              teams/tree.ts, csv/{people.ts,teams.ts}, slack/links.ts,
+             regions/iso3166.ts,
              theme/{slots.ts,parse.ts,resolve.ts,map.ts,validate.ts,contrast.ts,emit-css.ts}
   integrations/ google/{rooms.ts,calendar.ts}, slack/{users.ts,history.ts}, fakes/
 theme/ default.tokens.json         -- deploy-time default theme (DTCG)
@@ -150,7 +153,8 @@ e2e/  Playwright specs per user story
 The schema builds on the model in `report.md` and adds cache, audit, and integration tables. All ids are text (`p_…`, `t_…`; use `cuid2`) so they're safe to put in URLs.
 
 ```
-location      (id, slug UNIQUE, name, timezone, country, googleBuildingId?, sortOrder)
+location      (id, slug UNIQUE, name, timezone, region (ISO 3166 code), googleBuildingId?,
+               sortOrder)
 floor         (id, locationId, slug, name, level int, svgAssetId, sortOrder)
                 UNIQUE(locationId, slug)
 svg_asset     (id, floorId, version int, sanitizedSvg text, sha256, uploadedBy, uploadedAt)
@@ -161,7 +165,7 @@ space         (id, floorId, areaId?, kind, svgElementId, name, capacity?,
                 UNIQUE(floorId, svgElementId)
 
 person        (id, email UNIQUE, name, preferredName?, title?, photoUrl?, phone?,
-               homeCountry (ISO-3166 alpha-2), homeTimezone?,
+               homeRegion (ISO 3166 code), homeTimezone?,
                managerId → person?, assignedDeskId → space? UNIQUE (partial, non-null),
                slackUserId? UNIQUE, startDate?, active bool, createdAt, updatedAt)
 team          (id, slug UNIQUE, name, parentTeamId → team?, leadId → person?,
@@ -184,7 +188,9 @@ app_setting     (key PK, value jsonb, updatedBy, updatedAt)
                  key presence.display: off | simple | detailed   -- default off (§8.5)
 
 slack_user_token (personId PK, encryptedToken, scopes, createdAt)   -- for group DMs
-app_user        (email PK, role: viewer|admin, lastSeenAt)
+app_user        (email PK, role: viewer|admin,
+                 regionDisplay: code|country|region|country_region   -- default country_region
+                 lastSeenAt)
 audit_log       (id, actorEmail, entity, entityId, action, before jsonb, after jsonb, at)
 integration_run (id, job, startedAt, finishedAt?, ok bool, stats jsonb, error?)
 
@@ -200,7 +206,8 @@ brand_asset   (id, kind: logo_light|logo_dark|favicon|font, mime, bytes bytea, s
 - **No cycles** in `person.managerId` or `team.parentTeamId`. Check with a recursive CTE inside the same transaction as the write, and reject the write if it would create a cycle.
 - **One person per desk** (partial unique index). Reassigning a desk is a single transaction that swaps the two people.
 - **The desk must be `kind = desk`**, and its floor must not be archived.
-- `homeCountry` and `assignedDeskId` are **independent** (U4). The UI shows "Based in CA · Desk SF-2-014".
+- `homeRegion` and `assignedDeskId` are **independent** (U4). The UI shows "Based in Ontario, Canada · Desk SF-2-003", in the viewer's region format (§7.1).
+- **Region codes** (`person.homeRegion`, `location.region`) are one ISO 3166 code each: a country (ISO 3166-1 alpha-2, `US`) or a subdivision (ISO 3166-2, `US-CA`). The country is never stored separately, because a subdivision code starts with it. A CHECK constraint enforces the shape (`^[A-Z]{2}(-[A-Z0-9]{1,3})?$`). The app checks that the code exists in ISO 3166 (the `iso-3166` package) at every input boundary (CSV, admin forms). The database doesn't check existence, so a change to the subdivision list never needs a migration.
 - Seats are referenced by `space.id`, and **never** by SVG array position. `svgElementId` only connects a space to its drawing.
 
 ### Common queries (in `packages/db/queries`)
@@ -263,10 +270,28 @@ Anything without one of these prefixes is decoration.
 - The view tabs render `<Link href={{ pathname: '/org', query: currentParams }}>`. Switching tabs changes only the path (U9).
 - `lib/url-state.ts` holds the single nuqs parser definition, which all three views import.
 - **Directory:** a table with search and filters for team, location, and "has desk". It scrolls to and highlights `person`. A presence filter appears only when presence display is on: "In / Not in" in `simple` mode, one option per status in `detailed` mode.
-- **Map:** described in §6. A deskless person shows a card instead: "Remote – {country}", or "No desk assigned".
+- **Map:** described in §6. A deskless person shows a card instead: "Remote – {region}", or "No desk assigned".
 - **Org chart:** opens from the root, or from `person`'s chain, expanded and centered. A toggle switches between the **reporting** tree (managers) and the **team** tree (teams), because these are intentionally separate structures.
-- **Person card (shared):** shows photo, title, team chips, manager link, desk link, home country, and chat buttons, plus the presence state for the current display mode (§8.5). All three views use it.
+- **Person card (shared):** shows photo, title, team chips, manager link, desk link, home region, and chat buttons, plus the presence state for the current display mode (§8.5). All three views use it.
 - **Global search (⌘K):** one `/api/search` endpoint. It searches people, teams, and rooms with Postgres `pg_trgm`, which is plenty for fewer than 250 rows each.
+
+### 7.1 User settings (U13)
+
+`/settings`, linked from the top bar, holds each user's own preferences. Any signed-in user can change their own settings, and only their own: the server action takes the email from the session, never from the form. Settings are stored on `app_user` and are not audited, because they change only what that user sees.
+
+**Region display** (`app_user.regionDisplay`) sets how every region code in the app appears to that user: where people are based, deskless cards, and office locations.
+
+| Value                      | `US-CA`                   | `IN` (country only)  |
+| -------------------------- | ------------------------- | -------------------- |
+| `code`                     | US-CA                     | IN                   |
+| `country`                  | United States             | India                |
+| `region`                   | California                | India (falls back)   |
+| `country_region` (default) | California, United States | India                |
+
+- Labels are formatted **on the server** by `formatRegion` in `packages/core/regions/iso3166.ts`. Queries such as `loadDirectory(db, regionDisplay)` return the finished label next to the code, so the ISO 3166-2 list (about 5,000 rows) never reaches the browser. Client code must not import that module.
+- Country names come from `Intl.DisplayNames`, so they use everyday names ("United States") and can follow a locale later. ICU has no subdivision names, so those come from the ISO 3166-2 list as published (local spellings such as "Karnātaka"). A nested subdivision such as `FR-75C` shows its own name ("Paris, France").
+- A code that is no longer in ISO 3166 shows as the raw code, not as an error.
+- Filters and URL state use codes, never labels, so a shared link works the same for every viewer.
 
 ---
 
@@ -349,9 +374,9 @@ Presence display is **off by default**. An admin chooses the mode on the Presenc
 
 | Page                   | Capabilities                                                                                                                                                                                                                                       |
 | ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Import**             | Upload a CSV for people, teams, or memberships. Each row is validated with zod, then the admin sees a dry-run diff (create/update/error per row) and applies it. Managers are resolved by email in a second pass so the file order doesn't matter. |
+| **Import**             | Upload a CSV for people, teams, or memberships. The people file's `home_region` column takes an ISO 3166 code (`US` or `US-CA`); files that still use the older `home_country` header import unchanged. Each row is validated with zod, then the admin sees a dry-run diff (create/update/error per row) and applies it. Managers are resolved by email in a second pass so the file order doesn't matter. |
 | **People / Teams**     | CRUD with cycle-safe manager and parent pickers, desk assignment through a seat picker (a mini map), team membership, and a primary-team flag.                                                                                                     |
-| **Locations / Floors** | CRUD, SVG upload with the diff from §6, and version history with rollback.                                                                                                                                                                         |
+| **Locations / Floors** | CRUD (each location has an ISO 3166 `region` code, validated like `home_region`), SVG upload with the diff from §6, and version history with rollback.                                                                                                                                                                         |
 | **Rooms**              | Google import diff, room ↔ svg id linking, and capacity overrides.                                                                                                                                                                                 |
 | **Presence**           | The display mode selector (`off` / `simple` / `detailed`, default `off`, §8.5) with a preview of each mode, and "Delete presence data". Below that, CRUD for rules, a "test this message" box, and the parsed-message log from §8.3.                                                                                                                                                                   |
 | **Integrations**       | The last run, status, and stats for each job from `integration_run`, with "run now" buttons. Unmatched Slack users are listed here.                                                                                                                |
@@ -404,7 +429,7 @@ Each slot supports a light value and an optional dark value, taken from the toke
 ## 10. Security and operations
 
 - **Authentication:** every route except `/api/auth/*`, `/login` and `/dev/sign-in` (404 outside local development) is protected by the proxy. The domain check (and Google's `hd` check) runs in the Auth.js `signIn` callback, not just in the client prompt hint. Development sign-in methods are not registered in a production build, and `canSignIn` rejects them again if they were.
-- **Authorization:** `viewer` can read everything except presence reasons (§8.4). `admin` can write. Presence is also gated by the display mode (§8.5): `off` exposes nothing, and `simple` exposes only an away flag, to every role.
+- **Authorization:** `viewer` can read everything except presence reasons (§8.4). `admin` can write. Every user can change their own settings (§7.1), and nothing else. Presence is also gated by the display mode (§8.5): `off` exposes nothing, and `simple` exposes only an away flag, to every role.
 - **Secrets:** the Google service-account JSON, Slack bot, app and signing tokens, `TOKEN_ENC_KEY`, and `AUTH_SECRET` come from the host's secret store and never live in the repo.
 - **DWD blast radius:** grant the service account only the four read-only scopes listed above. Document this in `docs/runbook.md` for the Workspace admin.
 - **SVG sanitizing** is described in §6. Also send a CSP with `script-src 'self'` and no `unsafe-inline` scripts.
@@ -423,7 +448,7 @@ Each slot supports a light value and an optional dark value, taken from the toke
 | Core (pure)  | Vitest                                             | Presence rule parsing (a table-driven test fed by the phrasings from the spike), presence resolution precedence, SVG parsing and diffing, CSV validation, Slack link builders. Theme parsing, alias and mode resolution, and mapping (table-driven against the Penpot and Tokens Studio fixtures from the spike), contrast math, and CSS-emit snapshots. |
 | DB           | Vitest + testcontainers Postgres                   | Recursive CTEs, cycle rejection, the desk uniqueness swap, idempotent signal upserts.                                                                                          |
 | Integrations | Vitest with recorded fixtures                      | Mapping Google and Slack payloads to the domain types. The fakes satisfy the same interface tests.                                                                             |
-| End-to-end   | Playwright on `INTEGRATIONS=fake` with a seeded DB | One spec per user story U1–U12 (U12 applies a fixture theme and asserts the computed `--primary` and logo in each view; U8 runs once per display mode and asserts no presence in `off`, greying with no reason in `simple`, including in the `/api/presence` response, and pills and badges in `detailed`). The seed includes Bob → Max → Jane, HR with two sub-teams, Jane `homeCountry=CA` with a desk, a South Wing area, and rooms in each state.      |
+| End-to-end   | Playwright on `INTEGRATIONS=fake` with a seeded DB | One spec per user story U1–U13 (U12 applies a fixture theme and asserts the computed `--primary` and logo in each view; U8 runs once per display mode and asserts no presence in `off`, greying with no reason in `simple`, including in the `/api/presence` response, and pills and badges in `detailed`). The seed includes Bob → Max → Jane, HR with two sub-teams, Jane `homeRegion=CA-ON` with a desk, people with both subdivision and country-only codes, a South Wing area, and rooms in each state.      |
 | CI           | GitHub Actions                                     | Lint (eslint + typescript-eslint), `tsc --noEmit`, unit, DB, and e2e tests, plus a drizzle migration check.                                                                    |
 
 ---
@@ -438,9 +463,9 @@ The five spikes from §2 and `docs/spikes.md`.
 
 - [ ] TODO — Not started. Phase 1 was built first at the user's direction. The spikes need a Google Workspace service account with domain-wide delegation, a Slack workspace, and Figma or Penpot token exports. Phases 4, 5 and 5.5 depend on their outcomes; Phases 2 and 3 do not.
 
-### Phase 1: Foundation (1–1.5 weeks) → U1 (directory part), U4, U10
+### Phase 1: Foundation (1–1.5 weeks) → U1 (directory part), U4, U10, U13
 
-**Phase status:** all items done and merged into `phase/1-foundation` (2026-10-03). Integration run on the phase branch: 97 unit, 41 database (Testcontainers) and 19 Playwright specs pass. U1 (directory part), U4 and U10 each have a passing spec. Not yet merged into `main`.
+**Phase status:** all items done and merged into `phase/1-foundation` (2026-10-03). Integration run on the phase branch: 126 unit, 48 database (Testcontainers) and 23 Playwright specs pass. U1 (directory part), U4, U10 and U13 each have a passing spec. Not yet merged into `main`.
 
 **Running it locally:** `docker compose up -d db` (or `docker-compose` without the Compose plugin), copy `.env.example` to `apps/web/.env.local`, then `pnpm db:migrate`, `pnpm db:seed`, `pnpm dev`. `pnpm test:e2e` builds and serves the app on port 3100 against the `officeorg_e2e` database. On macOS with Colima, database tests need `DOCKER_HOST=unix://$HOME/.colima/default/docker.sock TESTCONTAINERS_RYUK_DISABLED=true`.
 
@@ -472,6 +497,10 @@ The five spikes from §2 and `docs/spikes.md`.
     - **Completed:** 2026-10-03
     - **Branch:** merged from `feature/directory`
     - **Notes:** URL state is `person`, `team`, `sub`, `q`, `loc`, `desk`, defined once in `apps/web/lib/url-state.ts` for the map and org chart to reuse. Filtering is a pure function in `packages/core/directory`. TanStack Table needs stable `data` and `columns` references or it re-renders forever (this froze the page during development); keep columns at module scope and pass callbacks through `meta`. Inactive people are hidden from the directory. Presence pills and chat buttons arrive in Phases 4 and 5.
+- [x] ISO 3166 region codes with subdivisions, and a per-user region display setting (U13, §7.1)
+    - **Completed:** 2026-10-03
+    - **Branch:** merged from `feature/iso-3166-regions`
+    - **Notes:** Migration `0001` renames `person.home_country` → `home_region` and `location.country` → `region`, widens both from `char(2)` to `text` with a shape CHECK, and adds `app_user.region_display` (default `country_region`). Existing two-letter codes stay valid, so no data changes. drizzle-kit leaves out the type change when a column is renamed in the same migration, so the `ALTER ... TYPE text` lines were added to `0001` by hand. Check for the same gap whenever a migration renames a column. Subdivision data comes from the `iso-3166` npm package (MIT). Upgrading it is how new ISO 3166-2 codes arrive. `requireUser()` now returns `regionDisplay`, so any view can format regions with `formatRegion`. The Phase 2 map and Phase 3 org chart must use it too. The CSV column is now `home_region`; `home_country` is accepted as an alias. The admin person form takes a free-text code with a hint; a searchable picker is a possible Phase 6 item. Country names are English only, because there is no UI locale yet.
 
 ### Phase 2: Maps (1.5–2 weeks) → U1, U2, U6, U11
 
@@ -524,6 +553,8 @@ The five spikes from §2 and `docs/spikes.md`.
 - [ ] Optional HRIS sync, which replaces CSV as the people source
 - [ ] Live theme sync from the Figma Variables REST API (Enterprise plans only) or the Penpot API
 - [ ] Per-location theme overrides
+- [ ] Searchable ISO 3166 region picker in the admin person and location forms, in place of the free-text code
+- [ ] A UI locale setting (§7.1), so country names in region labels follow the user's language
 
 **Total: about 7.5–9 weeks for one engineer, or about 4.5–5.5 weeks for two.** Two engineers can split phases 2 and 3, and phases 4 and 5, in parallel. Phase 5.5 depends only on Phase 1's token layer, so it can run alongside any later phase.
 
@@ -542,5 +573,5 @@ The five spikes from §2 and `docs/spikes.md`.
 | Q1  | Which Slack channel is the status channel, and is there one per office?                | Default: one channel, configured by env var. A per-location channel is a small extension.                                                                        |
 | Q2  | Should people be able to edit their own profile (photo, phone) without being an admin? | Default: no in v1. Self-edit is a small Phase 6 item.                                                                                                            |
 | Q3  | Hosting target and network access (public with Google SSO, or behind VPN/IAP)?         | Socket Mode works for either.                                                                                                                                    |
-| Q4  | Do deskless or remote people belong on the map at all?                                 | Default: no. They appear in the directory and org chart with a "Remote – {country}" card.                                                                        |
+| Q4  | Do deskless or remote people belong on the map at all?                                 | Default: no. They appear in the directory and org chart with a "Remote – {region}" card, in the viewer's region format (§7.1).                                    |
 | Q5  | Does the organization have an exported token file, or only a PDF brand guide? | Default: start from `theme/default.tokens.json` and set the slots directly in the Branding mapping editor. A token file isn't required. |
