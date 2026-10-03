@@ -2,18 +2,20 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { signOutAction } from "@/app/actions";
 import { CommandPalette } from "@/components/search/command-palette";
+import { BrandMark } from "@/components/brand-mark";
 import { ViewTabs } from "@/components/view-tabs";
 import { requireUser } from "@/lib/session";
+import { getBrand } from "@/lib/theme";
 
 // Shell for the signed-in views. The admin area has its own layout.
 export default async function AppLayout({ children }: { children: ReactNode }) {
-  const user = await requireUser();
+  const [user, brand] = await Promise.all([requireUser(), getBrand()]);
   return (
     <div className="min-h-screen">
       <header className="border-b border-border">
         <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-x-6 gap-y-2 px-4 py-3">
-          <Link href="/directory" className="font-semibold">
-            OfficeOrg
+          <Link href="/directory">
+            <BrandMark brand={brand} />
           </Link>
           <ViewTabs />
           <CommandPalette />

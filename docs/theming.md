@@ -199,3 +199,28 @@ overrides it. Each failing color comes with the nearest shade of the same hue th
 
 The last check catches the most common problem: a red and a green of the same lightness look
 the same to many people. Making one of them clearly lighter or darker fixes it.
+
+## The default theme for a deployment
+
+Until an admin applies a theme, OfficeOrg uses its own defaults, the values in
+`theme/default.tokens.json`. To ship a deployment with the brand already in place, point the
+`THEME_TOKENS_PATH` environment variable at a token file on the server:
+
+```sh
+THEME_TOKENS_PATH=/etc/officeorg/brand.tokens.json
+```
+
+That file is mapped by name only: a token whose path is a slot name sets that slot, and nothing
+else is suggested. A theme exported from OfficeOrg has exactly that shape, and so does
+`theme/default.tokens.json`, which makes a good starting point. The file is read once when the
+server starts. If it can't be read or has errors, the server logs why and uses the built-in
+defaults; contrast failures are logged as a warning but don't stop it.
+
+A theme applied by an admin always takes precedence. Rolling back to "default" returns to this
+file.
+
+## How the theme reaches the page
+
+The active theme is served as a stylesheet at `/theme.css`. Each page links it with a version
+in the URL, so browsers cache it until the theme changes. Uploaded fonts and logos are served
+from `/api/brand-assets/<id>`. Both are public, because the sign-in page is themed too.

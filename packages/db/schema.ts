@@ -5,6 +5,7 @@ import {
   bigint,
   boolean,
   check,
+  customType,
   date,
   index,
   integer,
@@ -61,6 +62,15 @@ export const roomState = pgEnum("room_state", ["free", "busy", "soon"]);
 
 export const appRole = pgEnum("app_role", ["viewer", "admin"]);
 
+export const themeSourceFormat = pgEnum("theme_source_format", ["dtcg", "tokens_studio"]);
+
+export const brandAssetKind = pgEnum("brand_asset_kind", [
+  "logo_light",
+  "logo_dark",
+  "favicon",
+  "font",
+]);
+
 // Mirrors REGION_DISPLAYS in packages/core/regions/iso3166.ts.
 export const regionDisplay = pgEnum("region_display", [
   "code",
@@ -74,6 +84,11 @@ export const regionDisplay = pgEnum("region_display", [
 // subdivision list changes and a migration shouldn't be needed to follow it.
 const regionShape = (column: AnyPgColumn) =>
   sql`${column} ~ '^[A-Z]{2}(-[A-Z0-9]{1,3})?$'`;
+
+// Drizzle has no built-in bytea column. node-postgres reads bytea as a Buffer and writes one as is.
+const bytea = customType<{ data: Buffer; driverData: Buffer }>({
+  dataType: () => "bytea",
+});
 
 const id = (prefix: string) =>
   text("id")
@@ -351,6 +366,48 @@ export const integrationRun = pgTable("integration_run", {
   ok: boolean("ok").notNull(),
   stats: jsonb("stats"),
   error: text("error"),
+});
+
+// One row per applied theme version (plan.md §9.1). Exactly one is active, or none, in which case
+// the deploy-time default is served. Rolling back switches the active row.
+export const theme = pgTable(
+  "theme",
+  {
+    id: id("theme"),
+    version: integer("version").notNull().unique(),
+    sourceFormat: themeSourceFormat("source_format").notNull(),
+    // { files: [{ name, content }] }: the uploaded token files, parsed as JSON.
+    sourceTokens: jsonb("source_tokens").notNull(),
+    // { slots: SlotMapping, darkMode, fonts: brand_asset ids }. See packages/core/theme/map.ts.
+    mapping: jsonb("mapping").notNull(),
+    // The validated value of every slot by mode (ThemeValues). Kept so a request can read the
+    // app name and logos, and an export can be written, without rebuilding the theme.
+    values: jsonb("values").notNull(),
+    compiledCss: text("compiled_css").notNull(),
+    sha256: text("sha256").notNull(),
+    active: boolean("active").notNull().default(false),
+    createdBy: text("created_by").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [uniqueIndex("theme_one_active").on(t.active).where(sql`${t.active}`)],
+);
+
+// Logos, the favicon and fonts. Rows are never changed once written, so they can be cached
+// forever by id, and a rolled-back theme still finds the files it used.
+export const brandAsset = pgTable("brand_asset", {
+  id: id("ba"),
+  kind: brandAssetKind("kind").notNull(),
+  mime: text("mime").notNull(),
+  bytes: bytea("bytes").notNull(),
+  sha256: text("sha256").notNull(),
+  // Fonts: { family, weight, style }. Every kind: { fileName }.
+  meta: jsonb("meta").notNull().default({}),
+  createdBy: text("created_by").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
 });
 
 export const locationRelations = relations(location, ({ many }) => ({
