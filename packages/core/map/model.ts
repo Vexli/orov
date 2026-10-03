@@ -8,6 +8,10 @@ export interface MapFloorLink {
   name: string;
   level: number;
   hasDrawing: boolean;
+  // For the office overview. Archived spaces aren't counted.
+  deskCount: number;
+  // Meeting rooms and phone booths.
+  roomCount: number;
 }
 
 export interface MapLocation {

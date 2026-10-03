@@ -34,6 +34,13 @@ export async function loadMap(
     },
   });
 
+  const counts = await db
+    .select({ floorId: s.space.floorId, kind: s.space.kind })
+    .from(s.space)
+    .where(isNull(s.space.archivedAt));
+  const count = (floorId: string, kinds: string[]) =>
+    counts.filter((c) => c.floorId === floorId && kinds.includes(c.kind)).length;
+
   const locations = locationRows.map((l) => ({
     slug: l.slug,
     name: l.name,
@@ -43,6 +50,8 @@ export async function loadMap(
       name: f.name,
       level: f.level,
       hasDrawing: f.svgAssetId !== null,
+      deskCount: count(f.id, ["desk"]),
+      roomCount: count(f.id, ["meeting_room", "phone_booth"]),
     })),
   }));
 

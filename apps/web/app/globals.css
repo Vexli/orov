@@ -95,3 +95,9 @@
 [data-floor-map] :is([id^="desk-"], [id^="room-"]):hover {
   stroke: var(--ring) !important;
 }
+
+/* Area view: everything outside the open area. */
+[data-floor-map] [data-dim] {
+  opacity: var(--map-dim-opacity);
+  transition: opacity 0.2s;
+}

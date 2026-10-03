@@ -53,8 +53,8 @@ describe("loadMap", () => {
         name: "San Francisco",
         regionLabel: "US-CA",
         floors: [
-          { slug: "2", name: "Floor 2", level: 2, hasDrawing: true },
-          { slug: "3", name: "Floor 3", level: 3, hasDrawing: true },
+          { slug: "2", name: "Floor 2", level: 2, hasDrawing: true, deskCount: 13, roomCount: 3 },
+          { slug: "3", name: "Floor 3", level: 3, hasDrawing: true, deskCount: 8, roomCount: 2 },
         ],
       },
     ]);
