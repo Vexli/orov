@@ -1,0 +1,55 @@
+import Link from "next/link";
+import { notFound } from "next/navigation";
+import { FloorDrawingPanel } from "@/components/admin/floor-drawing";
+import { FloorFormEditor } from "@/components/admin/location-form";
+import { getDb } from "@officeorg/db/client";
+import { getFloorForAdmin } from "@officeorg/db/queries/floors";
+
+export default async function FloorAdminPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const floor = await getFloorForAdmin(getDb(), id);
+  if (!floor) notFound();
+
+  return (
+    <div className="space-y-8">
+      <div>
+        <Link href="/admin/locations" className="text-sm text-muted-fg underline">
+          Offices and floors
+        </Link>
+        <h1 className="mt-1 text-xl font-heading">
+          {floor.location.name}, {floor.name}
+        </h1>
+      </div>
+
+      <FloorDrawingPanel
+        floorId={floor.id}
+        currentAssetId={floor.svgAssetId}
+        versions={floor.versions.map((v) => ({
+          id: v.id,
+          version: v.version,
+          uploadedBy: v.uploadedBy,
+          uploadedAt: v.uploadedAt,
+        }))}
+      />
+
+      <section aria-labelledby="details-heading">
+        <h2 id="details-heading" className="font-heading">
+          Floor details
+        </h2>
+        <div className="mt-4">
+          <FloorFormEditor
+            locationId={floor.locationId}
+            id={floor.id}
+            initial={{
+              slug: floor.slug,
+              name: floor.name,
+              level: floor.level,
+              sortOrder: floor.sortOrder,
+            }}
+            slugLocked={floor.svgAssetId !== null}
+          />
+        </div>
+      </section>
+    </div>
+  );
+}
