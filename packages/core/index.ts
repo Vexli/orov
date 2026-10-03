@@ -12,3 +12,6 @@ export * from "./teams/form";
 export * from "./directory/model";
 export * from "./directory/filter";
 export * from "./regions/iso3166";
+export * from "./spaces/form";
+// svg/diff only. svg/sanitize and svg/parse load jsdom, so the server imports them by path.
+export * from "./svg/diff";
