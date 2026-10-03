@@ -8,10 +8,10 @@ import { requireUser } from "@/lib/session";
 
 export default async function MapPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
   const user = await requireUser();
-  const { loc, floor } = loadMapParams(await searchParams);
+  const { loc, floor, person } = loadMapParams(await searchParams);
   const db = getDb();
   const [map, directory] = await Promise.all([
-    loadMap(db, { loc, floor }, user.regionDisplay),
+    loadMap(db, { loc, floor, person }, user.regionDisplay),
     loadDirectory(db, user.regionDisplay),
   ]);
   return <MapView map={map} people={directory.people} teams={directory.teams} />;

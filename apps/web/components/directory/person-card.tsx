@@ -1,3 +1,4 @@
+import Link from "next/link";
 import type { DirectoryPerson } from "@officeorg/core/directory/model";
 import { displayName, initials } from "@officeorg/core/directory/filter";
 import { LocationLabel } from "./location-label";
@@ -8,7 +9,8 @@ interface Props {
   onClose?: () => void;
 }
 
-// Shared card for every view (plan.md §7). Presence and chat buttons arrive in Phases 4 and 5.
+// Shared card for every view (plan.md §7). The desk links to the map, focused on this person.
+// Presence and chat buttons arrive in Phases 4 and 5.
 export function PersonCard({ person, onSelectPerson, onClose }: Props) {
   const name = displayName(person);
   return (
@@ -47,9 +49,17 @@ export function PersonCard({ person, onSelectPerson, onClose }: Props) {
           <LocationLabel person={person} />
         </Field>
         <Field label="Desk">
-          {person.desk
-            ? `${person.desk.name} · ${person.desk.locationName}, ${person.desk.floorName}`
-            : "No desk assigned"}
+          {person.desk ? (
+            <Link
+              href={{ pathname: "/map", query: { person: person.id } }}
+              aria-label={`Show ${person.desk.name} on the map`}
+              className="underline underline-offset-4"
+            >
+              {person.desk.name} · {person.desk.locationName}, {person.desk.floorName}
+            </Link>
+          ) : (
+            "No desk assigned"
+          )}
         </Field>
         <Field label="Manager">
           {person.manager ? (

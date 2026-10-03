@@ -30,7 +30,9 @@ released to `main` yet. The parts that work today:
 - Directory with search, team and location filters, a person card, and selection kept in the URL
 - Floor map: the floor drawing with an avatar at each occupied desk, zoom and pan, and a card for
   the person, desk or room you click. Switch offices and floors, open an area such as the South
-  Wing as a zoomed view, and see each floor's headcount, desks and rooms
+  Wing as a zoomed view, and see each floor's headcount, desks and rooms. The map follows a
+  selected person to their floor, and highlights a team's seats (optionally with its sub-teams)
+  with a count per floor. A desk on a person card links to the map
 - Admin pages to create, edit and deactivate people and teams, with checks that reject
   manager and parent-team cycles. Desks are assigned by clicking the floor drawing; choosing a
   taken desk swaps it, after the admin confirms
@@ -43,7 +45,7 @@ released to `main` yet. The parts that work today:
   adds, moves and removes before anything is saved, and keeps every version for rollback. How to
   draw one is in [`docs/map-authoring.md`](docs/map-authoring.md)
 
-Not built yet: team highlights and the map's list view (the rest of Phase 2), the org chart (Phase 3), Google room status and Calendar
+Not built yet: the map's list view (the rest of Phase 2), the org chart (Phase 3), Google room status and Calendar
 presence (Phase 4), Slack (Phase 5) and brand token import (Phase 5.5). The worker is a skeleton
 that only logs a heartbeat. See [`plan.md` §12](plan.md#12-delivery-plan) for the roadmap.
 

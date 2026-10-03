@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useTransition } from "react";
+import { useCallback, useEffect, useMemo, useTransition } from "react";
 import { useQueryStates } from "nuqs";
 import type {
   DirectoryPerson,
@@ -11,6 +11,7 @@ import type {
   MapSpace,
 } from "@officeorg/core";
 import { mapStateCss } from "@officeorg/core/map/state-css";
+import { teamSeats, type TeamSeats } from "@officeorg/core/map/team-seats";
 import { displayName, initials } from "@officeorg/core/directory/filter";
 import { PersonCard } from "@/components/directory/person-card";
 import { mapParsers } from "@/lib/url-state";
@@ -32,7 +33,7 @@ const KIND_LABEL: Record<MapSpace["kind"], string> = {
   other: "Point of interest",
 };
 
-export function MapView({ map, people }: Props) {
+export function MapView({ map, people, teams }: Props) {
   // Selection is client-only state in the URL. Changing floors needs the server's drawing, so
   // those updates opt out of shallow routing where they're made.
   const [params, setParams] = useQueryStates(mapParsers, { history: "replace" });
@@ -40,12 +41,68 @@ export function MapView({ map, people }: Props) {
   const floor = map.floor;
 
   // A new floor comes from the server. The area and room picked on the old floor don't apply.
-  function goTo(loc: string, floorSlug: string | null) {
-    void setParams(
-      { loc, floor: floorSlug, area: null, space: null },
-      { shallow: false, startTransition },
-    );
-  }
+  // Choosing a floor by hand ends a person focus, which would otherwise pull the map straight
+  // back to their desk. Following a person keeps it.
+  const goTo = useCallback(
+    (loc: string, floorSlug: string | null, follow = false) => {
+      void setParams(
+        { loc, floor: floorSlug, area: null, space: null, ...(follow ? {} : { person: null }) },
+        { shallow: false, startTransition },
+      );
+    },
+    [setParams],
+  );
+
+  // Person focus (U1): the map follows the focused person's desk to its floor, and to its area
+  // when an area is open. Only to floors with a drawing, or it would keep reloading a fallback.
+  const personSeat = params.person
+    ? (map.seats.find((s) => s.personId === params.person) ?? null)
+    : null;
+  const seatFloorHasDrawing =
+    !!personSeat &&
+    !!map.locations
+      .find((l) => l.slug === personSeat.locationSlug)
+      ?.floors.find((f) => f.slug === personSeat.floorSlug)?.hasDrawing;
+  useEffect(() => {
+    if (!floor || !personSeat || !seatFloorHasDrawing) return;
+    if (personSeat.locationSlug !== floor.locationSlug || personSeat.floorSlug !== floor.slug) {
+      goTo(personSeat.locationSlug, personSeat.floorSlug, true);
+      return;
+    }
+    // Already on the right floor (the server picked it): make the URL say so, so a shared link
+    // keeps working, and move an open area to the person's.
+    const sync: { loc?: string; floor?: string; area?: string | null } = {};
+    if (params.loc !== floor.locationSlug || params.floor !== floor.slug) {
+      sync.loc = floor.locationSlug;
+      sync.floor = floor.slug;
+    }
+    if (params.area && params.area !== personSeat.areaSlug) sync.area = personSeat.areaSlug;
+    if (Object.keys(sync).length > 0) void setParams(sync);
+  }, [
+    floor,
+    personSeat,
+    seatFloorHasDrawing,
+    params.loc,
+    params.floor,
+    params.area,
+    goTo,
+    setParams,
+  ]);
+
+  // Team highlight (U2), with or without sub-teams, the same scope as the directory's filter.
+  const team = useMemo<TeamSeats | null>(
+    () =>
+      params.team
+        ? teamSeats(params.team, params.sub, {
+            teams,
+            people,
+            seats: map.seats,
+            locations: map.locations,
+          })
+        : null,
+    [params.team, params.sub, teams, people, map.seats, map.locations],
+  );
+  const teamPeople = useMemo(() => new Set(team?.seats.map((s) => s.personId)), [team]);
 
   const focusArea = floor?.areas.find((a) => a.slug === params.area) ?? null;
 
@@ -68,12 +125,12 @@ export function MapView({ map, people }: Props) {
   const stateCss = useMemo(
     () =>
       mapStateCss({
-        highlighted: [],
+        highlighted: seatsHere.filter((s) => teamPeople.has(s.personId)).map((s) => s.svgElementId),
         selected: [personSeatHere?.svgElementId, selectedSpace?.svgElementId].filter(
           (id): id is string => !!id,
         ),
       }),
-    [personSeatHere, selectedSpace],
+    [personSeatHere, selectedSpace, seatsHere, teamPeople],
   );
 
   const avatars = useMemo<Avatar[]>(
@@ -87,12 +144,17 @@ export function MapView({ map, people }: Props) {
             svgElementId: seat.svgElementId,
             initials: initials(name),
             name,
-            emphasis: seat.personId === params.person ? ("selected" as const) : null,
+            emphasis:
+              seat.personId === params.person
+                ? ("selected" as const)
+                : teamPeople.has(seat.personId)
+                  ? ("highlighted" as const)
+                  : null,
             dimmed: focusArea !== null && seat.areaSlug !== focusArea.slug,
           },
         ];
       }),
-    [seatsHere, peopleById, params.person, focusArea],
+    [seatsHere, peopleById, params.person, focusArea, teamPeople],
   );
 
   function select(svgElementId: string) {
@@ -132,6 +194,15 @@ export function MapView({ map, people }: Props) {
           onFloor={goTo}
           onArea={(area) => setParams({ area, space: null })}
         />
+        <TeamHighlight
+          teams={teams}
+          teamId={params.team}
+          includeSubteams={params.sub}
+          result={team}
+          currentFloor={{ loc: floor.locationSlug, floor: floor.slug }}
+          onChange={(teamId, sub) => setParams({ team: teamId, sub: teamId ? sub : null })}
+          onFloor={goTo}
+        />
         <div className={`mt-4 transition-opacity ${navigating ? "opacity-60" : ""}`}>
           <FloorMap
             assetId={floor.assetId}
@@ -146,6 +217,17 @@ export function MapView({ map, people }: Props) {
       </section>
 
       <div className="lg:sticky lg:top-6 lg:self-start">
+        {selectedPerson && !personSeat ? (
+          <p role="note" className="mb-3 rounded-md bg-muted p-3 text-sm">
+            {displayName(selectedPerson)} has no desk, so they aren&apos;t on the map.
+          </p>
+        ) : null}
+        {selectedPerson && personSeat && !seatFloorHasDrawing ? (
+          <p role="note" className="mb-3 rounded-md bg-muted p-3 text-sm">
+            {personSeat.deskName} is on {personSeat.locationName}, {personSeat.floorName}, which has
+            no drawing yet.
+          </p>
+        ) : null}
         {selectedPerson ? (
           <PersonCard
             person={selectedPerson}
@@ -352,5 +434,88 @@ function OfficeOverview({
       </table>
       <p className="mt-4 text-sm text-muted-fg">Select a desk or a room on the map.</p>
     </aside>
+  );
+}
+
+function TeamHighlight({
+  teams,
+  teamId,
+  includeSubteams,
+  result,
+  currentFloor,
+  onChange,
+  onFloor,
+}: {
+  teams: DirectoryTeam[];
+  teamId: string | null;
+  includeSubteams: boolean;
+  result: TeamSeats | null;
+  currentFloor: { loc: string; floor: string };
+  onChange: (teamId: string | null, includeSubteams: boolean) => void;
+  onFloor: (loc: string, floor: string) => void;
+}) {
+  const name = teams.find((t) => t.id === teamId)?.name;
+  return (
+    <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
+      <select
+        aria-label="Highlight team"
+        value={teamId ?? ""}
+        onChange={(e) => onChange(e.target.value || null, includeSubteams)}
+        className="rounded-md border border-border bg-transparent px-3 py-1.5 text-sm"
+      >
+        <option value="">Highlight a team…</option>
+        {teams.map((t) => (
+          <option key={t.id} value={t.id}>
+            {t.name}
+          </option>
+        ))}
+      </select>
+      <label className="flex items-center gap-2">
+        <input
+          type="checkbox"
+          checked={includeSubteams}
+          disabled={!teamId}
+          onChange={(e) => onChange(teamId, e.target.checked)}
+        />
+        Include sub-teams
+      </label>
+      {result && name ? (
+        <p
+          role="status"
+          aria-label="Team seats"
+          className="flex flex-wrap items-center gap-x-2 gap-y-1"
+        >
+          <span className="font-medium">
+            {name}
+            {includeSubteams ? " and sub-teams" : ""}: {result.seats.length}{" "}
+            {result.seats.length === 1 ? "seat" : "seats"}
+          </span>
+          {result.perFloor.map((f) => {
+            const here = f.locationSlug === currentFloor.loc && f.floorSlug === currentFloor.floor;
+            const label = `${f.floorName}: ${f.count}`;
+            return here ? (
+              <span
+                key={`${f.locationSlug}/${f.floorSlug}`}
+                className="rounded bg-map-highlight px-1.5 text-bg"
+              >
+                {label}
+              </span>
+            ) : (
+              <button
+                key={`${f.locationSlug}/${f.floorSlug}`}
+                type="button"
+                onClick={() => onFloor(f.locationSlug, f.floorSlug)}
+                className="rounded bg-muted px-1.5 underline underline-offset-2"
+              >
+                {label}
+              </button>
+            );
+          })}
+          {result.deskless > 0 ? (
+            <span className="text-muted-fg">· {result.deskless} without a desk</span>
+          ) : null}
+        </p>
+      ) : null}
+    </div>
   );
 }

@@ -149,3 +149,94 @@ test.describe("floor and area navigation", () => {
     await expect(page).not.toHaveURL(/area=/);
   });
 });
+
+// The default theme's --map-highlight.
+const HIGHLIGHT = "rgb(2, 132, 199)";
+
+test.describe("person focus and team highlight", () => {
+  test.beforeEach(async ({ context }) => {
+    await resetE2eDatabase();
+    await signInAs(context, "bob@example.com");
+  });
+
+  test("U1: find Bob in the directory and see his seat highlighted on the right floor", async ({ page }) => {
+    await page.goto("/directory");
+    await page.getByRole("searchbox", { name: "Search people" }).fill("bob");
+    await page.getByRole("button", { name: /Bob Lindqvist/ }).click();
+    await page.getByRole("link", { name: "Show SF-2-014 on the map" }).click();
+
+    await expect(page).toHaveURL(/\/map\?.*person=p_bob/);
+    await expect(page.getByRole("heading", { name: "San Francisco, Floor 2" })).toBeVisible();
+    // The URL gains the floor, so the link can be shared.
+    await expect(page).toHaveURL(/loc=sf/);
+    await expect(page).toHaveURL(/floor=2/);
+    await expect.poll(() => fillOf(page, "desk-2-014")).toBe(SELECTION);
+  });
+
+  test("a link to someone on another floor opens their floor", async ({ page }) => {
+    await page.goto("/map?loc=sf&floor=2&person=p_sam");
+    await expect(page.getByRole("heading", { name: "San Francisco, Floor 3" })).toBeVisible();
+    await expect(page).toHaveURL(/floor=3/);
+    await expect.poll(() => fillOf(page, "desk-3-001")).toBe(SELECTION);
+  });
+
+  test("following a manager to another floor moves the map there", async ({ page }) => {
+    await page.goto("/map?person=p_sam");
+    await expect(page.getByRole("heading", { name: "San Francisco, Floor 3" })).toBeVisible();
+    await page
+      .getByRole("complementary", { name: "Sam Ortiz details" })
+      .getByRole("button", { name: "Max Osei" })
+      .click();
+    await expect(page.getByRole("heading", { name: "San Francisco, Floor 2" })).toBeVisible();
+    await expect(page).toHaveURL(/person=p_max/);
+    await expect.poll(() => fillOf(page, "desk-2-010")).toBe(SELECTION);
+  });
+
+  test("an open area moves to the focused person's area", async ({ page }) => {
+    await page.goto("/map?loc=sf&floor=2&area=north-wing&person=p_jane");
+    await expect(page).toHaveURL(/area=south-wing/);
+    await expect(page.getByRole("heading", { name: "San Francisco, Floor 2, South Wing" })).toBeVisible();
+  });
+
+  test("choosing another floor by hand ends the person focus", async ({ page }) => {
+    await page.goto("/map?person=p_bob");
+    await expect(page.getByRole("complementary", { name: "Bob Lindqvist details" })).toBeVisible();
+    await page.getByRole("group", { name: "Floors" }).getByRole("button", { name: "Floor 3" }).click();
+    await expect(page.getByRole("heading", { name: "San Francisco, Floor 3" })).toBeVisible();
+    await expect(page).not.toHaveURL(/person=/);
+  });
+
+  test("someone without a desk gets a card, not a seat", async ({ page }) => {
+    await page.goto("/map?person=p_priya");
+    await expect(page.getByRole("note")).toContainText("Priya Raman has no desk");
+    await expect(page.getByRole("complementary", { name: "Priya Raman details" })).toContainText(
+      "Karnātaka, India Remote",
+    );
+  });
+
+  test("U2: HR with its sub-teams highlights every member's seat, with a count per floor", async ({ page }) => {
+    await page.goto("/map");
+    await page.getByRole("combobox", { name: "Highlight team" }).selectOption({ label: "HR" });
+    const status = page.getByRole("status", { name: "Team seats" });
+    await expect(status).toContainText("HR: 3 seats");
+    await expect(status).toContainText("Floor 2: 3");
+
+    await page.getByRole("checkbox", { name: "Include sub-teams" }).check();
+    await expect(page).toHaveURL(/team=t_hr/);
+    await expect(page).toHaveURL(/sub=true/);
+    await expect(status).toContainText("HR and sub-teams: 4 seats");
+    await expect(status).toContainText("Floor 3: 1");
+    await expect(status).toContainText("1 without a desk");
+
+    for (const id of ["desk-2-003", "desk-2-010", "desk-2-014"]) {
+      await expect.poll(() => fillOf(page, id)).toBe(HIGHLIGHT);
+    }
+    expect(await fillOf(page, "desk-2-016")).not.toBe(HIGHLIGHT);
+
+    await status.getByRole("button", { name: "Floor 3: 1" }).click();
+    await expect(page.getByRole("heading", { name: "San Francisco, Floor 3" })).toBeVisible();
+    await expect.poll(() => fillOf(page, "desk-3-001")).toBe(HIGHLIGHT);
+    // The team carries over to the new floor.
+    await expect(page).toHaveURL(/team=t_hr/);
+  });
+});

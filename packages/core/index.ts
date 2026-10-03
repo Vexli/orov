@@ -17,3 +17,4 @@ export * from "./spaces/form";
 export * from "./svg/diff";
 export * from "./map/model";
 export * from "./map/state-css";
+export * from "./map/team-seats";
