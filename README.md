@@ -21,8 +21,8 @@ the phase-by-phase delivery plan with progress notes.
 
 ## Status
 
-**Phase 1 (Foundation) is complete, and Phase 2 (Maps) is in progress.** Neither has been
-released to `main` yet. The parts that work today:
+**Phase 1 (Foundation) and Phase 2 (Maps) are complete.** Neither has been released to `main`
+yet. The parts that work today:
 
 - Sign-in through any SSO provider Auth.js supports (Google, Microsoft Entra ID, Okta, AWS
   Cognito or any OpenID Connect issuer), limited to one company email domain, with `viewer` and

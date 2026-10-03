@@ -504,6 +504,8 @@ The five spikes from §2 and `docs/spikes.md`.
 
 ### Phase 2: Maps (1.5–2 weeks) → U1, U2, U6, U11
 
+**Phase status:** all items done and merged into `phase/2-maps`, then `dev` (2026-10-03). Integration run on the phase branch: 210 unit, 76 database (Testcontainers) and 52 Playwright specs pass, plus the CI drift checks (migrations, theme defaults, raw palette classes) and the production build. U1, U2, U6 and U11 each have a passing spec (`e2e/specs/map.spec.ts`, `e2e/specs/admin-floors.spec.ts`). Not yet merged into `main`. No schema migration was needed: Phase 1's `0000` already had every map table. Decisions the next phase should know: URL state now imports from `nuqs/server`; the map adds `floor`, `area`, `space` and `view` params; a set `person` decides the map's floor, and choosing a floor by hand clears it. Phase 3's tab links should keep `person` and `team` and can drop the map-only params.
+
 - [x] `docs/map-authoring.md`, plus a sample floor SVG for seeding
     - **Completed:** 2026-10-03
     - **Branch:** merged from `feature/map-authoring`
