@@ -537,6 +537,8 @@ The five spikes from §2 and `docs/spikes.md`.
 
 ### Phase 3: Org chart and selection sync (1 week) → U3, U9
 
+**Phase status:** all items done and merged into `phase/3-org-chart`, then `dev` (2026-10-03). Integration run on the phase branch: 234 unit, 85 database (Testcontainers) and 76 Playwright specs pass, plus the CI drift checks (migrations, theme defaults, raw palette classes). U3 and U9 each have a passing spec (`e2e/specs/org.spec.ts`, `e2e/specs/selection.spec.ts`). Not yet merged into `main`. One migration (`0002`, `CREATE EXTENSION pg_trgm`), so the database user must be allowed to create that extension. Decisions later phases should know: the tab links carry only `selectionParsers`, so Phase 5's `multi` belongs there; presence on the org chart (Phase 4, §8.5) goes into `nodeHtml` in `components/org/org-chart.tsx` and the outline. Known noise, not from this phase: the Playwright server log shows one "The destination stream closed early" during the map's floor-switch spec, on `dev` as well; the spec passes.
+
 - [x] d3-org-chart wrapper (a client component), reporting tree and team tree toggle
     - **Completed:** 2026-10-03
     - **Branch:** merged from `feature/org-chart`
