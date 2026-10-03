@@ -122,7 +122,7 @@ URL to register.
 | `pnpm db:migrate`     | Apply pending migrations                                               |
 | `pnpm db:seed`        | Reset the database and load the demo data (refuses to run in production) |
 | `pnpm db:generate`    | Generate a migration after changing `packages/db/schema.ts`            |
-| `pnpm theme:defaults` | Regenerate `apps/web/app/theme-defaults.css` from the theme slot list  |
+| `pnpm theme:defaults` | Regenerate `apps/web/app/theme-defaults.css` and `theme/default.tokens.json` from the theme slot list |
 
 ### Testing
 
@@ -170,7 +170,8 @@ packages/
     theme/        theme slots, design token import, value grammar, contrast checks, CSS
   db/           Drizzle schema, migrations, queries, seed, and database tests
     seed-floors/  sample floor SVGs that the demo data loads
-docs/           guides, such as map-authoring.md for drawing floor SVGs
+docs/           guides: map-authoring.md for drawing floor SVGs, theming.md for design tokens
+theme/          the default theme as a design token file (generated)
 e2e/            Playwright specs, one or more per user story
 docker/         Postgres init script
 Dockerfile      one image with `web` and `worker` targets

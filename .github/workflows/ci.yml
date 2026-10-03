@@ -36,7 +36,7 @@ jobs:
       - name: Theme defaults match the slot list
         run: |
           pnpm theme:defaults
-          if [ -n "$(git status --porcelain apps/web/app/theme-defaults.css)" ]; then
+          if [ -n "$(git status --porcelain apps/web/app/theme-defaults.css theme/default.tokens.json)" ]; then
             echo "slots.ts changed without regenerating the defaults. Run pnpm theme:defaults and commit the result."
             exit 1
           fi

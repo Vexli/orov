@@ -578,7 +578,10 @@ The five spikes from §2 and `docs/spikes.md`.
 
 **Phase status:** in progress on `phase/5.5-branding` (started 2026-10-03), ahead of Phases 4 and 5 at the user's direction, since it depends only on Phase 1's token layer.
 
-- [ ] `docs/theming.md` and `theme/default.tokens.json`
+- [x] `docs/theming.md` and `theme/default.tokens.json`
+    - **Completed:** 2026-10-03
+    - **Branch:** merged from `feature/theme-docs-defaults`
+    - **Notes:** `theme/default.tokens.json` is **generated** from `slots.ts` by `pnpm theme:defaults` (alongside `theme-defaults.css`) through the DTCG exporter, and CI's drift check now covers both files; it's in `.prettierignore` so a formatter can't break the check. Edit `slots.ts`, never the file. Token paths are the slot names and dark values are in `$extensions.mode`, so the file is also the reference example of a complete theme. An organization's own deploy-time default goes through `THEME_TOKENS_PATH` (item 3), not by editing this file. `docs/theming.md` is for designers and admins: export steps per tool, sets and modes, references, the slot reference, the value grammar, mapping suggestions, dark mode and the contrast rules. Its sections on the Branding page, uploads and `THEME_TOKENS_PATH` are added with the features that build them; until then a status note says the page is still being built. A unit test fails if a slot is missing from the guide.
 - [x] Token parse, alias and mode resolution, slot mapping, and validation in `packages/core/theme`
     - **Completed:** 2026-10-03
     - **Branch:** merged from `feature/theme-core`
