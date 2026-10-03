@@ -8,7 +8,6 @@ const BASE_URL = `http://localhost:${PORT}`;
 const E2E_DATABASE_URL =
   process.env.E2E_DATABASE_URL ?? "postgres://officeorg:officeorg@localhost:5432/officeorg_e2e";
 
-
 export default defineConfig({
   testDir: "./specs",
   globalSetup: "./support/global-setup.ts",
@@ -32,10 +31,14 @@ export default defineConfig({
       DATABASE_URL: E2E_DATABASE_URL,
       AUTH_SECRET: E2E_AUTH_SECRET,
       AUTH_URL: BASE_URL,
+      AUTH_PROVIDERS: "google",
       AUTH_GOOGLE_ID: "e2e-placeholder",
       AUTH_GOOGLE_SECRET: "e2e-placeholder",
       COMPANY_DOMAIN: "example.com",
       ADMIN_EMAILS: "jane@example.com",
+      // Set on purpose: auth.spec.ts checks a production build ignores them.
+      AUTH_DEV_PASSWORD: "dev",
+      AUTH_DEV_BYPASS_EMAIL: "jane@example.com",
     },
   },
 });
