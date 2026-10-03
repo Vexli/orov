@@ -13,6 +13,8 @@ export interface MapTarget {
   // Location and floor slugs from the URL. Either may be missing or stale.
   loc: string | null;
   floor: string | null;
+  // A focused person. Their desk's floor wins over `loc` and `floor` (plan.md §7).
+  person?: string | null;
 }
 
 // Everything the map needs in one read: the office and floor list for navigation, the chosen
@@ -58,12 +60,19 @@ export async function loadMap(
   const drawn = locationRows.flatMap((l) =>
     l.floors.filter((f) => f.svgAssetId).map((f) => ({ l, f })),
   );
-  const pick =
-    drawn.find(({ l, f }) => l.slug === target.loc && f.slug === target.floor) ??
-    drawn.find(({ l }) => l.slug === target.loc) ??
-    drawn[0];
-
   const seats = await loadSeats(db);
+  const personSeat = target.person
+    ? seats.find((seat) => seat.personId === target.person)
+    : undefined;
+
+  const pick =
+    (personSeat &&
+      drawn.find(
+        ({ l, f }) => l.slug === personSeat.locationSlug && f.slug === personSeat.floorSlug,
+      )) ||
+    drawn.find(({ l, f }) => l.slug === target.loc && f.slug === target.floor) ||
+    drawn.find(({ l }) => l.slug === target.loc) ||
+    drawn[0];
 
   if (!pick) return { locations, floor: null, seats };
 

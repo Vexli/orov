@@ -45,6 +45,12 @@ describe("loadMap", () => {
     expect((await loadMap(t.db, target)).floor?.id).toBe("fl_sf_2");
   });
 
+  it("opens a focused person's floor, even when the URL names another", async () => {
+    expect((await loadMap(t.db, { loc: "sf", floor: "2", person: "p_sam" })).floor?.id).toBe("fl_sf_3");
+    // Without a desk there is nothing to follow, so the URL's floor stands.
+    expect((await loadMap(t.db, { loc: "sf", floor: "3", person: "p_priya" })).floor?.id).toBe("fl_sf_3");
+  });
+
   it("lists offices and floors for navigation, with regions in the viewer's style", async () => {
     const map = await loadMap(t.db, { loc: null, floor: null }, "code");
     expect(map.locations).toEqual([
