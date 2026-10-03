@@ -9,3 +9,5 @@ export * from "./teams/tree";
 export * from "./auth/policy";
 export * from "./people/form";
 export * from "./teams/form";
+export * from "./directory/model";
+export * from "./directory/filter";
