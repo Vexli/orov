@@ -1,4 +1,5 @@
 import { createLoader, parseAsBoolean, parseAsString, parseAsStringLiteral } from "nuqs/server";
+import { ORG_TREES } from "@officeorg/core/org/tree";
 
 // The one definition of URL state. Every view imports it, so the same person, team and filters
 // survive a switch between views (plan.md §7).
@@ -32,3 +33,11 @@ export const mapParsers = {
 };
 
 export const loadMapParams = createLoader(mapParsers);
+
+// `tree` picks the reporting tree or the team tree (plan.md §7). `view` swaps the chart for an
+// outline of the same tree, for keyboards and screen readers.
+export const orgParsers = {
+  ...selectionParsers,
+  tree: parseAsStringLiteral(ORG_TREES).withDefault("reporting"),
+  view: parseAsStringLiteral(["chart", "list"] as const).withDefault("chart"),
+};

@@ -34,6 +34,9 @@ yet. The parts that work today:
   selected person to their floor, and highlights a team's seats (optionally with its sub-teams)
   with a count per floor. A desk on a person card links to the map. A List toggle shows the same
   desks and rooms as a table for keyboard and screen reader users
+- Org chart: the reporting tree (who reports to whom) and the team tree (teams, their sub-teams
+  and members), with expand and collapse, zoom, and the person card for whoever you click. A List
+  toggle shows the same tree as an outline for keyboard and screen reader users
 - Admin pages to create, edit and deactivate people and teams, with checks that reject
   manager and parent-team cycles. Desks are assigned by clicking the floor drawing; choosing a
   taken desk swaps it, after the admin confirms
@@ -46,7 +49,8 @@ yet. The parts that work today:
   adds, moves and removes before anything is saved, and keeps every version for rollback. How to
   draw one is in [`docs/map-authoring.md`](docs/map-authoring.md)
 
-Not built yet: the org chart (Phase 3), Google room status and Calendar
+Not built yet: the rest of Phase 3 (team highlight on the org chart, view tabs that keep the
+selection, ⌘K search), Google room status and Calendar
 presence (Phase 4), Slack (Phase 5) and brand token import (Phase 5.5). The worker is a skeleton
 that only logs a heartbeat. See [`plan.md` §12](plan.md#12-delivery-plan) for the roadmap.
 
@@ -139,11 +143,11 @@ A pnpm workspace with two apps and two shared packages:
 apps/
   web/          Next.js (App Router) app
     app/
-      (app)/      signed-in views: directory, map, settings
+      (app)/      signed-in views: directory, map, org chart, settings
       admin/      people, teams, offices and floors, CSV import, audit log
       api/        Auth.js routes, CSV export, health check
       login/      sign-in page
-    components/   directory, map and admin UI
+    components/   directory, map, org chart and admin UI
     lib/          auth config, SSO providers, session helpers, URL state (nuqs)
     proxy.ts      route protection (Next 16's replacement for middleware.ts)
   worker/       long-running background process (heartbeat only for now)
@@ -154,6 +158,7 @@ packages/
     directory/    directory model and filtering
     import/       dry-run import planning
     map/          floor map model and the generated state stylesheet
+    org/          the org chart's reporting and team trees
     regions/      ISO 3166 validation and display formatting
     spaces/       office and floor form validation
     svg/          floor drawing sanitize, parse and diff
@@ -209,6 +214,7 @@ OfficeOrg is built on open-source work. Thank you to the people who maintain it.
   [jsdom](https://github.com/jsdom/jsdom): sanitizing and reading floor drawings
 - [react-zoom-pan-pinch](https://github.com/BetterTyped/react-zoom-pan-pinch): zoom and pan on
   the floor map
+- [d3-org-chart](https://github.com/bumbeishvili/org-chart) by David Bumbeishvili: the org chart
 - [Vitest](https://vitest.dev), [Playwright](https://playwright.dev) and
   [Testcontainers](https://testcontainers.com): unit, end-to-end and database tests
 - [pnpm](https://pnpm.io), [TypeScript](https://www.typescriptlang.org),
@@ -216,7 +222,6 @@ OfficeOrg is built on open-source work. Thank you to the people who maintain it.
 
 **Planned for later phases**
 
-- [d3-org-chart](https://github.com/bumbeishvili/org-chart) by David Bumbeishvili: the org chart
 - [pg-boss](https://github.com/timgit/pg-boss): background jobs in Postgres
 - [Slack Bolt](https://tools.slack.dev/bolt-js): Slack Socket Mode
 - [shadcn/ui](https://ui.shadcn.com): UI components, whose CSS-variable model the theme slots

@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 const VIEWS = [
   { href: "/directory", label: "Directory" },
   { href: "/map", label: "Map" },
+  { href: "/org", label: "Org chart" },
 ];
 
 // The view tabs in the shell. Keeping the selection across a switch is Phase 3 (plan.md §7).

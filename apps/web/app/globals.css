@@ -101,3 +101,15 @@
   opacity: var(--map-dim-opacity);
   transition: opacity 0.2s;
 }
+
+/* Org chart (components/org/org-chart.tsx). d3-org-chart sets fixed link colors and a font as
+   SVG presentation attributes, which any stylesheet rule outranks, so these need no !important. */
+[data-org-chart] svg {
+  font-family: inherit;
+}
+
+[data-org-chart] path.link {
+  stroke: var(--muted-fg);
+  stroke-width: 1.5px;
+  fill: none;
+}

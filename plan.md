@@ -537,7 +537,10 @@ The five spikes from §2 and `docs/spikes.md`.
 
 ### Phase 3: Org chart and selection sync (1 week) → U3, U9
 
-- [ ] d3-org-chart wrapper (a client component), reporting tree and team tree toggle
+- [x] d3-org-chart wrapper (a client component), reporting tree and team tree toggle
+    - **Completed:** 2026-10-03
+    - **Branch:** merged from `feature/org-chart`
+    - **Notes:** `/org` reuses `loadDirectory`; both trees are built in the browser by pure functions in `packages/core/org/tree.ts`, so the `managementChain` and `reportsTree` SQL queries from §5 were **not needed** and weren't built. Several tops (people without a manager, top-level teams) go under a synthetic root, because the library needs exactly one; a manager missing from the directory (inactive) ends the chain, and a cycle in the data is cut rather than crashing the chart. In the team tree a person appears under every team they belong to (node id `<teamId>:<personId>`); people in no team appear only in the reporting tree. `components/org/org-chart.tsx` loads the library in an effect (its constructor reads `window`) and keeps one data array per tree, because d3-org-chart stores expand/collapse state as `_expanded` flags on the data: a selection or highlight flips flags and redraws, so nodes the viewer opened stay open. Node HTML is built from strings, so every label passes through `escapeHtml` (`packages/core/org/html.ts`). Nodes, links and buttons are styled with theme slots; selection uses `--map-selection`, the same color as the map. URL state adds `tree` (`reporting`, the default and omitted, or `team`) and `view` (`chart` or `list`). A List toggle renders the same tree as nested buttons (`components/org/org-outline.tsx`), the keyboard and screen reader route, as on the map. A new tree opens two levels below the root and fits the screen, which can make a wide team tree small; the zoom and Fit buttons are above the chart. Tests: 17 unit, 5 Playwright.
 - [ ] Center and expand on `person`, highlight on `team`
 - [ ] Shared nuqs param definitions, tab links that keep the query, ⌘K search
 - [ ] Playwright: select Bob in each view, switch tabs, and assert focus each time
