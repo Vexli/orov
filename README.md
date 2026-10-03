@@ -167,7 +167,7 @@ packages/
     spaces/       office and floor form validation
     svg/          floor drawing sanitize, parse and diff
     teams/        team tree helpers
-    theme/        semantic theme slots and their defaults
+    theme/        theme slots, design token import, value grammar, contrast checks, CSS
   db/           Drizzle schema, migrations, queries, seed, and database tests
     seed-floors/  sample floor SVGs that the demo data loads
 docs/           guides, such as map-authoring.md for drawing floor SVGs
