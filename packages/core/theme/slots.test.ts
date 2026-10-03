@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { SLOTS, TEAM_PALETTE_SIZE } from "./slots";
 import { parseSlotValue } from "./validate";
@@ -79,6 +80,16 @@ describe("SLOTS", () => {
       for (const value of [slot.light, slot.dark ?? slot.light]) {
         expect(parseSlotValue(slot.kind, value), slot.name).toEqual({ ok: true, value });
       }
+    }
+  });
+
+  it("is documented for designers in docs/theming.md", () => {
+    const guide = readFileSync(new URL("../../../docs/theming.md", import.meta.url), "utf8");
+    for (const slot of SLOTS) {
+      const documented = slot.name.startsWith("team.palette.")
+        ? guide.includes("`team.palette.0`")
+        : guide.includes(`\`${slot.name}\``);
+      expect(documented, slot.name).toBe(true);
     }
   });
 });
