@@ -8,10 +8,14 @@ const tab = (page: Page, name: string) =>
 // The dialog's results, which the page's own <select> options can't be confused with.
 const results = (page: Page) => page.getByRole("dialog", { name: "Search" }).getByRole("option");
 
+// The shortcut is a key listener added on hydration; a press before then is lost, so it's
+// retried until the search box has focus.
 async function searchFor(page: Page, text: string) {
-  await page.keyboard.press("ControlOrMeta+k");
   const input = page.getByRole("combobox", { name: "Search people, teams and rooms" });
-  await expect(input).toBeFocused();
+  await expect(async () => {
+    if (!(await input.isVisible())) await page.keyboard.press("ControlOrMeta+k");
+    await expect(input).toBeFocused({ timeout: 500 });
+  }).toPass({ timeout: 10_000 });
   await input.fill(text);
 }
 
