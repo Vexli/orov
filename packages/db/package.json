@@ -1,0 +1,32 @@
+{
+  "name": "@officeorg/db",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./index.ts",
+    "./schema": "./schema.ts",
+    "./queries/*": "./queries/*.ts"
+  },
+  "scripts": {
+    "db:generate": "drizzle-kit generate",
+    "db:check": "drizzle-kit check",
+    "db:migrate": "tsx migrate.ts",
+    "db:seed": "tsx seed.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@paralleldrive/cuid2": "^3.0.4",
+    "drizzle-orm": "^0.45.3",
+    "pg": "^8.23.1"
+  },
+  "devDependencies": {
+    "@testcontainers/postgresql": "^12.2.0",
+    "@types/pg": "^8.15.5",
+    "drizzle-kit": "^0.31.11",
+    "testcontainers": "^12.2.0",
+    "tsx": "^4.20.6",
+    "vitest": "^5.0.3"
+  }
+}
