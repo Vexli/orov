@@ -39,6 +39,8 @@ yet. The parts that work today:
   chart centers on the selected person and opens their direct reports, shows their reporting line
   up to the top, and highlights a team's members (optionally with its sub-teams). A List toggle
   shows the same tree as an outline for keyboard and screen reader users
+- Switching between the directory, map and org chart keeps the selected person and team. ⌘K
+  (Ctrl+K) searches people, teams and rooms, with typo tolerance, from any view
 - Admin pages to create, edit and deactivate people and teams, with checks that reject
   manager and parent-team cycles. Desks are assigned by clicking the floor drawing; choosing a
   taken desk swaps it, after the admin confirms
@@ -51,7 +53,7 @@ yet. The parts that work today:
   adds, moves and removes before anything is saved, and keeps every version for rollback. How to
   draw one is in [`docs/map-authoring.md`](docs/map-authoring.md)
 
-Not built yet: the rest of Phase 3 (view tabs that keep the selection, ⌘K search), Google room status and Calendar
+Not built yet: Google room status and Calendar
 presence (Phase 4), Slack (Phase 5) and brand token import (Phase 5.5). The worker is a skeleton
 that only logs a heartbeat. See [`plan.md` §12](plan.md#12-delivery-plan) for the roadmap.
 
@@ -146,9 +148,9 @@ apps/
     app/
       (app)/      signed-in views: directory, map, org chart, settings
       admin/      people, teams, offices and floors, CSV import, audit log
-      api/        Auth.js routes, CSV export, health check
+      api/        Auth.js routes, search, CSV export, health check
       login/      sign-in page
-    components/   directory, map, org chart and admin UI
+    components/   directory, map, org chart, search and admin UI
     lib/          auth config, SSO providers, session helpers, URL state (nuqs)
     proxy.ts      route protection (Next 16's replacement for middleware.ts)
   worker/       long-running background process (heartbeat only for now)
@@ -161,6 +163,7 @@ packages/
     map/          floor map model and the generated state stylesheet
     org/          the org chart's reporting and team trees
     regions/      ISO 3166 validation and display formatting
+    search/       search result types and query normalization
     spaces/       office and floor form validation
     svg/          floor drawing sanitize, parse and diff
     teams/        team tree helpers
@@ -190,7 +193,9 @@ docker build --target worker -t officeorg-worker .
 
 The web container applies migrations on start and then serves on port 3000. It needs
 `DATABASE_URL`, `AUTH_URL`, `AUTH_SECRET`, `COMPANY_DOMAIN`, `ADMIN_EMAILS` and the SSO variables
-for each provider in `AUTH_PROVIDERS`. `GET /api/health` is a liveness check. Run one web replica
+for each provider in `AUTH_PROVIDERS`. The search uses the `pg_trgm` extension, which a migration
+creates, so the database user needs permission to create it (managed Postgres such as Cloud SQL
+and RDS allow it). `GET /api/health` is a liveness check. Run one web replica
 at a time while a schema change is being deployed, because two replicas migrating at once can
 race.
 

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { signOutAction } from "@/app/actions";
+import { CommandPalette } from "@/components/search/command-palette";
 import { ViewTabs } from "@/components/view-tabs";
 import { requireUser } from "@/lib/session";
 
@@ -15,6 +16,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
             OfficeOrg
           </Link>
           <ViewTabs />
+          <CommandPalette />
           <div className="ml-auto flex items-center gap-4 text-sm text-muted-fg">
             {user.role === "admin" ? (
               <Link href="/admin" className="underline underline-offset-4">
