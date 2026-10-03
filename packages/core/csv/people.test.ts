@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { parsePeopleCsv, peopleToCsv } from "./people";
 
-const HEADER = "email,name,preferred_name,title,home_country,home_timezone,phone,start_date,active,manager_email,desk,teams,primary_team";
+const HEADER = "email,name,preferred_name,title,home_region,home_timezone,phone,start_date,active,manager_email,desk,teams,primary_team";
 
 describe("parsePeopleCsv", () => {
   it("parses a full row into a person record", () => {
@@ -16,7 +16,7 @@ describe("parsePeopleCsv", () => {
       preferredName: "Jane",
       title: "Head of HR",
       phone: null,
-      homeCountry: "CA",
+      homeRegion: "CA",
       homeTimezone: "America/Toronto",
       startDate: "2024-02-01",
       active: true,
@@ -35,7 +35,7 @@ describe("parsePeopleCsv", () => {
 
   it("reports a fatal error when a required column is missing", () => {
     const result = parsePeopleCsv("email,name\na@x.com,A\n");
-    expect(result.fatal).toMatch(/home_country/);
+    expect(result.fatal).toMatch(/home_region/);
     expect(result.rows).toEqual([]);
   });
 
@@ -53,16 +53,32 @@ describe("parsePeopleCsv", () => {
     expect(result.issues[0]?.message).toMatch(/primary_team "ops" must also appear in teams/);
   });
 
-  it("rejects a two-letter country that is not alphabetic", () => {
-    const csv = `${HEADER}\na@x.com,A,,,U1,,,,,,,,\n`;
-    expect(parsePeopleCsv(csv).issues[0]?.message).toMatch(/home_country/);
+  it("accepts an ISO 3166-2 subdivision code in any case", () => {
+    const csv = `${HEADER}\na@x.com,A,,,us-ca,,,,,,,,\n`;
+    expect(parsePeopleCsv(csv).rows[0]?.record.homeRegion).toBe("US-CA");
   });
 
-  it("ignores columns the app does not know about", () => {
+  it("rejects a malformed region code", () => {
+    const csv = `${HEADER}\na@x.com,A,,,U1,,,,,,,,\n`;
+    expect(parsePeopleCsv(csv).issues[0]?.message).toMatch(/home_region must be an ISO 3166 code/);
+  });
+
+  it("rejects a subdivision that ISO 3166-2 doesn't list", () => {
+    const csv = `${HEADER}\na@x.com,A,,,US-XX,,,,,,,,\n`;
+    expect(parsePeopleCsv(csv).issues[0]?.message).toMatch(/"US-XX" is not an ISO 3166/);
+  });
+
+  it("still reads the old home_country column, and ignores columns the app does not know about", () => {
     const csv = `Email,Name,Home_Country,Notes\na@x.com,A,US,hello\n`;
     const result = parsePeopleCsv(csv);
+    expect(result.fatal).toBeUndefined();
     expect(result.issues).toEqual([]);
-    expect(result.rows[0]?.record.homeCountry).toBe("US");
+    expect(result.rows[0]?.record.homeRegion).toBe("US");
+  });
+
+  it("prefers home_region when a file has both columns", () => {
+    const csv = `email,name,home_country,home_region\na@x.com,A,US,US-NY\n`;
+    expect(parsePeopleCsv(csv).rows[0]?.record.homeRegion).toBe("US-NY");
   });
 });
 
@@ -75,7 +91,7 @@ describe("peopleToCsv", () => {
         preferredName: null,
         title: "Analyst, Data",
         phone: null,
-        homeCountry: "US",
+        homeRegion: "US-CA",
         homeTimezone: null,
         startDate: null,
         active: false,

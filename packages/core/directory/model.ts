@@ -14,7 +14,11 @@ export interface DirectoryPerson {
   preferredName: string | null;
   email: string;
   title: string | null;
-  homeCountry: string;
+  // ISO 3166 code ("US" or "US-CA").
+  homeRegion: string;
+  // homeRegion formatted with the viewer's region display preference, on the server, so the
+  // browser never needs the subdivision list.
+  homeRegionLabel: string;
   homeTimezone: string | null;
   manager: { id: string; name: string } | null;
   desk: {
@@ -23,7 +27,7 @@ export interface DirectoryPerson {
     floorName: string;
     locationName: string;
     locationSlug: string;
-    locationCountry: string;
+    locationRegion: string;
   } | null;
   teams: { id: string; name: string; slug: string; isPrimary: boolean }[];
 }

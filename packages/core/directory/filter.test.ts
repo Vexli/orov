@@ -9,14 +9,15 @@ const teams: DirectoryTeam[] = [
   { id: "t_eng", name: "Engineering", slug: "eng", parentTeamId: null },
 ];
 
-const sf = { locationSlug: "sf", locationName: "San Francisco", locationCountry: "US", floorName: "Floor 2" };
+const sf = { locationSlug: "sf", locationName: "San Francisco", locationRegion: "US", floorName: "Floor 2" };
 
 function person(overrides: Partial<DirectoryPerson> & { id: string; name: string }): DirectoryPerson {
   return {
     preferredName: null,
     email: `${overrides.id}@example.com`,
     title: null,
-    homeCountry: "US",
+    homeRegion: "US",
+    homeRegionLabel: "United States",
     homeTimezone: null,
     manager: null,
     desk: null,
@@ -30,7 +31,8 @@ const people: DirectoryPerson[] = [
     id: "p_jane",
     name: "Jane Park",
     title: "Head of HR",
-    homeCountry: "CA",
+    homeRegion: "CA-ON",
+    homeRegionLabel: "Ontario, Canada",
     desk: { id: "sp_3", name: "SF-2-003", ...sf },
     teams: [{ id: "t_hr", name: "HR", slug: "hr", isPrimary: true }],
   }),
@@ -48,7 +50,8 @@ const people: DirectoryPerson[] = [
   person({
     id: "p_priya",
     name: "Priya Raman",
-    homeCountry: "IN",
+    homeRegion: "IN",
+    homeRegionLabel: "India",
     title: "Recruiter",
     teams: [{ id: "t_recruiting", name: "Recruiting", slug: "recruiting", isPrimary: true }],
   }),
@@ -122,8 +125,8 @@ describe("labels", () => {
     expect(displayName(people[0]!)).toBe("Jane Park");
   });
 
-  it("says where someone is based, with their desk when they have one", () => {
-    expect(basedInLabel(people[0]!)).toBe("Based in CA · Desk SF-2-003");
-    expect(basedInLabel(people[2]!)).toBe("Remote – IN");
+  it("says where someone is based in the viewer's format, with their desk when they have one", () => {
+    expect(basedInLabel(people[0]!)).toBe("Based in Ontario, Canada · Desk SF-2-003");
+    expect(basedInLabel(people[2]!)).toBe("Remote – India");
   });
 });

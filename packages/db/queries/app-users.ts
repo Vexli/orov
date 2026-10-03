@@ -1,4 +1,5 @@
 import { eq, sql } from "drizzle-orm";
+import type { RegionDisplay } from "@officeorg/core";
 import type { Executor } from "../client";
 import { appUser } from "../schema";
 
@@ -29,6 +30,30 @@ export async function recordSignIn(
     .returning({ role: appUser.role });
   if (!row) throw new Error(`failed to record sign-in for ${email}`);
   return row.role;
+}
+
+export interface AppUser {
+  role: AppRole;
+  regionDisplay: RegionDisplay;
+}
+
+// The role and personal settings in one read, for the session check every page makes.
+// Returns null for an email with no row, which means no access.
+export async function getAppUser(db: Executor, email: string): Promise<AppUser | null> {
+  const row = await db.query.appUser.findFirst({
+    where: eq(appUser.email, email),
+    columns: { role: true, regionDisplay: true },
+  });
+  return row ?? null;
+}
+
+// A user's own preference. Not audited: it changes only what that user sees.
+export async function setRegionDisplay(
+  db: Executor,
+  email: string,
+  regionDisplay: RegionDisplay,
+): Promise<void> {
+  await db.update(appUser).set({ regionDisplay }).where(eq(appUser.email, email));
 }
 
 // Authoritative role lookup. Returns null for an email with no row, which means no access.

@@ -132,7 +132,7 @@ function emptyPerson(email: string): PersonRecord {
     preferredName: null,
     title: null,
     phone: null,
-    homeCountry: "",
+    homeRegion: "",
     homeTimezone: null,
     startDate: null,
     active: true,

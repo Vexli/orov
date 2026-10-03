@@ -28,7 +28,7 @@ export default function ImportPage() {
       <CsvImportPanel
         kind="people"
         title="People"
-        description="Columns: email, name, preferred_name, title, home_country, home_timezone, phone, start_date, active, manager_email, desk, teams, primary_team. Teams are separated by semicolons. Each row is the full state of that person, so a blank cell clears the field. People who are not in the file are left alone."
+        description="Columns: email, name, preferred_name, title, home_region, home_timezone, phone, start_date, active, manager_email, desk, teams, primary_team. home_region is an ISO 3166 code for a country (US) or a subdivision (US-CA); files with the older home_country column still import. Teams are separated by semicolons. Each row is the full state of that person, so a blank cell clears the field. People who are not in the file are left alone."
         preview={previewPeopleImport}
         apply={applyPeopleImport}
       />

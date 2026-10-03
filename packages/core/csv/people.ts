@@ -1,6 +1,7 @@
 import { stringify } from "csv-stringify/sync";
 import { z } from "zod";
 import type { PersonRecord } from "../records";
+import { regionCodeSchema } from "../regions/iso3166";
 import { parseCsv, type CsvIssue, type CsvRecord } from "./parse";
 
 export const PEOPLE_CSV_HEADERS = [
@@ -8,7 +9,7 @@ export const PEOPLE_CSV_HEADERS = [
   "name",
   "preferred_name",
   "title",
-  "home_country",
+  "home_region",
   "home_timezone",
   "phone",
   "start_date",
@@ -19,7 +20,10 @@ export const PEOPLE_CSV_HEADERS = [
   "primary_team",
 ] as const;
 
-const REQUIRED = ["email", "name", "home_country"];
+const REQUIRED = ["email", "name", "home_region"];
+
+// home_region was home_country when it held only two-letter country codes. Those still parse.
+const ALIASES = { home_country: "home_region" };
 
 const blankToNull = (value: string) => (value === "" ? null : value);
 
@@ -39,10 +43,7 @@ export const personCsvRowSchema = z.object({
   name: z.string().min(1, "name is required"),
   preferred_name: z.string().transform(blankToNull),
   title: z.string().transform(blankToNull),
-  home_country: z
-    .string()
-    .transform((v) => v.toUpperCase())
-    .pipe(z.string().regex(/^[A-Z]{2}$/, "home_country must be a two-letter code, such as US or CA")),
+  home_region: regionCodeSchema("home_region"),
   home_timezone: z.string().transform(blankToNull),
   phone: z.string().transform(blankToNull),
   start_date: z
@@ -72,7 +73,7 @@ export interface PeopleCsvResult {
 }
 
 export function parsePeopleCsv(text: string): PeopleCsvResult {
-  const parsed = parseCsv(text, { columns: PEOPLE_CSV_HEADERS, required: REQUIRED });
+  const parsed = parseCsv(text, { columns: PEOPLE_CSV_HEADERS, required: REQUIRED, aliases: ALIASES });
   if (parsed.fatal) return { rows: [], issues: [], fatal: parsed.fatal };
 
   const rows: ValidPersonRow[] = [];
@@ -106,7 +107,7 @@ export function validatePersonRow(
       preferredName: v.preferred_name,
       title: v.title,
       phone: v.phone,
-      homeCountry: v.home_country,
+      homeRegion: v.home_region,
       homeTimezone: v.home_timezone,
       startDate: v.start_date,
       active: v.active,
@@ -124,7 +125,7 @@ export function peopleToCsv(people: PersonRecord[]): string {
     p.name,
     p.preferredName ?? "",
     p.title ?? "",
-    p.homeCountry,
+    p.homeRegion,
     p.homeTimezone ?? "",
     p.phone ?? "",
     p.startDate ?? "",

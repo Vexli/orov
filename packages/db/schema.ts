@@ -4,7 +4,7 @@ import {
   type AnyPgColumn,
   bigint,
   boolean,
-  char,
+  check,
   date,
   index,
   integer,
@@ -61,6 +61,20 @@ export const roomState = pgEnum("room_state", ["free", "busy", "soon"]);
 
 export const appRole = pgEnum("app_role", ["viewer", "admin"]);
 
+// Mirrors REGION_DISPLAYS in packages/core/regions/iso3166.ts.
+export const regionDisplay = pgEnum("region_display", [
+  "code",
+  "country",
+  "region",
+  "country_region",
+]);
+
+// A region column holds an ISO 3166-1 alpha-2 country ("US") or an ISO 3166-2 subdivision
+// ("US-CA"). The database checks the shape; the app checks the code exists, because the
+// subdivision list changes and a migration shouldn't be needed to follow it.
+const regionShape = (column: AnyPgColumn) =>
+  sql`${column} ~ '^[A-Z]{2}(-[A-Z0-9]{1,3})?$'`;
+
 const id = (prefix: string) =>
   text("id")
     .primaryKey()
@@ -75,15 +89,19 @@ const timestamps = {
     .defaultNow(),
 };
 
-export const location = pgTable("location", {
-  id: id("loc"),
-  slug: text("slug").notNull().unique(),
-  name: text("name").notNull(),
-  timezone: text("timezone").notNull(),
-  country: char("country", { length: 2 }).notNull(),
-  googleBuildingId: text("google_building_id"),
-  sortOrder: integer("sort_order").notNull().default(0),
-});
+export const location = pgTable(
+  "location",
+  {
+    id: id("loc"),
+    slug: text("slug").notNull().unique(),
+    name: text("name").notNull(),
+    timezone: text("timezone").notNull(),
+    region: text("region").notNull(),
+    googleBuildingId: text("google_building_id"),
+    sortOrder: integer("sort_order").notNull().default(0),
+  },
+  (t) => [check("location_region_iso3166", regionShape(t.region))],
+);
 
 export const svgAsset = pgTable(
   "svg_asset",
@@ -173,7 +191,7 @@ export const person = pgTable(
     title: text("title"),
     photoUrl: text("photo_url"),
     phone: text("phone"),
-    homeCountry: char("home_country", { length: 2 }).notNull(),
+    homeRegion: text("home_region").notNull(),
     homeTimezone: text("home_timezone"),
     managerId: text("manager_id").references((): AnyPgColumn => person.id),
     assignedDeskId: text("assigned_desk_id").references(() => space.id),
@@ -188,6 +206,7 @@ export const person = pgTable(
       .on(t.assignedDeskId)
       .where(sql`${t.assignedDeskId} is not null`),
     index("person_manager").on(t.managerId),
+    check("person_home_region_iso3166", regionShape(t.homeRegion)),
   ],
 );
 
@@ -295,6 +314,10 @@ export const slackUserToken = pgTable("slack_user_token", {
 export const appUser = pgTable("app_user", {
   email: text("email").primaryKey(),
   role: appRole("role").notNull().default("viewer"),
+  // How this user sees region codes everywhere in the app. Their own setting, not an admin's.
+  regionDisplay: regionDisplay("region_display")
+    .notNull()
+    .default("country_region"),
   lastSeenAt: timestamp("last_seen_at", { withTimezone: true }),
 });
 

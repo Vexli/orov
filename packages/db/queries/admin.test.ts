@@ -35,7 +35,7 @@ function personInput(overrides: Partial<PersonForm>): PersonForm {
     preferredName: null,
     title: null,
     phone: null,
-    homeCountry: "US",
+    homeRegion: "US",
     homeTimezone: null,
     startDate: null,
     active: true,

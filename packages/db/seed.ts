@@ -5,8 +5,8 @@ import { resetDatabase } from "./reset";
 import * as s from "./schema";
 
 // Demo data for local development and the Playwright suite. The people and teams match the
-// seed described in plan.md §11: Bob → Max → Jane, HR with two sub-teams, Jane based in CA
-// with a desk in SF, a South Wing area, and rooms in several states.
+// seed described in plan.md §11: Bob → Max → Jane, HR with two sub-teams, Jane based in Canada
+// (CA-ON) with a desk in SF, a South Wing area, and rooms in several states.
 //
 // Ids are fixed so URLs in tests and docs stay readable (for example ?person=p_bob).
 
@@ -28,7 +28,7 @@ export async function seedDemoData(db: Database): Promise<void> {
       slug: "sf",
       name: "San Francisco",
       timezone: "America/Los_Angeles",
-      country: "US",
+      region: "US-CA",
       sortOrder: 1,
     });
 
@@ -76,7 +76,7 @@ export async function seedDemoData(db: Database): Promise<void> {
         email: "jane@example.com",
         name: "Jane Park",
         title: "Head of HR",
-        homeCountry: "CA",
+        homeRegion: "CA-ON",
         homeTimezone: "America/Toronto",
         assignedDeskId: "sp_sf_2_003",
         startDate: "2019-03-04",
@@ -86,7 +86,7 @@ export async function seedDemoData(db: Database): Promise<void> {
         email: "max@example.com",
         name: "Max Osei",
         title: "HR Business Partner",
-        homeCountry: "US",
+        homeRegion: "US-CA",
         managerId: "p_jane",
         assignedDeskId: "sp_sf_2_010",
         startDate: "2021-06-14",
@@ -96,7 +96,7 @@ export async function seedDemoData(db: Database): Promise<void> {
         email: "bob@example.com",
         name: "Bob Lindqvist",
         title: "Payroll Analyst",
-        homeCountry: "US",
+        homeRegion: "US-CA",
         managerId: "p_max",
         assignedDeskId: "sp_sf_2_014",
         startDate: "2023-01-09",
@@ -106,7 +106,7 @@ export async function seedDemoData(db: Database): Promise<void> {
         email: "priya@example.com",
         name: "Priya Raman",
         title: "Recruiter",
-        homeCountry: "IN",
+        homeRegion: "IN-KA",
         homeTimezone: "Asia/Kolkata",
         managerId: "p_max",
         startDate: "2024-05-20",
@@ -116,7 +116,7 @@ export async function seedDemoData(db: Database): Promise<void> {
         email: "sam@example.com",
         name: "Sam Ortiz",
         title: "Recruiter",
-        homeCountry: "US",
+        homeRegion: "US",
         managerId: "p_max",
         startDate: "2025-02-03",
       },

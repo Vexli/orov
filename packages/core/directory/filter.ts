@@ -61,8 +61,9 @@ export function displayName(person: Pick<DirectoryPerson, "name" | "preferredNam
   return person.preferredName ?? person.name;
 }
 
-// The one-line location summary. With a desk: "Based in CA · Desk SF-2-014". Without one: "Remote – IN".
+// The one-line location summary, in the viewer's region format. With a desk:
+// "Based in Ontario, Canada · Desk SF-2-003". Without one: "Remote – India".
 export function basedInLabel(person: DirectoryPerson): string {
-  if (!person.desk) return `Remote – ${person.homeCountry}`;
-  return `Based in ${person.homeCountry} · Desk ${person.desk.name}`;
+  if (!person.desk) return `Remote – ${person.homeRegionLabel}`;
+  return `Based in ${person.homeRegionLabel} · Desk ${person.desk.name}`;
 }

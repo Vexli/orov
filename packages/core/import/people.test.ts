@@ -3,7 +3,7 @@ import type { PersonRecord } from "../records";
 import { parsePeopleCsv } from "../csv/people";
 import { planPeopleImport, type PeopleSnapshot } from "./people";
 
-const HEADER = "email,name,preferred_name,title,home_country,home_timezone,phone,start_date,active,manager_email,desk,teams,primary_team";
+const HEADER = "email,name,preferred_name,title,home_region,home_timezone,phone,start_date,active,manager_email,desk,teams,primary_team";
 
 function person(overrides: Partial<PersonRecord> & { email: string }): PersonRecord {
   return {
@@ -11,7 +11,7 @@ function person(overrides: Partial<PersonRecord> & { email: string }): PersonRec
     preferredName: null,
     title: null,
     phone: null,
-    homeCountry: "US",
+    homeRegion: "US",
     homeTimezone: null,
     startDate: null,
     active: true,

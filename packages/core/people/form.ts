@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { regionCodeSchema } from "../regions/iso3166";
 
 // Admin form schemas. Ids come from select boxes, so these check shape only.
 // The database layer checks that the ids exist and that the write keeps the invariants.
@@ -23,11 +24,7 @@ export const personFormSchema = z
     preferredName: optionalText,
     title: optionalText,
     phone: optionalText,
-    homeCountry: z
-      .string()
-      .trim()
-      .toUpperCase()
-      .pipe(z.string().regex(/^[A-Z]{2}$/, "Use a two-letter country code, such as US")),
+    homeRegion: regionCodeSchema("Home region"),
     homeTimezone: optionalText,
     startDate: isoDate,
     active: z.boolean(),
