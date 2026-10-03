@@ -1,4 +1,5 @@
 import type { SpaceKind } from "../svg/parse";
+import type { RoomDisplayState } from "./room-status";
 
 // Shapes the floor map works with. Plain data, so the server loads them once and the browser
 // derives every highlight from them without another request.
@@ -36,6 +37,8 @@ export interface MapSpace {
   name: string;
   capacity: number | null;
   areaId: string | null;
+  // Meeting rooms and phone booths with a calendar status; null otherwise.
+  status: RoomDisplayState | null;
 }
 
 // Where one person sits. Loaded for every floor, so the map can follow a person to another

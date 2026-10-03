@@ -1,6 +1,7 @@
 "use client";
 
 import { memo, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { ROOM_STATE_LABEL, type RoomDisplayState } from "@officeorg/core/map/room-status";
 import {
   TransformComponent,
   TransformWrapper,
@@ -24,6 +25,13 @@ export interface Avatar {
   dimmed: boolean;
 }
 
+export interface RoomCue {
+  svgElementId: string;
+  name: string;
+  state: RoomDisplayState;
+  dimmed: boolean;
+}
+
 interface Props {
   // Changes with every drawing version. Measurements are cached per asset.
   assetId: string;
@@ -31,6 +39,8 @@ interface Props {
   // The generated state <style> block (packages/core/map/state-css.ts).
   stateCss: string;
   avatars: Avatar[];
+  // A room's status as a shape as well as a fill color, so it never depends on hue (plan.md §6).
+  roomCues?: RoomCue[];
   label: string;
   onSelect: (svgElementId: string) => void;
   // The svg id of the area to zoom to (U6). Everything outside it is dimmed.
@@ -84,7 +94,16 @@ const NOT_DRAWN = new Set(["defs", "style", "title", "desc", "metadata"]);
 // A pointer that moves further than this between down and up was a pan, not a click.
 const CLICK_SLOP = 5;
 
-export function FloorMap({ assetId, svg, stateCss, avatars, label, onSelect, focusAreaId }: Props) {
+export function FloorMap({
+  assetId,
+  svg,
+  stateCss,
+  avatars,
+  roomCues = [],
+  label,
+  onSelect,
+  focusAreaId,
+}: Props) {
   const drawingRef = useRef<HTMLDivElement>(null);
   const zoomRef = useRef<ReactZoomPanPinchContentRef>(null);
   const pointerDown = useRef<{ x: number; y: number } | null>(null);
@@ -218,6 +237,10 @@ export function FloorMap({ assetId, svg, stateCss, avatars, label, onSelect, foc
                     </g>
                   );
                 })}
+                {roomCues.map((cue) => {
+                  const box = current.boxes.get(cue.svgElementId);
+                  return box ? <RoomStatusCue key={cue.svgElementId} cue={cue} box={box} /> : null;
+                })}
               </svg>
             ) : null}
           </div>
@@ -244,5 +267,62 @@ function ZoomControls() {
         Reset
       </button>
     </div>
+  );
+}
+
+// Class names are spelled out so Tailwind finds them; each reads a room.* theme slot.
+const CUE_STROKE: Record<RoomDisplayState, string> = {
+  free: "stroke-room-free",
+  busy: "stroke-room-busy",
+  soon: "stroke-room-soon",
+  stale: "stroke-room-stale",
+};
+
+// Icon paths on a unit circle: a tick, a no-entry bar, clock hands. Stale is a dashed ring
+// with a question mark.
+const CUE_PATH: Record<Exclude<RoomDisplayState, "stale">, string> = {
+  free: "M-0.45 0.02 L-0.12 0.35 L0.48 -0.3",
+  busy: "M-0.5 0 L0.5 0",
+  soon: "M0 -0.55 L0 0 L0.38 0.22",
+};
+
+function RoomStatusCue({ cue, box }: { cue: RoomCue; box: Box }) {
+  const r = Math.max(6, Math.min(14, Math.min(box.width, box.height) * 0.18));
+  const pad = r * 0.4;
+  return (
+    <g
+      data-room-state={cue.state}
+      data-room={cue.svgElementId}
+      style={cue.dimmed ? { opacity: "var(--map-dim-opacity)" } : undefined}
+      transform={`translate(${box.x + box.width - r - pad} ${box.y + r + pad}) scale(${r})`}
+    >
+      <title>{`${cue.name}: ${ROOM_STATE_LABEL[cue.state]}`}</title>
+      <circle
+        r={1}
+        className={`fill-card ${CUE_STROKE[cue.state]}`}
+        strokeWidth={0.22}
+        strokeDasharray={cue.state === "stale" ? "0.5 0.35" : undefined}
+      />
+      {cue.state === "stale" ? (
+        <text
+          textAnchor="middle"
+          dominantBaseline="central"
+          fontSize={1.2}
+          fontWeight={700}
+          className="fill-room-stale"
+        >
+          ?
+        </text>
+      ) : (
+        <path
+          d={CUE_PATH[cue.state]}
+          className={CUE_STROKE[cue.state]}
+          fill="none"
+          strokeWidth={0.26}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      )}
+    </g>
   );
 }

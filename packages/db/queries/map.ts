@@ -1,7 +1,8 @@
-import { and, eq, isNotNull, isNull } from "drizzle-orm";
+import { and, eq, inArray, isNotNull, isNull } from "drizzle-orm";
 import {
   DEFAULT_REGION_DISPLAY,
   formatRegion,
+  roomDisplayState,
   type MapData,
   type MapSeat,
   type RegionDisplay,
@@ -77,6 +78,7 @@ export async function loadMap(
   if (!pick) return { locations, floor: null, seats };
 
   const { l: location, f: floor } = pick;
+  const now = new Date();
   const [asset, areas, spaces] = await Promise.all([
     db.query.svgAsset.findFirst({ where: eq(s.svgAsset.id, floor.svgAssetId!) }),
     db.query.area.findMany({
@@ -88,6 +90,16 @@ export async function loadMap(
       orderBy: (sp, { asc }) => [asc(sp.name)],
     }),
   ]);
+
+  // Room status as of this request (U5). The worker keeps room_status current; polling it
+  // between page loads is Phase 4's /api/rooms/status.
+  const roomIds = spaces
+    .filter((sp) => sp.kind === "meeting_room" || sp.kind === "phone_booth")
+    .map((sp) => sp.id);
+  const statuses = roomIds.length
+    ? await db.select().from(s.roomStatus).where(inArray(s.roomStatus.spaceId, roomIds))
+    : [];
+  const statusBySpace = new Map(statuses.map((r) => [r.spaceId, r]));
 
   return {
     locations,
@@ -113,6 +125,7 @@ export async function loadMap(
         name: sp.name,
         capacity: sp.capacity,
         areaId: sp.areaId,
+        status: roomDisplayState(statusBySpace.get(sp.id), now),
       })),
     },
   };

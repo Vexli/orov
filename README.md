@@ -52,6 +52,9 @@ complete.** None has been released to `main` yet. The parts that work today:
 - Admin pages for offices and floors. Uploading a floor drawing (SVG) sanitizes it, shows what it
   adds, moves and removes before anything is saved, and keeps every version for rollback. How to
   draw one is in [`docs/map-authoring.md`](docs/map-authoring.md)
+- Meeting rooms on the map show whether they're free, busy, booked soon, or out of date, with a
+  color from the theme and a shape for each state, once Phase 4's calendar sync writes their
+  status
 - Branding: an admin imports the brand's design tokens (from Figma, Penpot or Tokens Studio),
   maps them onto the app's theme slots, checks contrast (including for color-blind viewers),
   previews the directory, map and org chart, and applies the theme with its logo, favicon and
