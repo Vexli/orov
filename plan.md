@@ -528,7 +528,10 @@ The five spikes from §2 and `docs/spikes.md`.
     - **Completed:** 2026-10-03
     - **Branch:** merged from `feature/map-focus-highlight`
     - **Notes:** Focus: `loadMap` takes `person` and opens that person's floor on the server, so a deep link doesn't load one floor and bounce. The client then writes `loc`/`floor` into the URL, follows a selection made on the map (such as a manager link) to another floor, and moves an open `area` to the person's area. Choosing a floor by hand **clears `person`**, or the focus would pull the map straight back. Focus only follows to floors that have a drawing (otherwise it would loop on the server's fallback); a desk on an undrawn floor gets a note. A deskless person gets a "has no desk" note plus the shared card ("{region} Remote"). The person card's desk is now a link to `/map?person=…` (U1). Team highlight: `teamSeats` in `packages/core/map/team-seats.ts` reuses the directory's `teamScope`, so `team` and `sub` mean the same in both views. It works from the seats `loadMap` already sends, so the `teamWithDescendants` and `seatsForPeople` SQL queries listed in §5 were **not needed** and weren't built. The status line shows the per-floor counts as buttons and the members without a desk. Tests: 3 unit, 1 DB, 7 Playwright (U1 and U2 included).
-- [ ] List fallback for accessibility
+- [x] List fallback for accessibility
+    - **Completed:** 2026-10-03
+    - **Branch:** merged from `feature/map-list`
+    - **Notes:** A Map/List toggle (`view=list` in the URL; `map` is the default and is left out of the URL) swaps the drawing for `components/map/floor-list.tsx`: a captioned table of the floor's desks, meeting rooms and phone booths. Kitchens, elevators and restrooms are left out because nobody selects them. Each row's button calls the same `select()` as a map click, so the person/room card, the open area (rows filter to it) and the team highlight ("In team" badge) are shared. The selected row has `aria-current`; `aria-selected` isn't valid on a plain table row. Tests: 3 Playwright, including a keyboard-only selection.
 
 ### Phase 3: Org chart and selection sync (1 week) → U3, U9
 

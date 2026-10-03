@@ -15,6 +15,7 @@ import { teamSeats, type TeamSeats } from "@officeorg/core/map/team-seats";
 import { displayName, initials } from "@officeorg/core/directory/filter";
 import { PersonCard } from "@/components/directory/person-card";
 import { mapParsers } from "@/lib/url-state";
+import { FloorList, KIND_LABEL } from "./floor-list";
 import { FloorMap, type Avatar } from "./floor-map";
 
 interface Props {
@@ -22,16 +23,6 @@ interface Props {
   people: DirectoryPerson[];
   teams: DirectoryTeam[];
 }
-
-const KIND_LABEL: Record<MapSpace["kind"], string> = {
-  desk: "Desk",
-  meeting_room: "Meeting room",
-  phone_booth: "Phone booth",
-  kitchen: "Kitchen",
-  elevator: "Elevator",
-  restroom: "Restroom",
-  other: "Point of interest",
-};
 
 export function MapView({ map, people, teams }: Props) {
   // Selection is client-only state in the URL. Changing floors needs the server's drawing, so
@@ -203,16 +194,43 @@ export function MapView({ map, people, teams }: Props) {
           onChange={(teamId, sub) => setParams({ team: teamId, sub: teamId ? sub : null })}
           onFloor={goTo}
         />
+        <div role="group" aria-label="Display" className="mt-3 flex gap-1">
+          {(["map", "list"] as const).map((v) => (
+            <button
+              key={v}
+              type="button"
+              aria-pressed={params.view === v}
+              onClick={() => setParams({ view: v === "map" ? null : v })}
+              className={pill(params.view === v)}
+            >
+              {v === "map" ? "Map" : "List"}
+            </button>
+          ))}
+        </div>
         <div className={`mt-4 transition-opacity ${navigating ? "opacity-60" : ""}`}>
-          <FloorMap
-            assetId={floor.assetId}
-            svg={floor.svg}
-            stateCss={stateCss}
-            avatars={avatars}
-            label={`Floor plan of ${floor.locationName}, ${floor.name}`}
-            onSelect={select}
-            focusAreaId={focusArea?.svgElementId ?? null}
-          />
+          {params.view === "list" ? (
+            <FloorList
+              floorName={`${floor.locationName}, ${floor.name}`}
+              spaces={floor.spaces}
+              areas={floor.areas}
+              seats={seatsHere}
+              peopleById={peopleById}
+              areaId={focusArea?.id ?? null}
+              selectedSvgId={personSeatHere?.svgElementId ?? selectedSpace?.svgElementId ?? null}
+              highlightedPersonIds={teamPeople}
+              onSelect={select}
+            />
+          ) : (
+            <FloorMap
+              assetId={floor.assetId}
+              svg={floor.svg}
+              stateCss={stateCss}
+              avatars={avatars}
+              label={`Floor plan of ${floor.locationName}, ${floor.name}`}
+              onSelect={select}
+              focusAreaId={focusArea?.svgElementId ?? null}
+            />
+          )}
         </div>
       </section>
 

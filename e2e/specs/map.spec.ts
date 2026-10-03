@@ -240,3 +240,50 @@ test.describe("person focus and team highlight", () => {
     await expect(page).toHaveURL(/team=t_hr/);
   });
 });
+
+test.describe("list view", () => {
+  test.beforeEach(async ({ context }) => {
+    await resetE2eDatabase();
+    await signInAs(context, "bob@example.com");
+  });
+
+  test("the List toggle shows the floor's desks and rooms as a table, and remembers it", async ({ page }) => {
+    await page.goto("/map");
+    await page.getByRole("group", { name: "Display" }).getByRole("button", { name: "List" }).click();
+    await expect(page).toHaveURL(/view=list/);
+
+    const table = page.getByRole("table", { name: "Desks and rooms on San Francisco, Floor 2" });
+    // 13 desks and 3 rooms. Kitchens, elevators and restrooms aren't listed.
+    await expect(table.locator("tbody tr")).toHaveCount(16);
+    await expect(table.getByRole("row", { name: /SF-2-014/ })).toContainText("Bob Lindqvist");
+    await expect(table.getByRole("row", { name: /SF-2-016/ })).toContainText("Free");
+    await expect(table.getByRole("row", { name: /Boardroom/ })).toContainText("Meeting room · 12 seats");
+    await expect(table).not.toContainText("Kitchen");
+
+    await page.reload();
+    await expect(table).toBeVisible();
+  });
+
+  test("a keyboard user selects a person from the list, with the same result as a map click", async ({ page }) => {
+    await page.goto("/map?view=list");
+    const desk = page.getByRole("button", { name: "SF-2-014" });
+    await desk.focus();
+    await page.keyboard.press("Enter");
+    await expect(page).toHaveURL(/person=p_bob/);
+    await expect(page.getByRole("complementary", { name: "Bob Lindqvist details" })).toBeVisible();
+    await expect(page.getByRole("row", { name: /SF-2-014/ })).toHaveAttribute("aria-current", "true");
+
+    // Back on the map, the same desk is selected.
+    await page.getByRole("group", { name: "Display" }).getByRole("button", { name: "Map" }).click();
+    await expect(page).not.toHaveURL(/view=/);
+    await expect.poll(() => fillOf(page, "desk-2-014")).toBe(SELECTION);
+  });
+
+  test("the list follows the open area and the highlighted team", async ({ page }) => {
+    await page.goto("/map?view=list&area=south-wing&team=t_hr");
+    const rows = page.getByRole("table", { name: /Desks and rooms/ }).locator("tbody tr");
+    // Six South Wing desks and Huddle A.
+    await expect(rows).toHaveCount(7);
+    await expect(page.getByRole("row", { name: /SF-2-003/ })).toContainText("Jane Park In team");
+  });
+});

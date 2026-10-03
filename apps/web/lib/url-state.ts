@@ -1,4 +1,4 @@
-import { createLoader, parseAsBoolean, parseAsString } from "nuqs/server";
+import { createLoader, parseAsBoolean, parseAsString, parseAsStringLiteral } from "nuqs/server";
 
 // The one definition of URL state. Every view imports it, so the same person, team and filters
 // survive a switch between views (plan.md §7).
@@ -19,13 +19,16 @@ export const directoryParsers = {
 };
 
 // `loc` is the same param the directory filters on, so a location carries across views.
-// `space` is the room or free desk picked on the map, which has no person to select.
+// `space` is the room or free desk picked on the map, which has no person to select. `view`
+// switches the map to a table.
 export const mapParsers = {
   ...selectionParsers,
   loc: parseAsString,
   floor: parseAsString,
   area: parseAsString,
   space: parseAsString,
+  // The accessible table of the same desks and rooms (plan.md §6).
+  view: parseAsStringLiteral(["map", "list"] as const).withDefault("map"),
 };
 
 export const loadMapParams = createLoader(mapParsers);
