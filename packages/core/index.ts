@@ -18,3 +18,6 @@ export * from "./svg/diff";
 export * from "./map/model";
 export * from "./map/state-css";
 export * from "./map/team-seats";
+export * from "./org/tree";
+export * from "./org/html";
+export * from "./search/model";
