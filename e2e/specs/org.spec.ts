@@ -4,6 +4,23 @@ import { signInAs } from "../support/session";
 
 const node = (page: Page, id: string) => page.locator(`[data-org-chart] [data-org-node="${id}"]`);
 
+// The expand/collapse button d3-org-chart draws under a node with children. A click lands on its
+// foreignObject, which the node's own click handler skips, so toggling doesn't also select.
+const toggle = (page: Page, id: string) =>
+  page
+    .locator("[data-org-chart] g.node", { has: page.locator(`[data-org-node="${id}"]`) })
+    .locator(".node-button-foreign-object");
+
+// True when the node is drawn inside the chart's visible area.
+async function inView(page: Page, id: string): Promise<boolean> {
+  const chart = await page.locator("[data-org-chart]").boundingBox();
+  const box = await node(page, id).boundingBox();
+  if (!chart || !box) return false;
+  const cx = box.x + box.width / 2;
+  const cy = box.y + box.height / 2;
+  return cx > chart.x && cx < chart.x + chart.width && cy > chart.y && cy < chart.y + chart.height;
+}
+
 test.describe("org chart", () => {
   test.beforeEach(async ({ context }) => {
     await resetE2eDatabase();
@@ -78,5 +95,105 @@ test.describe("org chart", () => {
       "aria-current",
       "page",
     );
+  });
+});
+
+test.describe("org chart focus and highlight", () => {
+  test.beforeEach(async ({ context }) => {
+    await resetE2eDatabase();
+    await signInAs(context, "bob@example.com");
+  });
+
+  test("U3: Bob reports to Max, and Max reports to Jane", async ({ page }) => {
+    await page.goto("/org?person=p_bob");
+    const line = page.getByRole("region", { name: "Reporting line" });
+    await expect(line.getByRole("listitem")).toHaveText([
+      "Jane Park",
+      "↳ Max Osei",
+      "↳ Bob Lindqvist",
+    ]);
+    await expect(node(page, "p_bob")).toHaveAttribute("data-selected", "");
+    await expect.poll(() => inView(page, "p_bob")).toBe(true);
+
+    // Walking up the line moves the selection, and the chart follows.
+    await line.getByRole("button", { name: "Max Osei" }).click();
+    await expect(page).toHaveURL(/person=p_max/);
+    await expect(line.getByRole("listitem")).toHaveText(["Jane Park", "↳ Max Osei"]);
+    await expect(node(page, "p_max")).toHaveAttribute("data-selected", "");
+  });
+
+  test("selecting someone opens their direct reports, even after they were collapsed", async ({
+    page,
+  }) => {
+    await page.goto("/org?person=p_bob");
+    await expect(node(page, "p_bob")).toBeVisible();
+    await toggle(page, "p_max").click();
+    await expect(node(page, "p_bob")).toHaveCount(0);
+
+    await page
+      .getByRole("region", { name: "Reporting line" })
+      .getByRole("button", { name: "Max Osei" })
+      .click();
+    await expect(node(page, "p_bob")).toBeVisible();
+    await expect(node(page, "p_priya")).toBeVisible();
+  });
+
+  test("the top person has no one above them", async ({ page }) => {
+    await page.goto("/org?person=p_jane");
+    await expect(page.getByRole("region", { name: "Reporting line" })).toContainText(
+      "Jane Park doesn't report to anyone.",
+    );
+  });
+
+  test("a highlighted team lights up its members, with sub-teams only when asked", async ({
+    page,
+  }) => {
+    await page.goto("/org");
+    await page.getByLabel("Highlight team").selectOption({ label: "HR" });
+    await expect(page).toHaveURL(/team=t_hr/);
+    await expect(page.getByRole("status", { name: "Highlighted team" })).toHaveText(
+      "HR: 3 people",
+    );
+    const lit = page.locator("[data-org-chart] [data-highlighted]");
+    await expect(lit).toHaveCount(3);
+    await expect(node(page, "p_priya")).not.toHaveAttribute("data-highlighted", "");
+
+    await page.getByLabel("Include sub-teams").check();
+    await expect(page.getByRole("status", { name: "Highlighted team" })).toHaveText(
+      "HR and sub-teams: 5 people",
+    );
+    await expect(lit).toHaveCount(5);
+  });
+
+  test("in the team tree, a team and its sub-teams light up, and clicking a team highlights it", async ({
+    page,
+  }) => {
+    await page.goto("/org?tree=team&team=t_hr&sub=true");
+    const lit = page.locator("[data-org-chart] [data-highlighted]");
+    await expect(lit).toHaveCount(3);
+    for (const id of ["t_hr", "t_payroll", "t_recruiting"]) {
+      await expect(node(page, id)).toHaveAttribute("data-highlighted", "");
+    }
+
+    await node(page, "t_payroll").click();
+    await expect(page).toHaveURL(/team=t_payroll/);
+    await expect(page.getByRole("status", { name: "Highlighted team" })).toHaveText(
+      "Payroll and sub-teams: 1 person",
+    );
+    await expect(lit).toHaveCount(1);
+  });
+
+  test("in the team tree, a person is centered on their primary team", async ({ page }) => {
+    await page.goto("/org?tree=team&person=p_bob");
+    await expect(node(page, "t_payroll:p_bob")).toHaveAttribute("data-selected", "");
+    await expect(node(page, "t_hr:p_bob")).not.toHaveAttribute("data-selected", "");
+    await expect.poll(() => inView(page, "t_payroll:p_bob")).toBe(true);
+  });
+
+  test("the outline marks the highlighted team's members", async ({ page }) => {
+    await page.goto("/org?view=list&team=t_payroll");
+    const outline = page.getByRole("navigation", { name: "Reporting lines chart" });
+    await expect(outline.getByRole("button", { name: /Bob Lindqvist/ })).toContainText("In team");
+    await expect(outline.getByRole("button", { name: /Max Osei/ })).not.toContainText("In team");
   });
 });

@@ -189,3 +189,28 @@ function withSingleRoot(nodes: OrgNode[], label: string): OrgNode[] {
 function sortByLabel(people: DirectoryPerson[]): DirectoryPerson[] {
   return [...people].sort((a, b) => displayName(a).localeCompare(displayName(b)));
 }
+
+export interface ChainLink {
+  id: string;
+  name: string;
+  // False for a manager who isn't in the directory (inactive), who can't be selected.
+  inDirectory: boolean;
+}
+
+// Who someone reports to, from the top down, ending with the person (U3: Jane → Max → Bob).
+// Stops at a manager missing from the directory, and at a cycle in the data.
+export function managementChain(personId: string, people: DirectoryPerson[]): ChainLink[] {
+  const byId = new Map(people.map((p) => [p.id, p]));
+  const chain: ChainLink[] = [];
+  const seen = new Set<string>();
+  let current = byId.get(personId);
+  while (current && !seen.has(current.id)) {
+    seen.add(current.id);
+    chain.push({ id: current.id, name: displayName(current), inDirectory: true });
+    const manager = current.manager;
+    if (!manager) break;
+    current = byId.get(manager.id);
+    if (!current) chain.push({ id: manager.id, name: manager.name, inDirectory: false });
+  }
+  return chain.reverse();
+}
