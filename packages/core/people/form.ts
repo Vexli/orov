@@ -30,6 +30,8 @@ export const personFormSchema = z
     active: z.boolean(),
     managerId: z.string().nullable(),
     assignedDeskId: z.string().nullable(),
+    // When the chosen desk is someone else's: they take this person's old desk instead.
+    swapDesk: z.boolean().optional(),
     teamIds: z.array(z.string()),
     primaryTeamId: z.string().nullable(),
   })

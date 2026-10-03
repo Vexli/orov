@@ -6,7 +6,7 @@ import * as s from "../schema";
 import { startTestDatabase, type TestDatabase } from "../test-utils";
 import { listAudit } from "./audit";
 import { ValidationError } from "./errors";
-import { listDeskOptions } from "./spaces";
+import { listDeskOptions, listPickerFloors } from "./spaces";
 import { deleteTeam, getTeamForEdit, saveTeam } from "./teams";
 import { getPersonForEdit, savePerson, setPersonActive } from "./people";
 
@@ -131,6 +131,32 @@ describe("savePerson", () => {
     );
   });
 
+  it("swaps desks when asked: the holder takes the person's old desk, and both are audited", async () => {
+    await savePerson(
+      t.db,
+      ACTOR,
+      personInput({ email: "max@example.com", name: "Max Osei", managerId: "p_jane", assignedDeskId: "sp_sf_2_014", swapDesk: true }),
+      "p_max",
+    );
+    const desk = async (id: string) => (await t.db.query.person.findFirst({ where: eq(s.person.id, id) }))?.assignedDeskId;
+    expect(await desk("p_max")).toBe("sp_sf_2_014");
+    expect(await desk("p_bob")).toBe("sp_sf_2_010");
+
+    const entries = await listAudit(t.db, { entity: "person" });
+    expect(entries.slice(0, 2).map((e) => [e.entityId, (e.after as { deskCode: string }).deskCode])).toEqual([
+      ["p_max", "SF-2-014"],
+      ["p_bob", "SF-2-010"],
+    ]);
+  });
+
+  it("leaves the holder deskless when the person taking their desk had none", async () => {
+    await savePerson(t.db, ACTOR, personInput({ assignedDeskId: "sp_sf_2_014", swapDesk: true }));
+    const bob = await t.db.query.person.findFirst({ where: eq(s.person.id, "p_bob") });
+    const added = await t.db.query.person.findFirst({ where: eq(s.person.email, "new@example.com") });
+    expect(bob?.assignedDeskId).toBeNull();
+    expect(added?.assignedDeskId).toBe("sp_sf_2_014");
+  });
+
   it("lets a person keep the seat they already have", async () => {
     await expect(
       savePerson(t.db, ACTOR, personInput({ email: "bob@example.com", name: "Bob Lindqvist", managerId: "p_max", assignedDeskId: "sp_sf_2_014" }), "p_bob"),
@@ -193,6 +219,21 @@ describe("listDeskOptions", () => {
     expect(byName("SF-2-010")?.available).toBe(false);
     expect(byName("SF-2-016")?.available).toBe(true);
     expect(byName("SF-2-014")?.label).toBe("SF-2-014 · San Francisco, Floor 2");
+    expect(byName("SF-2-010")).toMatchObject({
+      floorId: "fl_sf_2",
+      svgElementId: "desk-2-010",
+      assignedPersonId: "p_max",
+      assignedPersonName: "Max Osei",
+    });
+  });
+
+  it("lists each floor's current drawing for the picker", async () => {
+    const floors = await listPickerFloors(t.db);
+    expect(floors.map((f) => [f.id, f.label, f.assetId])).toEqual([
+      ["fl_sf_2", "San Francisco, Floor 2", "svg_sf_2_v1"],
+      ["fl_sf_3", "San Francisco, Floor 3", "svg_sf_3_v1"],
+    ]);
+    expect(floors[0]!.svg).toContain('id="desk-2-014"');
   });
 });
 

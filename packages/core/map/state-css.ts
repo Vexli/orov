@@ -6,6 +6,8 @@
 // the drawing (plan.md §9.1).
 
 export interface MapStyleState {
+  // Desks someone else holds, in the admin seat picker.
+  occupied?: string[];
   // Seats of the highlighted team.
   highlighted: string[];
   // The focused person's desk, or the selected room. Drawn last, so it wins over a highlight.
@@ -28,6 +30,7 @@ function rule(ids: string[], declarations: string): string {
 
 export function mapStateCss(state: MapStyleState): string {
   return [
+    rule(state.occupied ?? [], "fill: var(--border) !important;"),
     rule(state.highlighted, "fill: var(--map-highlight) !important;"),
     rule(
       state.selected,

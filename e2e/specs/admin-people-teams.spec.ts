@@ -18,7 +18,10 @@ test.describe("admin people and teams", () => {
     await expect(page.getByRole("heading", { name: "Admins only" })).toBeVisible();
   });
 
-  test("an admin creates a person with a manager, a seat, teams and a primary team", async ({ page, context }) => {
+  test("an admin creates a person with a manager, a seat, teams and a primary team", async ({
+    page,
+    context,
+  }) => {
     await signInAs(context, "jane@example.com");
     await page.goto("/admin/people/new");
 
@@ -49,7 +52,10 @@ test.describe("admin people and teams", () => {
     await expect(page).toHaveURL(/\/admin\/people\/new$/);
   });
 
-  test("pickers hide choices that would create a loop or take a seat someone holds", async ({ page, context }) => {
+  test("pickers hide managers that would create a loop, and name who holds each desk", async ({
+    page,
+    context,
+  }) => {
     await signInAs(context, "jane@example.com");
 
     // Jane is the top of the chain. Bob and Max both report to her, directly or not, so neither
@@ -61,14 +67,58 @@ test.describe("admin people and teams", () => {
     await expect(managers.filter({ hasText: "Priya Raman" })).toHaveCount(0);
     await expect(managers.filter({ hasText: "Sam Ortiz" })).toHaveCount(0);
 
-    // Max's form: Bob holds SF-2-014, so it isn't offered, but Max's own seat SF-2-010 is.
+    // Max's form: Bob's SF-2-014 is offered as a swap and names him. Max's own SF-2-010 doesn't.
     await page.goto("/admin/people/p_max");
     const desks = page.getByLabel("Desk").locator("option");
-    await expect(desks.filter({ hasText: "SF-2-014" })).toHaveCount(0);
-    await expect(desks.filter({ hasText: "SF-2-010" })).toHaveCount(1);
+    await expect(desks.filter({ hasText: "SF-2-014" })).toHaveText(/\(Bob Lindqvist\)/);
+    await expect(desks.filter({ hasText: "SF-2-010" })).not.toHaveText(/\(/);
   });
 
-  test("a sub-team is created under HR and appears nested beneath it", async ({ page, context }) => {
+  test("the seat picker chooses a desk by clicking the floor drawing", async ({
+    page,
+    context,
+  }) => {
+    await signInAs(context, "jane@example.com");
+    await page.goto("/admin/people/p_priya");
+    await page
+      .getByRole("group", { name: "Seat picker floor" })
+      .getByRole("button", { name: "San Francisco, Floor 3" })
+      .click();
+    await page.locator("[data-seat-picker] #desk-3-005").click();
+    await expect(page.getByLabel("Desk")).toHaveValue("sp_sf_3_005");
+
+    await page.getByRole("button", { name: "Save person" }).click();
+    await expect(page).toHaveURL(/\/admin\/people$/);
+    await expect(page.getByRole("row", { name: /Priya Raman/ })).toContainText("SF-3-005");
+  });
+
+  test("taking someone's desk needs a confirmed swap, and they get the old desk", async ({
+    page,
+    context,
+  }) => {
+    await signInAs(context, "jane@example.com");
+    await page.goto("/admin/people/p_max");
+    await page.locator("[data-seat-picker] #desk-2-014").click();
+    const swap = page.getByRole("checkbox", {
+      name: /SF-2-014 is Bob Lindqvist's desk.*moves to SF-2-010/,
+    });
+    await expect(swap).not.toBeChecked();
+
+    // Without the swap, the server refuses and says why.
+    await page.getByRole("button", { name: "Save person" }).click();
+    await expect(page.getByText(/already assigned to Bob Lindqvist/)).toBeVisible();
+
+    await swap.check();
+    await page.getByRole("button", { name: "Save person" }).click();
+    await expect(page).toHaveURL(/\/admin\/people$/);
+    await expect(page.getByRole("row", { name: /^Max Osei/ })).toContainText("SF-2-014");
+    await expect(page.getByRole("row", { name: /^Bob Lindqvist/ })).toContainText("SF-2-010");
+  });
+
+  test("a sub-team is created under HR and appears nested beneath it", async ({
+    page,
+    context,
+  }) => {
     await signInAs(context, "jane@example.com");
     await page.goto("/admin/teams/new");
     await page.getByLabel("Name").fill("Benefits");
@@ -85,7 +135,10 @@ test.describe("admin people and teams", () => {
     expect(benefits).toBeGreaterThan(hr);
   });
 
-  test("a team with members can't be deleted, and the reason is shown", async ({ page, context }) => {
+  test("a team with members can't be deleted, and the reason is shown", async ({
+    page,
+    context,
+  }) => {
     await signInAs(context, "jane@example.com");
     await page.goto("/admin/teams/t_payroll");
     page.once("dialog", (dialog) => dialog.accept());
