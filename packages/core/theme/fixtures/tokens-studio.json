@@ -1,0 +1,41 @@
+{
+  "core": {
+    "blue": {
+      "600": { "value": "#2563eb", "type": "color" },
+      "300": { "value": "#93c5fd", "type": "color" }
+    },
+    "grey": {
+      "0": { "value": "#ffffff", "type": "color" },
+      "900": { "value": "#111827", "type": "color" }
+    },
+    "red": { "600": { "value": "rgba(220, 38, 38, 1)", "type": "color" } },
+    "space": {
+      "1": { "value": "4", "type": "spacing" },
+      "2": { "value": "{space.1} * 2", "type": "spacing" }
+    },
+    "radius": { "default": { "value": "6", "type": "borderRadius" } },
+    "fontFamilies": { "body": { "value": "Inter", "type": "fontFamilies" } },
+    "fontWeights": { "heading": { "value": "Semi Bold", "type": "fontWeights" } },
+    "heading": {
+      "value": { "fontFamily": "{fontFamilies.body}", "fontWeight": "{fontWeights.heading}" },
+      "type": "typography"
+    }
+  },
+  "theme/light": {
+    "background": { "value": "{grey.0}", "type": "color" },
+    "foreground": { "value": "{grey.900}", "type": "color" },
+    "brand": { "value": "{blue.600}", "type": "color" },
+    "danger": { "value": "{red.600}", "type": "color" }
+  },
+  "theme/dark": {
+    "background": { "value": "{grey.900}", "type": "color" },
+    "foreground": { "value": "{grey.0}", "type": "color" },
+    "brand": { "value": "{blue.300}", "type": "color" },
+    "danger": { "value": "#f87171", "type": "color" }
+  },
+  "$themes": [
+    { "id": "light", "name": "Light", "selectedTokenSets": { "core": "source", "theme/light": "enabled" } },
+    { "id": "dark", "name": "Dark", "selectedTokenSets": { "core": "source", "theme/dark": "enabled" } }
+  ],
+  "$metadata": { "tokenSetOrder": ["core", "theme/light", "theme/dark"] }
+}

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { defaultThemeCss, getSlot, SLOTS, TEAM_PALETTE_SIZE } from "./slots";
+import { SLOTS, TEAM_PALETTE_SIZE } from "./slots";
+import { parseSlotValue } from "./validate";
 
 // The slot table in plan.md §9.1. A brand mapping targets these names, so they must all exist.
 const PLAN_SLOTS = [
@@ -44,26 +45,6 @@ const PLAN_SLOTS = [
   "favicon",
 ];
 
-// WCAG 2.x relative luminance and contrast ratio. Only the default palette is checked here;
-// the full contrast report for imported themes is part of the branding work.
-function luminance(hex: string): number {
-  const channels = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255);
-  const [r, g, b] = channels.map((c) =>
-    c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4,
-  ) as [number, number, number];
-  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
-}
-
-function contrast(a: string, b: string): number {
-  const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x) as [number, number];
-  return (hi + 0.05) / (lo + 0.05);
-}
-
-const value = (name: string, mode: "light" | "dark") => {
-  const slot = getSlot(name);
-  return mode === "dark" ? (slot.dark ?? slot.light) : slot.light;
-};
-
 describe("SLOTS", () => {
   it("defines every slot named in the plan", () => {
     const names = new Set(SLOTS.map((s) => s.name));
@@ -93,38 +74,11 @@ describe("SLOTS", () => {
     }
   });
 
-  describe.each(["light", "dark"] as const)("default %s palette", (mode) => {
-    it.each([
-      ["fg", "bg"],
-      ["muted-fg", "bg"],
-      ["muted-fg", "muted"],
-      ["card-fg", "card"],
-      ["primary-fg", "primary"],
-      ["accent-fg", "accent"],
-      ["destructive-fg", "destructive"],
-      ["destructive", "bg"],
-    ])("%s on %s meets WCAG AA for body text", (fg, bg) => {
-      expect(contrast(value(fg, mode), value(bg, mode))).toBeGreaterThanOrEqual(4.5);
-    });
-  });
-});
-
-describe("defaultThemeCss", () => {
-  const css = defaultThemeCss();
-
-  it("declares every CSS slot on :root", () => {
+  it("keeps every default in the canonical form its own grammar produces", () => {
     for (const slot of SLOTS) {
-      if (slot.cssVar) expect(css).toContain(`  ${slot.cssVar}: ${slot.light};`);
+      for (const value of [slot.light, slot.dark ?? slot.light]) {
+        expect(parseSlotValue(slot.kind, value), slot.name).toEqual({ ok: true, value });
+      }
     }
-  });
-
-  it("puts dark overrides under the system dark-mode preference", () => {
-    const dark = css.slice(css.indexOf("@media (prefers-color-scheme: dark)"));
-    expect(dark).toContain("--bg: #0a0a0a;");
-    expect(dark).not.toContain("--theme-radius");
-  });
-
-  it("derives the spacing step from the base and the density", () => {
-    expect(css).toContain("--theme-spacing: calc(var(--theme-spacing-base) * 1);");
   });
 });

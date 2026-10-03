@@ -21,9 +21,9 @@
   --map-highlight: #0284c7;
   --map-dim-opacity: 0.25;
   --room-free: #16a34a;
-  --room-busy: #dc2626;
+  --room-busy: #b91c1c;
   --room-soon: #d97706;
-  --room-stale: #9ca3af;
+  --room-stale: #6b7280;
   --presence-in-office: #16a34a;
   --presence-wfh: #2563eb;
   --presence-away: #6b7280;
@@ -39,7 +39,7 @@
   --team-palette-6: #dc2626;
   --team-palette-7: #4f46e5;
   --theme-font-sans: ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
-  --theme-font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+  --theme-font-mono: ui-monospace, "SFMono-Regular", "Menlo", "Consolas", "Liberation Mono", monospace;
   --theme-font-size-base: 16px;
   --theme-font-weight-heading: 600;
   --theme-radius: 0.375rem;
@@ -69,7 +69,6 @@
     --room-free: #4ade80;
     --room-busy: #f87171;
     --room-soon: #fbbf24;
-    --room-stale: #6b7280;
     --presence-in-office: #4ade80;
     --presence-wfh: #60a5fa;
     --presence-away: #9ca3af;
