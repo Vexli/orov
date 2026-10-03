@@ -64,3 +64,34 @@
     outline-offset: 2px;
   }
 }
+
+/* Floor map (plan.md §6). The app owns the fill and stroke of every desk, room and point of
+   interest; the drawing's own colors for those are overridden (docs/map-authoring.md). These
+   rules are deliberately unlayered: for !important declarations the cascade inverts layer
+   order, so a layered rule here would beat the per-state <style> block the map generates. */
+[data-floor-map] svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  color: var(--muted-fg);
+}
+
+[data-floor-map] :is([id^="desk-"], [id^="desk-"] *) {
+  fill: var(--card) !important;
+  stroke: var(--border) !important;
+  stroke-width: 2px;
+}
+
+[data-floor-map] :is([id^="room-"], [id^="room-"] *, [id^="poi-"], [id^="poi-"] *) {
+  fill: var(--muted) !important;
+  stroke: var(--border) !important;
+  stroke-width: 2px;
+}
+
+[data-floor-map] :is([id^="desk-"], [id^="room-"]) {
+  cursor: pointer;
+}
+
+[data-floor-map] :is([id^="desk-"], [id^="room-"]):hover {
+  stroke: var(--ring) !important;
+}
