@@ -20,6 +20,8 @@ jobs:
         run: pnpm lint
       - name: Typecheck
         run: pnpm typecheck
+      - name: Unit tests
+        run: pnpm --filter @officeorg/core test
       - name: Database tests (Testcontainers)
         run: pnpm --filter @officeorg/db test
       - name: Migrations match the schema
@@ -48,3 +50,35 @@ jobs:
           fi
       - name: Build
         run: pnpm --filter @officeorg/web build
+
+  e2e:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: officeorg
+          POSTGRES_PASSWORD: officeorg
+          POSTGRES_DB: officeorg_e2e
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U officeorg"
+          --health-interval 2s --health-timeout 2s --health-retries 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Install Chromium
+        run: pnpm exec playwright install --with-deps chromium
+      - name: End-to-end tests
+        run: pnpm test:e2e
+      - name: Upload the Playwright report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report
