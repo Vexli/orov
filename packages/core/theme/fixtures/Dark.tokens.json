@@ -1,0 +1,44 @@
+{
+  "color": {
+    "$type": "color",
+    "neutral": {
+      "0": {
+        "$value": { "colorSpace": "srgb", "components": [0.071, 0.078, 0.098], "alpha": 1, "hex": "#121419" }
+      },
+      "100": {
+        "$value": { "colorSpace": "srgb", "components": [0.118, 0.129, 0.153], "alpha": 1, "hex": "#1E2127" }
+      },
+      "600": {
+        "$value": { "colorSpace": "srgb", "components": [0.659, 0.678, 0.718], "alpha": 1, "hex": "#A8ADB7" }
+      },
+      "900": {
+        "$value": { "colorSpace": "srgb", "components": [0.957, 0.961, 0.965], "alpha": 1, "hex": "#F4F5F6" }
+      }
+    },
+    "brand": {
+      "600": {
+        "$value": { "colorSpace": "srgb", "components": [0.475, 0.639, 1.0], "alpha": 1, "hex": "#79A3FF" }
+      }
+    },
+    "background": {
+      "default": { "$value": "{color.neutral.0}" },
+      "subtle": { "$value": "{color.neutral.100}" }
+    },
+    "text": {
+      "default": { "$value": "{color.neutral.900}" },
+      "subtle": { "$value": "{color.neutral.600}" },
+      "on-brand": { "$value": "{color.neutral.0}" }
+    },
+    "action": {
+      "primary": { "$value": "{color.brand.600}" }
+    }
+  },
+  "radius": {
+    "md": { "$type": "dimension", "$value": { "value": 8, "unit": "px" } }
+  },
+  "font": {
+    "family": {
+      "body": { "$type": "fontFamily", "$value": ["Acme Sans", "Helvetica Neue", "sans-serif"] }
+    }
+  }
+}

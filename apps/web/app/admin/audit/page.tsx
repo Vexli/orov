@@ -1,7 +1,7 @@
 import { getDb } from "@officeorg/db/client";
 import { listAudit } from "@officeorg/db/queries/audit";
 
-const ENTITIES = ["all", "person", "team", "location", "floor"] as const;
+const ENTITIES = ["all", "person", "team", "location", "floor", "theme", "brand_asset"] as const;
 type Entity = Exclude<(typeof ENTITIES)[number], "all">;
 
 export default async function AuditPage({

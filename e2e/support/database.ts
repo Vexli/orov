@@ -16,3 +16,15 @@ export async function resetE2eDatabase(): Promise<void> {
     await pool.end();
   }
 }
+
+// For specs that arrange state the UI would take many steps to reach, such as an applied theme.
+export async function withE2eDb<T>(
+  run: (db: ReturnType<typeof createDb>["db"]) => Promise<T>,
+): Promise<T> {
+  const { db, pool } = createDb(E2E_DATABASE_URL);
+  try {
+    return await run(db);
+  } finally {
+    await pool.end();
+  }
+}

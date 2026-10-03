@@ -21,8 +21,8 @@ the phase-by-phase delivery plan with progress notes.
 
 ## Status
 
-**Phase 1 (Foundation), Phase 2 (Maps) and Phase 3 (Org chart and selection sync) are
-complete.** None has been released to `main` yet. The parts that work today:
+**Phase 1 (Foundation), Phase 2 (Maps), Phase 3 (Org chart and selection sync) and Phase 5.5
+(Branding) are complete.** None has been released to `main` yet. The parts that work today:
 
 - Sign-in through any SSO provider Auth.js supports (Google, Microsoft Entra ID, Okta, AWS
   Cognito or any OpenID Connect issuer), limited to one company email domain, with `viewer` and
@@ -52,9 +52,17 @@ complete.** None has been released to `main` yet. The parts that work today:
 - Admin pages for offices and floors. Uploading a floor drawing (SVG) sanitizes it, shows what it
   adds, moves and removes before anything is saved, and keeps every version for rollback. How to
   draw one is in [`docs/map-authoring.md`](docs/map-authoring.md)
+- Meeting rooms on the map show whether they're free, busy, booked soon, or out of date, with a
+  color from the theme and a shape for each state, once Phase 4's calendar sync writes their
+  status
+- Branding: an admin imports the brand's design tokens (from Figma, Penpot or Tokens Studio),
+  maps them onto the app's theme slots, checks contrast (including for color-blind viewers),
+  previews the directory, map and org chart, and applies the theme with its logo, favicon and
+  fonts. Every applied theme is kept for rollback and can be exported. The guide is
+  [`docs/theming.md`](docs/theming.md)
 
 Not built yet: Google room status and Calendar
-presence (Phase 4), Slack (Phase 5) and brand token import (Phase 5.5). The worker is a skeleton
+presence (Phase 4) and Slack (Phase 5). The worker is a skeleton
 that only logs a heartbeat. See [`plan.md` §12](plan.md#12-delivery-plan) for the roadmap.
 
 ## Quickstart
@@ -122,7 +130,7 @@ URL to register.
 | `pnpm db:migrate`     | Apply pending migrations                                               |
 | `pnpm db:seed`        | Reset the database and load the demo data (refuses to run in production) |
 | `pnpm db:generate`    | Generate a migration after changing `packages/db/schema.ts`            |
-| `pnpm theme:defaults` | Regenerate `apps/web/app/theme-defaults.css` from the theme slot list  |
+| `pnpm theme:defaults` | Regenerate `apps/web/app/theme-defaults.css` and `theme/default.tokens.json` from the theme slot list |
 
 ### Testing
 
@@ -147,8 +155,9 @@ apps/
   web/          Next.js (App Router) app
     app/
       (app)/      signed-in views: directory, map, org chart, settings
-      admin/      people, teams, offices and floors, CSV import, audit log
-      api/        Auth.js routes, search, CSV export, health check
+      admin/      people, teams, offices and floors, branding, CSV import, audit log
+      api/        Auth.js routes, search, CSV export, brand files, health check
+      theme.css/  the active theme as a stylesheet
       login/      sign-in page
     components/   directory, map, org chart, search and admin UI
     lib/          auth config, SSO providers, session helpers, URL state (nuqs)
@@ -167,10 +176,11 @@ packages/
     spaces/       office and floor form validation
     svg/          floor drawing sanitize, parse and diff
     teams/        team tree helpers
-    theme/        semantic theme slots and their defaults
+    theme/        theme slots, design token import, value grammar, contrast checks, CSS
   db/           Drizzle schema, migrations, queries, seed, and database tests
     seed-floors/  sample floor SVGs that the demo data loads
-docs/           guides, such as map-authoring.md for drawing floor SVGs
+docs/           guides: map-authoring.md for drawing floor SVGs, theming.md for design tokens
+theme/          the default theme as a design token file (generated)
 e2e/            Playwright specs, one or more per user story
 docker/         Postgres init script
 Dockerfile      one image with `web` and `worker` targets
@@ -193,9 +203,12 @@ docker build --target worker -t officeorg-worker .
 
 The web container applies migrations on start and then serves on port 3000. It needs
 `DATABASE_URL`, `AUTH_URL`, `AUTH_SECRET`, `COMPANY_DOMAIN`, `ADMIN_EMAILS` and the SSO variables
-for each provider in `AUTH_PROVIDERS`. The search uses the `pg_trgm` extension, which a migration
+for each provider in `AUTH_PROVIDERS`. `THEME_TOKENS_PATH` optionally names a token file to use
+as the theme until an admin applies one (see [`docs/theming.md`](docs/theming.md)). The search uses the `pg_trgm` extension, which a migration
 creates, so the database user needs permission to create it (managed Postgres such as Cloud SQL
-and RDS allow it). `GET /api/health` is a liveness check. Run one web replica
+and RDS allow it). `GET /api/health` is a liveness check. `/theme.css` and
+`/api/brand-assets/*` are served without signing in, because the sign-in page uses the theme and
+logo. Run one web replica
 at a time while a schema change is being deployed, because two replicas migrating at once can
 race.
 

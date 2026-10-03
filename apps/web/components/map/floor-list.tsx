@@ -1,5 +1,6 @@
 "use client";
 
+import { ROOM_STATE_LABEL } from "@officeorg/core/map/room-status";
 import type { DirectoryPerson, MapArea, MapSeat, MapSpace } from "@officeorg/core";
 import { displayName } from "@officeorg/core/directory/filter";
 
@@ -94,6 +95,7 @@ export function FloorList({
                   {space.capacity !== null && space.kind !== "desk"
                     ? ` · ${space.capacity} seats`
                     : ""}
+                  {space.status ? ` · ${ROOM_STATE_LABEL[space.status]}` : ""}
                 </td>
                 <td className="px-3 py-2">
                   {space.areaId ? (areaName.get(space.areaId) ?? "—") : "—"}

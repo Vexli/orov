@@ -2,8 +2,8 @@
 // never read a brand token or a Tailwind palette color directly, so a brand theme can restyle
 // the whole app by changing these values alone.
 //
-// Phase 1 ships only the defaults. Importing a brand's tokens and mapping them onto these slots
-// arrives with the branding work in Phase 5.5, and it reuses this list unchanged.
+// An imported brand theme maps its tokens onto these slots (map.ts); every slot it leaves out
+// keeps the default here.
 
 export type SlotKind =
   | "color"
@@ -81,9 +81,9 @@ export const SLOTS: readonly SlotDefinition[] = [
     description: "Opacity outside the zoomed area",
   },
   color("room.free", "#16a34a", "#4ade80", "Meeting room free now"),
-  color("room.busy", "#dc2626", "#f87171", "Meeting room busy now"),
+  color("room.busy", "#b91c1c", "#f87171", "Meeting room busy now"),
   color("room.soon", "#d97706", "#fbbf24", "Free now, booked within 15 minutes"),
-  color("room.stale", "#9ca3af", "#6b7280", "Status older than five minutes"),
+  color("room.stale", "#6b7280", "#6b7280", "Status older than five minutes"),
 
   // Presence
   color("presence.in-office", "#16a34a", "#4ade80", "In the office"),
@@ -116,7 +116,7 @@ export const SLOTS: readonly SlotDefinition[] = [
     name: "font.mono",
     kind: "font-family",
     cssVar: "--theme-font-mono",
-    light: 'ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace',
+    light: 'ui-monospace, "SFMono-Regular", "Menlo", "Consolas", "Liberation Mono", monospace',
     description: "Codes such as seat ids and slugs",
   },
   {
@@ -188,33 +188,4 @@ export function getSlot(name: string): SlotDefinition {
   const slot = SLOTS.find((s) => s.name === name);
   if (!slot) throw new Error(`Unknown theme slot: ${name}`);
   return slot;
-}
-
-// The CSS for the default theme: every CSS slot on :root, dark overrides under the system
-// dark-mode preference, and the derived spacing step that density scales.
-export function defaultThemeCss(): string {
-  const cssSlots = SLOTS.filter((s): s is SlotDefinition & { cssVar: string } => s.cssVar !== null);
-  const density = getSlot("density").light as keyof typeof DENSITY_SCALE;
-
-  const light = cssSlots.map((s) => `  ${s.cssVar}: ${s.light};`);
-  light.push(`  --theme-spacing: calc(var(--theme-spacing-base) * ${DENSITY_SCALE[density]});`);
-  const dark = cssSlots
-    .filter((s) => s.dark !== undefined)
-    .map((s) => `    ${s.cssVar}: ${s.dark};`);
-
-  return [
-    "/* Generated from packages/core/theme/slots.ts by `pnpm theme:defaults`. Do not edit. */",
-    "",
-    ":root {",
-    "  color-scheme: light dark;",
-    ...light,
-    "}",
-    "",
-    "@media (prefers-color-scheme: dark) {",
-    "  :root {",
-    ...dark,
-    "  }",
-    "}",
-    "",
-  ].join("\n");
 }
