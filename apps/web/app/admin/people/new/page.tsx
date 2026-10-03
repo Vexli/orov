@@ -1,12 +1,17 @@
 import { PersonFormEditor } from "@/components/admin/person-form";
 import { getDb } from "@officeorg/db/client";
 import { listPeopleForAdmin } from "@officeorg/db/queries/people";
-import { listDeskOptions } from "@officeorg/db/queries/spaces";
+import { listDeskOptions, listPickerFloors } from "@officeorg/db/queries/spaces";
 import { listTeamsForAdmin } from "@officeorg/db/queries/teams";
 
 export default async function NewPersonPage() {
   const db = getDb();
-  const [people, desks, teams] = await Promise.all([listPeopleForAdmin(db), listDeskOptions(db), listTeamsForAdmin(db)]);
+  const [people, desks, floors, teams] = await Promise.all([
+    listPeopleForAdmin(db),
+    listDeskOptions(db),
+    listPickerFloors(db),
+    listTeamsForAdmin(db),
+  ]);
 
   return (
     <div>
@@ -30,6 +35,7 @@ export default async function NewPersonPage() {
           }}
           managers={people.map((p) => ({ id: p.id, name: p.name }))}
           desks={desks}
+          floors={floors}
           teams={teams.map((t) => ({ id: t.id, name: t.name }))}
         />
       </div>

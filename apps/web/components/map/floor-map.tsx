@@ -39,7 +39,7 @@ interface Props {
 
 // The drawing is injected once per asset and never re-rendered: React doesn't own its nodes, so
 // a change of selection only rewrites the small <style> block next to it (plan.md §6).
-const Drawing = memo(
+export const Drawing = memo(
   function Drawing({ svg }: { svg: string }) {
     return <div dangerouslySetInnerHTML={{ __html: svg }} />;
   },
@@ -121,7 +121,9 @@ export function FloorMap({ assetId, svg, stateCss, avatars, label, onSelect, foc
     const zoom = zoomRef.current;
     const area = focusAreaId ? root.querySelector(`#${CSS.escape(focusAreaId)}`) : null;
     if (!area) {
-      zoom?.resetTransform(0);
+      // Animated on purpose: the library only cancels a running animation when it starts a new
+      // one, so an instant reset during the zoom-to-area animation would be overwritten by it.
+      void zoom?.resetTransform(200);
       return;
     }
     for (let node: Element = area; node !== root && node.parentElement; node = node.parentElement) {

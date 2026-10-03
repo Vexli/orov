@@ -36,3 +36,11 @@ describe("mapStateCss", () => {
     },
   );
 });
+
+describe("occupied desks", () => {
+  it("come first, so a highlight or selection on the same desk wins", () => {
+    const css = mapStateCss({ occupied: ["desk-2-014"], highlighted: [], selected: ["desk-2-014"] });
+    expect(css).toContain("fill: var(--border) !important;");
+    expect(css.indexOf("--border")).toBeLessThan(css.indexOf("--map-selection"));
+  });
+});

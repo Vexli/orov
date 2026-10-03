@@ -4,8 +4,9 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import type { PersonForm } from "@officeorg/core";
-import type { DeskOption } from "@officeorg/db/queries/spaces";
+import type { DeskOption, PickerFloor } from "@officeorg/db/queries/spaces";
 import { savePersonAction, type SaveState } from "@/app/admin/people/actions";
+import { SeatPicker } from "./seat-picker";
 
 export interface TeamChoice {
   id: string;
@@ -17,13 +18,14 @@ interface Props {
   initial: PersonForm;
   managers: { id: string; name: string }[];
   desks: DeskOption[];
+  floors: PickerFloor[];
   teams: TeamChoice[];
 }
 
 const inputClass =
   "mt-1 w-full rounded-md border border-border bg-transparent px-3 py-2 text-sm";
 
-export function PersonFormEditor({ id, initial, managers, desks, teams }: Props) {
+export function PersonFormEditor({ id, initial, managers, desks, floors, teams }: Props) {
   const router = useRouter();
   const [values, setValues] = useState<PersonForm>(initial);
   const [error, setError] = useState<{ message: string; field?: string } | null>(null);
@@ -57,9 +59,6 @@ export function PersonFormEditor({ id, initial, managers, desks, teams }: Props)
 
   const fieldError = (name: string) =>
     error?.field === name ? <p className="mt-1 text-xs text-destructive">{error.message}</p> : null;
-
-  // Only seats the person can take. The server re-checks this either way.
-  const availableDesks = desks.filter((d) => d.available);
 
   return (
     <form onSubmit={submit} className="grid gap-6 md:grid-cols-2" noValidate>
@@ -139,18 +138,16 @@ export function PersonFormEditor({ id, initial, managers, desks, teams }: Props)
           {fieldError("managerId")}
         </label>
 
-        <label className="block text-sm font-medium">
-          Desk
-          <select className={inputClass} value={values.assignedDeskId ?? ""} onChange={(e) => set("assignedDeskId", e.target.value || null)}>
-            <option value="">No desk (remote or deskless)</option>
-            {availableDesks.map((d) => (
-              <option key={d.id} value={d.id}>
-                {d.label}
-              </option>
-            ))}
-          </select>
-          {fieldError("assignedDeskId")}
-        </label>
+        <SeatPicker
+          desks={desks}
+          floors={floors}
+          personId={id}
+          value={values.assignedDeskId}
+          swap={values.swapDesk === true}
+          onChange={(deskId) => set("assignedDeskId", deskId)}
+          onSwapChange={(swap) => set("swapDesk", swap)}
+          error={fieldError("assignedDeskId")}
+        />
       </div>
 
       <fieldset className="md:col-span-2">

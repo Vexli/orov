@@ -157,7 +157,9 @@ export async function savePerson(
       }
     }
 
-    if (input.assignedDeskId) await assertDeskAssignable(tx, input.assignedDeskId, id ?? null);
+    const holder = input.assignedDeskId
+      ? await checkDesk(tx, input.assignedDeskId, id ?? null, input.swapDesk === true)
+      : null;
 
     if (input.teamIds.length > 0) {
       const found = await tx.query.team.findMany({ where: inArray(s.team.id, input.teamIds), columns: { id: true } });
@@ -181,9 +183,27 @@ export async function savePerson(
       updatedAt: new Date(),
     };
 
+    // A swap: the holder takes this person's old desk, or becomes deskless if there wasn't one.
+    // One desk, one person is a unique index, so the holder lets go first and moves last.
+    const previousDeskId = id
+      ? ((await tx.query.person.findFirst({ where: eq(s.person.id, id), columns: { assignedDeskId: true } }))
+          ?.assignedDeskId ?? null)
+      : null;
+    const holderBefore = holder ? await loadPersonRecord(tx, holder.id) : null;
+    if (holder) await tx.update(s.person).set({ assignedDeskId: null }).where(eq(s.person.id, holder.id));
+
     const personId = id
       ? (await tx.update(s.person).set(values).where(eq(s.person.id, id)).returning({ id: s.person.id }))[0]!.id
       : (await tx.insert(s.person).values(values).returning({ id: s.person.id }))[0]!.id;
+
+    if (holder) {
+      await tx
+        .update(s.person)
+        .set({ assignedDeskId: previousDeskId, updatedAt: new Date() })
+        .where(eq(s.person.id, holder.id));
+      const holderAfter = await loadPersonRecord(tx, holder.id);
+      await recordAudit(tx, actorEmail, { entity: "person", entityId: holder.id, action: "update", before: holderBefore, after: holderAfter });
+    }
 
     await tx.delete(s.teamMember).where(eq(s.teamMember.personId, personId));
     if (input.teamIds.length > 0) {
@@ -208,8 +228,9 @@ export async function savePerson(
   });
 }
 
-// A seat can be held by one person. Swapping seats is a Phase 2 feature with its own transaction.
-async function assertDeskAssignable(tx: Executor, deskId: string, personId: string | null) {
+// Checks the desk can be assigned. If someone else holds it, returns them when the admin asked
+// to swap, and rejects the save otherwise.
+async function checkDesk(tx: Executor, deskId: string, personId: string | null, swap: boolean) {
   const desk = await tx.query.space.findFirst({
     where: eq(s.space.id, deskId),
     with: { floor: { columns: { archivedAt: true } } },
@@ -221,11 +242,15 @@ async function assertDeskAssignable(tx: Executor, deskId: string, personId: stri
   }
   const holder = await tx.query.person.findFirst({
     where: and(eq(s.person.assignedDeskId, deskId), personId ? ne(s.person.id, personId) : undefined),
-    columns: { name: true },
+    columns: { id: true, name: true },
   });
-  if (holder) {
-    throw new ValidationError(`${desk.name} is already assigned to ${holder.name}.`, "assignedDeskId");
+  if (holder && !swap) {
+    throw new ValidationError(
+      `${desk.name} is already assigned to ${holder.name}. Swap desks with them, or pick another desk.`,
+      "assignedDeskId",
+    );
   }
+  return holder ?? null;
 }
 
 // Deactivation is a flag, not a delete. History and the audit trail keep pointing at the person.
