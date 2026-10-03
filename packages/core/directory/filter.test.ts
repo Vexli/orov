@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest";
 import type { DirectoryPerson, DirectoryTeam } from "./model";
-import { basedInLabel, displayName, EMPTY_FILTERS, filterDirectory, teamScope } from "./filter";
+import {
+  displayName,
+  EMPTY_FILTERS,
+  filterDirectory,
+  locationSummary,
+  locationText,
+  teamScope,
+} from "./filter";
 
 const teams: DirectoryTeam[] = [
   { id: "t_hr", name: "HR", slug: "hr", parentTeamId: null },
@@ -9,9 +16,16 @@ const teams: DirectoryTeam[] = [
   { id: "t_eng", name: "Engineering", slug: "eng", parentTeamId: null },
 ];
 
-const sf = { locationSlug: "sf", locationName: "San Francisco", locationRegion: "US", floorName: "Floor 2" };
+const sf = {
+  locationSlug: "sf",
+  locationName: "San Francisco",
+  locationRegion: "US",
+  floorName: "Floor 2",
+};
 
-function person(overrides: Partial<DirectoryPerson> & { id: string; name: string }): DirectoryPerson {
+function person(
+  overrides: Partial<DirectoryPerson> & { id: string; name: string },
+): DirectoryPerson {
   return {
     preferredName: null,
     email: `${overrides.id}@example.com`,
@@ -71,7 +85,11 @@ describe("teamScope", () => {
   });
 
   it("walks down through every sub-team", () => {
-    expect([...teamScope("t_hr", true, teams)].sort()).toEqual(["t_hr", "t_payroll", "t_recruiting"]);
+    expect([...teamScope("t_hr", true, teams)].sort()).toEqual([
+      "t_hr",
+      "t_payroll",
+      "t_recruiting",
+    ]);
   });
 });
 
@@ -86,27 +104,44 @@ describe("filterDirectory", () => {
   });
 
   it("includes sub-team members when asked (U2)", () => {
-    const hrTree = filterDirectory(people, { ...EMPTY_FILTERS, teamId: "t_hr", includeSubteams: true }, teams);
+    const hrTree = filterDirectory(
+      people,
+      { ...EMPTY_FILTERS, teamId: "t_hr", includeSubteams: true },
+      teams,
+    );
     expect(names(hrTree)).toEqual(["p_jane", "p_bob", "p_priya"]);
   });
 
   it("searches name, preferred name, title and seat code, case-insensitively", () => {
-    expect(names(filterDirectory(people, { ...EMPTY_FILTERS, q: "bobby" }, teams))).toEqual(["p_bob"]);
-    expect(names(filterDirectory(people, { ...EMPTY_FILTERS, q: "analyst" }, teams))).toEqual(["p_bob"]);
-    expect(names(filterDirectory(people, { ...EMPTY_FILTERS, q: "sf-2-003" }, teams))).toEqual(["p_jane"]);
+    expect(names(filterDirectory(people, { ...EMPTY_FILTERS, q: "bobby" }, teams))).toEqual([
+      "p_bob",
+    ]);
+    expect(names(filterDirectory(people, { ...EMPTY_FILTERS, q: "analyst" }, teams))).toEqual([
+      "p_bob",
+    ]);
+    expect(names(filterDirectory(people, { ...EMPTY_FILTERS, q: "sf-2-003" }, teams))).toEqual([
+      "p_jane",
+    ]);
   });
 
   it("requires every search word to match", () => {
-    expect(names(filterDirectory(people, { ...EMPTY_FILTERS, q: "jane park" }, teams))).toEqual(["p_jane"]);
+    expect(names(filterDirectory(people, { ...EMPTY_FILTERS, q: "jane park" }, teams))).toEqual([
+      "p_jane",
+    ]);
     expect(names(filterDirectory(people, { ...EMPTY_FILTERS, q: "jane bob" }, teams))).toEqual([]);
   });
 
   it("filters by location through the desk, which leaves remote people out", () => {
-    expect(names(filterDirectory(people, { ...EMPTY_FILTERS, locationSlug: "sf" }, teams))).toEqual(["p_jane", "p_bob"]);
+    expect(names(filterDirectory(people, { ...EMPTY_FILTERS, locationSlug: "sf" }, teams))).toEqual(
+      ["p_jane", "p_bob"],
+    );
   });
 
   it("can show only people who have a desk", () => {
-    expect(names(filterDirectory(people, { ...EMPTY_FILTERS, hasDesk: true }, teams))).toEqual(["p_jane", "p_bob"]);
+    expect(names(filterDirectory(people, { ...EMPTY_FILTERS, hasDesk: true }, teams))).toEqual([
+      "p_jane",
+      "p_bob",
+    ]);
   });
 
   it("combines filters", () => {
@@ -125,8 +160,9 @@ describe("labels", () => {
     expect(displayName(people[0]!)).toBe("Jane Park");
   });
 
-  it("says where someone is based in the viewer's format, with their desk when they have one", () => {
-    expect(basedInLabel(people[0]!)).toBe("Based in Ontario, Canada · Desk SF-2-003");
-    expect(basedInLabel(people[2]!)).toBe("Remote – India");
+  it("says where someone is based in the viewer's format, badged with their desk or Remote", () => {
+    expect(locationSummary(people[0]!)).toEqual({ region: "Ontario, Canada", badge: "SF-2-003" });
+    expect(locationSummary(people[2]!)).toEqual({ region: "India", badge: "Remote" });
+    expect(locationText(people[0]!)).toBe("Ontario, Canada SF-2-003");
   });
 });

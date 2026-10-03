@@ -1,5 +1,6 @@
 import type { DirectoryPerson } from "@officeorg/core/directory/model";
-import { basedInLabel, displayName } from "@officeorg/core/directory/filter";
+import { displayName } from "@officeorg/core/directory/filter";
+import { LocationLabel } from "./location-label";
 
 interface Props {
   person: DirectoryPerson;
@@ -22,21 +23,33 @@ export function PersonCard({ person, onSelectPerson, onClose }: Props) {
         <div className="min-w-0 flex-1">
           <h2 className="text-lg font-heading">{name}</h2>
           {person.title ? <p className="text-sm text-muted-fg">{person.title}</p> : null}
-          <a href={`mailto:${person.email}`} className="break-all text-sm underline underline-offset-4">
+          <a
+            href={`mailto:${person.email}`}
+            className="break-all text-sm underline underline-offset-4"
+          >
             {person.email}
           </a>
         </div>
         {onClose ? (
-          <button type="button" onClick={onClose} aria-label="Close card" className="text-lg leading-none text-muted-fg hover:text-fg">
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close card"
+            className="text-lg leading-none text-muted-fg hover:text-fg"
+          >
             ×
           </button>
         ) : null}
       </div>
 
       <dl className="mt-5 space-y-3 text-sm">
-        <Field label="Location">{basedInLabel(person)}</Field>
+        <Field label="Location">
+          <LocationLabel person={person} />
+        </Field>
         <Field label="Desk">
-          {person.desk ? `${person.desk.name} · ${person.desk.locationName}, ${person.desk.floorName}` : "No desk assigned"}
+          {person.desk
+            ? `${person.desk.name} · ${person.desk.locationName}, ${person.desk.floorName}`
+            : "No desk assigned"}
         </Field>
         <Field label="Manager">
           {person.manager ? (
@@ -60,9 +73,7 @@ export function PersonCard({ person, onSelectPerson, onClose }: Props) {
                 <li
                   key={t.id}
                   className={`rounded px-2 py-0.5 text-xs ${
-                    t.isPrimary
-                      ? "bg-primary font-medium text-primary-fg"
-                      : "bg-muted text-fg"
+                    t.isPrimary ? "bg-primary font-medium text-primary-fg" : "bg-muted text-fg"
                   }`}
                 >
                   {t.name}

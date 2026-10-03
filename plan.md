@@ -206,7 +206,7 @@ brand_asset   (id, kind: logo_light|logo_dark|favicon|font, mime, bytes bytea, s
 - **No cycles** in `person.managerId` or `team.parentTeamId`. Check with a recursive CTE inside the same transaction as the write, and reject the write if it would create a cycle.
 - **One person per desk** (partial unique index). Reassigning a desk is a single transaction that swaps the two people.
 - **The desk must be `kind = desk`**, and its floor must not be archived.
-- `homeRegion` and `assignedDeskId` are **independent** (U4). The UI shows "Based in Ontario, Canada · Desk SF-2-003", in the viewer's region format (§7.1).
+- `homeRegion` and `assignedDeskId` are **independent** (U4). The UI shows "Ontario, Canada [SF-2-003]", with the seat code as a badge, in the viewer's region format (§7.1).
 - **Region codes** (`person.homeRegion`, `location.region`) are one ISO 3166 code each: a country (ISO 3166-1 alpha-2, `US`) or a subdivision (ISO 3166-2, `US-CA`). The country is never stored separately, because a subdivision code starts with it. A CHECK constraint enforces the shape (`^[A-Z]{2}(-[A-Z0-9]{1,3})?$`). The app checks that the code exists in ISO 3166 (the `iso-3166` package) at every input boundary (CSV, admin forms). The database doesn't check existence, so a change to the subdivision list never needs a migration.
 - Seats are referenced by `space.id`, and **never** by SVG array position. `svgElementId` only connects a space to its drawing.
 
@@ -270,7 +270,7 @@ Anything without one of these prefixes is decoration.
 - The view tabs render `<Link href={{ pathname: '/org', query: currentParams }}>`. Switching tabs changes only the path (U9).
 - `lib/url-state.ts` holds the single nuqs parser definition, which all three views import.
 - **Directory:** a table with search and filters for team, location, and "has desk". It scrolls to and highlights `person`. A presence filter appears only when presence display is on: "In / Not in" in `simple` mode, one option per status in `detailed` mode.
-- **Map:** described in §6. A deskless person shows a card instead: "Remote – {region}", or "No desk assigned".
+- **Map:** described in §6. A deskless person shows a card instead: "{region} [Remote]", or "No desk assigned".
 - **Org chart:** opens from the root, or from `person`'s chain, expanded and centered. A toggle switches between the **reporting** tree (managers) and the **team** tree (teams), because these are intentionally separate structures.
 - **Person card (shared):** shows photo, title, team chips, manager link, desk link, home region, and chat buttons, plus the presence state for the current display mode (§8.5). All three views use it.
 - **Global search (⌘K):** one `/api/search` endpoint. It searches people, teams, and rooms with Postgres `pg_trgm`, which is plenty for fewer than 250 rows each.
@@ -573,5 +573,5 @@ The five spikes from §2 and `docs/spikes.md`.
 | Q1  | Which Slack channel is the status channel, and is there one per office?                | Default: one channel, configured by env var. A per-location channel is a small extension.                                                                        |
 | Q2  | Should people be able to edit their own profile (photo, phone) without being an admin? | Default: no in v1. Self-edit is a small Phase 6 item.                                                                                                            |
 | Q3  | Hosting target and network access (public with Google SSO, or behind VPN/IAP)?         | Socket Mode works for either.                                                                                                                                    |
-| Q4  | Do deskless or remote people belong on the map at all?                                 | Default: no. They appear in the directory and org chart with a "Remote – {region}" card, in the viewer's region format (§7.1).                                    |
+| Q4  | Do deskless or remote people belong on the map at all?                                 | Default: no. They appear in the directory and org chart with a "{region} [Remote]" card, in the viewer's region format (§7.1).                                    |
 | Q5  | Does the organization have an exported token file, or only a PDF brand guide? | Default: start from `theme/default.tokens.json` and set the slots directly in the Branding mapping editor. A token file isn't required. |
