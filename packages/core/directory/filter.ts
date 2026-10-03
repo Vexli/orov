@@ -19,7 +19,11 @@ export const EMPTY_FILTERS: DirectoryFilters = {
 };
 
 // The team and every team below it. Cycles in the data can't make this loop forever.
-export function teamScope(teamId: string, includeSubteams: boolean, teams: DirectoryTeam[]): Set<string> {
+export function teamScope(
+  teamId: string,
+  includeSubteams: boolean,
+  teams: DirectoryTeam[],
+): Set<string> {
   const scope = new Set([teamId]);
   if (!includeSubteams) return scope;
   const queue = [teamId];
@@ -61,9 +65,20 @@ export function displayName(person: Pick<DirectoryPerson, "name" | "preferredNam
   return person.preferredName ?? person.name;
 }
 
-// The one-line location summary, in the viewer's region format. With a desk:
-// "Based in Ontario, Canada · Desk SF-2-003". Without one: "Remote – India".
-export function basedInLabel(person: DirectoryPerson): string {
-  if (!person.desk) return `Remote – ${person.homeRegionLabel}`;
-  return `Based in ${person.homeRegionLabel} · Desk ${person.desk.name}`;
+export interface LocationSummary {
+  // The home region, in the viewer's region format.
+  region: string;
+  // Shown as a badge after the region: the desk's seat code, or "Remote" without one.
+  badge: string;
+}
+
+// Where someone is based: "Ontario, Canada [SF-2-003]", or "India [Remote]" without a desk.
+export function locationSummary(person: DirectoryPerson): LocationSummary {
+  return { region: person.homeRegionLabel, badge: person.desk?.name ?? "Remote" };
+}
+
+// The summary as plain text, for sorting and anywhere a badge can't be drawn.
+export function locationText(person: DirectoryPerson): string {
+  const { region, badge } = locationSummary(person);
+  return `${region} ${badge}`;
 }

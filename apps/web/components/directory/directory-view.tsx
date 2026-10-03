@@ -10,12 +10,13 @@ import {
 } from "@tanstack/react-table";
 import type { DirectoryPerson, DirectoryTeam } from "@officeorg/core/directory/model";
 import {
-  basedInLabel,
   displayName,
   filterDirectory,
+  locationText,
   type DirectoryFilters,
 } from "@officeorg/core/directory/filter";
 import { directoryParsers } from "@/lib/url-state";
+import { LocationLabel } from "./location-label";
 import { PersonCard } from "./person-card";
 
 interface Props {
@@ -53,9 +54,7 @@ const columns = [
   helper.accessor((p) => p.title ?? "", {
     id: "title",
     header: "Title",
-    cell: (info) => (
-      <span className="text-muted-fg">{info.getValue() || "—"}</span>
-    ),
+    cell: (info) => <span className="text-muted-fg">{info.getValue() || "—"}</span>,
   }),
   helper.accessor((p) => p.teams.map((t) => t.name).join(", "), {
     id: "teams",
@@ -73,10 +72,10 @@ const columns = [
       </ul>
     ),
   }),
-  helper.accessor((p) => basedInLabel(p), {
+  helper.accessor((p) => locationText(p), {
     id: "location",
     header: "Location",
-    cell: (info) => <span className="whitespace-nowrap">{info.getValue()}</span>,
+    cell: (info) => <LocationLabel person={info.row.original} />,
   }),
 ];
 

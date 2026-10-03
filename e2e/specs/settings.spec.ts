@@ -7,16 +7,19 @@ import { signInAs } from "../support/session";
 test.describe("region display setting", () => {
   test.beforeEach(resetE2eDatabase);
 
-  test("defaults to region and country names, and each option changes the directory", async ({ page, context }) => {
+  test("defaults to region and country names, and each option changes the directory", async ({
+    page,
+    context,
+  }) => {
     await signInAs(context, "bob@example.com");
     await page.goto("/settings");
     await expect(page.getByRole("radio", { name: /Region and country name/ })).toBeChecked();
 
     const expectations: [RegExp, string][] = [
-      [/ISO 3166 code/, "Based in CA-ON · Desk SF-2-003"],
-      [/^Country name/, "Based in Canada · Desk SF-2-003"],
-      [/^Region name/, "Based in Ontario · Desk SF-2-003"],
-      [/Region and country name/, "Based in Ontario, Canada · Desk SF-2-003"],
+      [/ISO 3166 code/, "CA-ON SF-2-003"],
+      [/^Country name/, "Canada SF-2-003"],
+      [/^Region name/, "Ontario SF-2-003"],
+      [/Region and country name/, "Ontario, Canada SF-2-003"],
     ];
     for (const [option, label] of expectations) {
       await page.goto("/settings");
@@ -26,11 +29,16 @@ test.describe("region display setting", () => {
       await expect(page.getByRole("radio", { name: option })).toBeChecked();
 
       await page.goto("/directory?person=p_jane");
-      await expect(page.getByRole("complementary", { name: "Jane Park details" })).toContainText(label);
+      await expect(page.getByRole("complementary", { name: "Jane Park details" })).toContainText(
+        label,
+      );
     }
   });
 
-  test("a country-only code falls back to the country name for the region option", async ({ page, context }) => {
+  test("a country-only code falls back to the country name for the region option", async ({
+    page,
+    context,
+  }) => {
     await signInAs(context, "bob@example.com");
     await page.goto("/settings");
     await page.getByRole("radio", { name: /^Region name/ }).check();
@@ -39,7 +47,9 @@ test.describe("region display setting", () => {
 
     // Sam's home region is just "US".
     await page.goto("/directory?person=p_sam");
-    await expect(page.getByRole("complementary", { name: "Sam Ortiz details" })).toContainText("Remote – United States");
+    await expect(page.getByRole("complementary", { name: "Sam Ortiz details" })).toContainText(
+      "United States Remote",
+    );
   });
 
   test("one user's choice doesn't change what anyone else sees", async ({ browser }) => {
@@ -56,7 +66,7 @@ test.describe("region display setting", () => {
     const maxPage = await max.newPage();
     await maxPage.goto("/directory?person=p_jane");
     await expect(maxPage.getByRole("complementary", { name: "Jane Park details" })).toContainText(
-      "Based in Ontario, Canada",
+      "Ontario, Canada SF-2-003",
     );
 
     await bob.close();
