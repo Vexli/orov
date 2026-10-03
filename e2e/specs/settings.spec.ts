@@ -45,10 +45,10 @@ test.describe("region display setting", () => {
     await page.getByRole("button", { name: "Save settings" }).click();
     await expect(page.getByRole("status")).toContainText("Settings saved");
 
-    // Sam's home region is just "US".
+    // Sam's home region is just "US". They have a desk on Floor 3.
     await page.goto("/directory?person=p_sam");
     await expect(page.getByRole("complementary", { name: "Sam Ortiz details" })).toContainText(
-      "United States Remote",
+      "United States SF-3-001",
     );
   });
 

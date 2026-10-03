@@ -139,7 +139,7 @@ describe("invariants enforced by the database", () => {
     await seedDemoData(t.db);
     await t.db
       .insert(s.floor)
-      .values({ id: "fl_b", locationId: "loc_sf", slug: "3", name: "Floor 3", level: 3 });
+      .values({ id: "fl_b", locationId: "loc_sf", slug: "4", name: "Floor 4", level: 4 });
 
     // Two meeting rooms named "Boardroom" on different floors are allowed.
     await t.db
@@ -160,7 +160,7 @@ describe("invariants enforced by the database", () => {
           id: "sp_dup",
           floorId: "fl_b",
           kind: "desk",
-          svgElementId: "desk-3-014",
+          svgElementId: "desk-4-014",
           name: "SF-2-014",
         }),
       "space_desk_name",
