@@ -5,8 +5,8 @@ export default function ImportPage() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-xl font-semibold">Import &amp; export</h1>
-        <p className="mt-1 text-sm text-neutral-600 dark:text-neutral-400">
+        <h1 className="text-xl font-heading">Import &amp; export</h1>
+        <p className="mt-1 text-sm text-muted-fg">
           Each import is a dry run first. Nothing is written until every row is valid, and every change is
           recorded in the audit log.
         </p>

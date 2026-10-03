@@ -8,11 +8,11 @@ const MESSAGES: Record<string, string> = {
 };
 
 const PRIMARY_BUTTON =
-  "w-full rounded-md bg-neutral-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-neutral-700 dark:bg-white dark:text-neutral-900 dark:hover:bg-neutral-200";
+  "w-full rounded-md bg-primary px-4 py-2.5 text-sm font-medium text-primary-fg hover:bg-primary/85";
 const SECONDARY_BUTTON =
-  "w-full rounded-md border border-neutral-300 px-4 py-2.5 text-sm font-medium hover:bg-neutral-100 dark:border-neutral-700 dark:hover:bg-neutral-800";
+  "w-full rounded-md border border-border px-4 py-2.5 text-sm font-medium hover:bg-muted";
 const INPUT =
-  "w-full rounded-md border border-neutral-300 bg-transparent px-3 py-2 text-sm dark:border-neutral-700";
+  "w-full rounded-md border border-border bg-transparent px-3 py-2 text-sm";
 
 export default async function LoginPage({
   searchParams,
@@ -26,15 +26,15 @@ export default async function LoginPage({
   return (
     <main className="mx-auto flex min-h-screen max-w-sm flex-col justify-center gap-6 p-8">
       <div>
-        <h1 className="text-2xl font-semibold">OfficeOrg</h1>
-        <p className="mt-2 text-sm text-neutral-600 dark:text-neutral-400">
+        <h1 className="text-2xl font-heading">OfficeOrg</h1>
+        <p className="mt-2 text-sm text-muted-fg">
           People, seats, teams and presence for our offices.
         </p>
       </div>
       {message ? (
         <p
           role="alert"
-          className="rounded-md bg-amber-50 p-3 text-sm text-amber-900 dark:bg-amber-950 dark:text-amber-100"
+          className="rounded-md bg-accent p-3 text-sm text-accent-fg"
         >
           {message}
         </p>
@@ -51,9 +51,9 @@ export default async function LoginPage({
       {setup.devPassword || setup.devBypassEmail ? (
         <section
           aria-labelledby="dev-sign-in"
-          className="flex flex-col gap-3 rounded-md border border-dashed border-amber-500 p-4"
+          className="flex flex-col gap-3 rounded-md border border-dashed border-accent-fg p-4"
         >
-          <h2 id="dev-sign-in" className="text-sm font-medium text-amber-700 dark:text-amber-300">
+          <h2 id="dev-sign-in" className="text-sm font-medium text-accent-fg">
             Local development only
           </h2>
           {setup.devPassword ? (

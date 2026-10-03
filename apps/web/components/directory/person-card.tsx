@@ -11,23 +11,23 @@ interface Props {
 export function PersonCard({ person, onSelectPerson, onClose }: Props) {
   const name = displayName(person);
   return (
-    <aside aria-label={`${name} details`} className="rounded-lg border border-neutral-200 p-5 dark:border-neutral-800">
+    <aside aria-label={`${name} details`} className="rounded-lg border border-border p-5">
       <div className="flex items-start gap-4">
         <div
           aria-hidden="true"
-          className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-neutral-200 text-sm font-semibold text-neutral-700 dark:bg-neutral-800 dark:text-neutral-200"
+          className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-muted text-sm font-semibold text-fg"
         >
           {initials(name)}
         </div>
         <div className="min-w-0 flex-1">
-          <h2 className="text-lg font-semibold">{name}</h2>
-          {person.title ? <p className="text-sm text-neutral-600 dark:text-neutral-400">{person.title}</p> : null}
+          <h2 className="text-lg font-heading">{name}</h2>
+          {person.title ? <p className="text-sm text-muted-fg">{person.title}</p> : null}
           <a href={`mailto:${person.email}`} className="break-all text-sm underline underline-offset-4">
             {person.email}
           </a>
         </div>
         {onClose ? (
-          <button type="button" onClick={onClose} aria-label="Close card" className="text-lg leading-none text-neutral-500 hover:text-neutral-900 dark:hover:text-neutral-100">
+          <button type="button" onClick={onClose} aria-label="Close card" className="text-lg leading-none text-muted-fg hover:text-fg">
             ×
           </button>
         ) : null}
@@ -61,8 +61,8 @@ export function PersonCard({ person, onSelectPerson, onClose }: Props) {
                   key={t.id}
                   className={`rounded px-2 py-0.5 text-xs ${
                     t.isPrimary
-                      ? "bg-neutral-900 font-medium text-white dark:bg-white dark:text-neutral-900"
-                      : "bg-neutral-100 text-neutral-700 dark:bg-neutral-800 dark:text-neutral-300"
+                      ? "bg-primary font-medium text-primary-fg"
+                      : "bg-muted text-fg"
                   }`}
                 >
                   {t.name}
@@ -81,7 +81,7 @@ export function PersonCard({ person, onSelectPerson, onClose }: Props) {
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
-      <dt className="text-xs uppercase tracking-wide text-neutral-500">{label}</dt>
+      <dt className="text-xs uppercase tracking-wide text-muted-fg">{label}</dt>
       <dd className="mt-0.5">{children}</dd>
     </div>
   );

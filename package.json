@@ -15,6 +15,7 @@
     "db:generate": "pnpm --filter @officeorg/db db:generate",
     "db:migrate": "pnpm --filter @officeorg/db db:migrate",
     "db:seed": "pnpm --filter @officeorg/db db:seed",
+    "theme:defaults": "pnpm --filter @officeorg/web theme:defaults",
     "db:up": "docker compose up -d db",
     "db:down": "docker compose down",
     "test:e2e": "playwright test -c e2e/playwright.config.ts"

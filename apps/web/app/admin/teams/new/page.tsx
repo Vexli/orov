@@ -9,7 +9,7 @@ export default async function NewTeamPage() {
 
   return (
     <div>
-      <h1 className="text-xl font-semibold">New team</h1>
+      <h1 className="text-xl font-heading">New team</h1>
       <div className="mt-6">
         <TeamFormEditor
           initial={{ slug: "", name: "", parentTeamId: null, leadId: null, slackChannelId: null, color: null }}

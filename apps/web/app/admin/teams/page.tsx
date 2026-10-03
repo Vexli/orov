@@ -38,19 +38,19 @@ export default async function TeamsAdminPage() {
     <div>
       <div className="flex items-center justify-between gap-4">
         <div>
-          <h1 className="text-xl font-semibold">Teams</h1>
-          <p className="mt-1 text-sm text-neutral-600 dark:text-neutral-400">
+          <h1 className="text-xl font-heading">Teams</h1>
+          <p className="mt-1 text-sm text-muted-fg">
             A team can only move under a team that isn&apos;t one of its own sub-teams.
           </p>
         </div>
-        <Link href="/admin/teams/new" className="rounded-md bg-neutral-900 px-3 py-2 text-sm font-medium text-white dark:bg-white dark:text-neutral-900">
+        <Link href="/admin/teams/new" className="rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-fg">
           New team
         </Link>
       </div>
 
       <div className="mt-6 overflow-x-auto">
         <table className="w-full text-left text-sm">
-          <thead className="border-b border-neutral-200 text-xs uppercase text-neutral-500 dark:border-neutral-800">
+          <thead className="border-b border-border text-xs uppercase text-muted-fg">
             <tr>
               <th className="py-2 pr-3 font-medium">Team</th>
               <th className="py-2 pr-3 font-medium">Lead</th>
@@ -61,12 +61,12 @@ export default async function TeamsAdminPage() {
           </thead>
           <tbody>
             {rows.map((t) => (
-              <tr key={t.id} className="border-b border-neutral-100 dark:border-neutral-900">
+              <tr key={t.id} className="border-b border-border">
                 <td className="py-2 pr-3">
                   <span style={{ paddingLeft: `${t.depth * 1.25}rem` }} className="inline-flex items-baseline gap-2">
-                    {t.depth > 0 ? <span className="text-neutral-400">↳</span> : null}
+                    {t.depth > 0 ? <span className="text-muted-fg">↳</span> : null}
                     <span className="font-medium">{t.name}</span>
-                    <span className="font-mono text-xs text-neutral-500">{t.slug}</span>
+                    <span className="font-mono text-xs text-muted-fg">{t.slug}</span>
                   </span>
                 </td>
                 <td className="py-2 pr-3">{t.leadName ?? "—"}</td>
@@ -81,7 +81,7 @@ export default async function TeamsAdminPage() {
             ))}
             {rows.length === 0 ? (
               <tr>
-                <td colSpan={5} className="py-6 text-center text-neutral-500">
+                <td colSpan={5} className="py-6 text-center text-muted-fg">
                   No teams yet.
                 </td>
               </tr>

@@ -21,7 +21,7 @@ interface Props {
 }
 
 const inputClass =
-  "mt-1 w-full rounded-md border border-neutral-300 bg-transparent px-3 py-2 text-sm dark:border-neutral-700";
+  "mt-1 w-full rounded-md border border-border bg-transparent px-3 py-2 text-sm";
 
 export function PersonFormEditor({ id, initial, managers, desks, teams }: Props) {
   const router = useRouter();
@@ -56,7 +56,7 @@ export function PersonFormEditor({ id, initial, managers, desks, teams }: Props)
   }
 
   const fieldError = (name: string) =>
-    error?.field === name ? <p className="mt-1 text-xs text-red-700 dark:text-red-400">{error.message}</p> : null;
+    error?.field === name ? <p className="mt-1 text-xs text-destructive">{error.message}</p> : null;
 
   // Only seats the person can take. The server re-checks this either way.
   const availableDesks = desks.filter((d) => d.available);
@@ -64,7 +64,7 @@ export function PersonFormEditor({ id, initial, managers, desks, teams }: Props)
   return (
     <form onSubmit={submit} className="grid gap-6 md:grid-cols-2" noValidate>
       {error && !error.field ? (
-        <p role="alert" className="md:col-span-2 rounded-md bg-red-50 p-3 text-sm text-red-900 dark:bg-red-950 dark:text-red-100">
+        <p role="alert" className="md:col-span-2 rounded-md bg-destructive/10 p-3 text-sm text-destructive">
           {error.message}
         </p>
       ) : null}
@@ -151,12 +151,12 @@ export function PersonFormEditor({ id, initial, managers, desks, teams }: Props)
 
       <fieldset className="md:col-span-2">
         <legend className="text-sm font-medium">Teams and primary team</legend>
-        <p className="mt-1 text-xs text-neutral-500">Pick the primary team with the radio button. A person has at most one.</p>
+        <p className="mt-1 text-xs text-muted-fg">Pick the primary team with the radio button. A person has at most one.</p>
         <ul className="mt-2 grid gap-2 sm:grid-cols-2">
           {teams.map((t) => {
             const checked = values.teamIds.includes(t.id);
             return (
-              <li key={t.id} className="flex items-center gap-3 rounded-md border border-neutral-200 px-3 py-2 text-sm dark:border-neutral-800">
+              <li key={t.id} className="flex items-center gap-3 rounded-md border border-border px-3 py-2 text-sm">
                 <input
                   type="checkbox"
                   aria-label={`Member of ${t.name}`}
@@ -183,7 +183,7 @@ export function PersonFormEditor({ id, initial, managers, desks, teams }: Props)
         <button
           type="submit"
           disabled={pending}
-          className="rounded-md bg-neutral-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50 dark:bg-white dark:text-neutral-900"
+          className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-fg disabled:opacity-50"
         >
           {pending ? "Saving…" : id ? "Save person" : "Create person"}
         </button>
