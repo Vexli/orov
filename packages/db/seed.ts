@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { eq } from "drizzle-orm";
+import { sanitizeSvg } from "@officeorg/core/svg/sanitize";
 import { createDb, type Database } from "./client";
 import { resetDatabase } from "./reset";
 import * as s from "./schema";
@@ -14,8 +15,9 @@ import * as s from "./schema";
 // The floor drawings in seed-floors/ follow docs/map-authoring.md, and the space and area rows
 // below match the ids in them. Sam sits on Floor 3, so a team spans two floors (U2).
 
+// Stored the way an admin upload would be: through the sanitizer.
 const floorSvg = (name: string) =>
-  readFileSync(new URL(`./seed-floors/${name}.svg`, import.meta.url), "utf8");
+  sanitizeSvg(readFileSync(new URL(`./seed-floors/${name}.svg`, import.meta.url), "utf8"));
 
 export async function seedDemoData(db: Database): Promise<void> {
   await db.transaction(async (tx) => {
