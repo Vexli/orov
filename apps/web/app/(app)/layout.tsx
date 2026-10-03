@@ -8,7 +8,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   const user = await requireUser();
   return (
     <div className="min-h-screen">
-      <header className="border-b border-neutral-200 dark:border-neutral-800">
+      <header className="border-b border-border">
         <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-x-6 gap-y-2 px-4 py-3">
           <Link href="/directory" className="font-semibold">
             OfficeOrg
@@ -18,7 +18,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
               Directory
             </Link>
           </nav>
-          <div className="ml-auto flex items-center gap-4 text-sm text-neutral-600 dark:text-neutral-400">
+          <div className="ml-auto flex items-center gap-4 text-sm text-muted-fg">
             {user.role === "admin" ? (
               <Link href="/admin" className="underline underline-offset-4">
                 Admin

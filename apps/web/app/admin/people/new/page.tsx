@@ -10,7 +10,7 @@ export default async function NewPersonPage() {
 
   return (
     <div>
-      <h1 className="text-xl font-semibold">New person</h1>
+      <h1 className="text-xl font-heading">New person</h1>
       <div className="mt-6">
         <PersonFormEditor
           initial={{

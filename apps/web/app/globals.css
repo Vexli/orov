@@ -1,1 +1,66 @@
 @import "tailwindcss";
+@import "./theme-defaults.css";
+
+/* Utilities read only the semantic slots from packages/core/theme/slots.ts (plan.md §9.1).
+   Tailwind's own palette is cleared, so a raw class such as `bg-white` or `text-neutral-500`
+   produces no CSS at all, and a brand theme restyles everything by changing the slot values. */
+@theme inline {
+  --color-*: initial;
+  --color-transparent: transparent;
+  --color-current: currentColor;
+
+  --color-bg: var(--bg);
+  --color-fg: var(--fg);
+  --color-muted: var(--muted);
+  --color-muted-fg: var(--muted-fg);
+  --color-card: var(--card);
+  --color-card-fg: var(--card-fg);
+  --color-border: var(--border);
+  --color-ring: var(--ring);
+  --color-primary: var(--primary);
+  --color-primary-fg: var(--primary-fg);
+  --color-accent: var(--accent);
+  --color-accent-fg: var(--accent-fg);
+  --color-destructive: var(--destructive);
+  --color-destructive-fg: var(--destructive-fg);
+
+  --color-map-bg: var(--map-bg);
+  --color-map-selection: var(--map-selection);
+  --color-map-highlight: var(--map-highlight);
+  --color-room-free: var(--room-free);
+  --color-room-busy: var(--room-busy);
+  --color-room-soon: var(--room-soon);
+  --color-room-stale: var(--room-stale);
+  --color-presence-in-office: var(--presence-in-office);
+  --color-presence-wfh: var(--presence-wfh);
+  --color-presence-away: var(--presence-away);
+  --color-presence-vacation: var(--presence-vacation);
+  --color-presence-sick: var(--presence-sick);
+
+  --font-sans: var(--theme-font-sans);
+  --font-mono: var(--theme-font-mono);
+  --font-weight-heading: var(--theme-font-weight-heading);
+
+  --radius-sm: calc(var(--theme-radius) * 0.5);
+  --radius-md: var(--theme-radius);
+  --radius-lg: calc(var(--theme-radius) * 1.5);
+  --radius-xl: calc(var(--theme-radius) * 2);
+
+  /* Every spacing utility is a multiple of this, so density scales the whole layout. */
+  --spacing: var(--theme-spacing);
+}
+
+@layer base {
+  html {
+    font-size: var(--theme-font-size-base);
+  }
+
+  * {
+    border-color: var(--border);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+}

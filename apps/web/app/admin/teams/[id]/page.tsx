@@ -31,7 +31,7 @@ export default async function EditTeamPage({ params }: { params: Promise<{ id: s
 
   return (
     <div>
-      <h1 className="text-xl font-semibold">{initial.name}</h1>
+      <h1 className="text-xl font-heading">{initial.name}</h1>
       <div className="mt-6">
         <TeamFormEditor
           id={id}

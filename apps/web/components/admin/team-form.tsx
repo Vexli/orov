@@ -15,7 +15,7 @@ interface Props {
 }
 
 const inputClass =
-  "mt-1 w-full rounded-md border border-neutral-300 bg-transparent px-3 py-2 text-sm dark:border-neutral-700";
+  "mt-1 w-full rounded-md border border-border bg-transparent px-3 py-2 text-sm";
 
 export function TeamFormEditor({ id, initial, parents, leads }: Props) {
   const router = useRouter();
@@ -56,12 +56,12 @@ export function TeamFormEditor({ id, initial, parents, leads }: Props) {
   }
 
   const fieldError = (name: string) =>
-    error?.field === name ? <p className="mt-1 text-xs text-red-700 dark:text-red-400">{error.message}</p> : null;
+    error?.field === name ? <p className="mt-1 text-xs text-destructive">{error.message}</p> : null;
 
   return (
     <form onSubmit={submit} className="grid max-w-2xl gap-5" noValidate>
       {error && !error.field ? (
-        <p role="alert" className="rounded-md bg-red-50 p-3 text-sm text-red-900 dark:bg-red-950 dark:text-red-100">
+        <p role="alert" className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
           {error.message}
         </p>
       ) : null}
@@ -74,7 +74,7 @@ export function TeamFormEditor({ id, initial, parents, leads }: Props) {
       <label className="block text-sm font-medium">
         Slug
         <input className={inputClass} value={values.slug} onChange={(e) => set("slug", e.target.value)} />
-        <span className="text-xs text-neutral-500">Used in CSV imports. Lowercase letters, digits and hyphens.</span>
+        <span className="text-xs text-muted-fg">Used in CSV imports. Lowercase letters, digits and hyphens.</span>
         {fieldError("slug")}
       </label>
       <label className="block text-sm font-medium">
@@ -116,7 +116,7 @@ export function TeamFormEditor({ id, initial, parents, leads }: Props) {
         <button
           type="submit"
           disabled={pending}
-          className="rounded-md bg-neutral-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50 dark:bg-white dark:text-neutral-900"
+          className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-fg disabled:opacity-50"
         >
           {pending ? "Saving…" : id ? "Save team" : "Create team"}
         </button>
@@ -124,7 +124,7 @@ export function TeamFormEditor({ id, initial, parents, leads }: Props) {
           Cancel
         </Link>
         {id ? (
-          <button type="button" onClick={remove} disabled={pending} className="ml-auto text-sm text-red-700 underline disabled:opacity-50 dark:text-red-400">
+          <button type="button" onClick={remove} disabled={pending} className="ml-auto text-sm text-destructive underline disabled:opacity-50">
             Delete team
           </button>
         ) : null}

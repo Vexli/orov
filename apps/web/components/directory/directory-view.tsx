@@ -46,7 +46,7 @@ const columns = [
         className="text-left"
       >
         <span className="block font-medium">{info.getValue()}</span>
-        <span className="block text-xs text-neutral-500">{info.row.original.email}</span>
+        <span className="block text-xs text-muted-fg">{info.row.original.email}</span>
       </button>
     ),
   }),
@@ -54,7 +54,7 @@ const columns = [
     id: "title",
     header: "Title",
     cell: (info) => (
-      <span className="text-neutral-600 dark:text-neutral-400">{info.getValue() || "—"}</span>
+      <span className="text-muted-fg">{info.getValue() || "—"}</span>
     ),
   }),
   helper.accessor((p) => p.teams.map((t) => t.name).join(", "), {
@@ -65,7 +65,7 @@ const columns = [
         {info.row.original.teams.map((t) => (
           <li
             key={t.id}
-            className={`rounded px-1.5 py-0.5 text-xs ${t.isPrimary ? "bg-neutral-900 text-white dark:bg-white dark:text-neutral-900" : "bg-neutral-100 dark:bg-neutral-800"}`}
+            className={`rounded px-1.5 py-0.5 text-xs ${t.isPrimary ? "bg-primary text-primary-fg" : "bg-muted"}`}
           >
             {t.name}
           </li>
@@ -120,7 +120,7 @@ export function DirectoryView({ people, teams, locations }: Props) {
   return (
     <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
       <section aria-label="People directory" className="min-w-0">
-        <h1 className="text-xl font-semibold">Directory</h1>
+        <h1 className="text-xl font-heading">Directory</h1>
 
         <div className="mt-4 grid gap-3 md:grid-cols-[minmax(0,1fr)_auto_auto_auto] md:items-center">
           <input
@@ -129,13 +129,13 @@ export function DirectoryView({ people, teams, locations }: Props) {
             placeholder="Search name, title, email or seat"
             value={params.q}
             onChange={(e) => setParams({ q: e.target.value || null })}
-            className="w-full rounded-md border border-neutral-300 bg-transparent px-3 py-2 text-sm dark:border-neutral-700"
+            className="w-full rounded-md border border-border bg-transparent px-3 py-2 text-sm"
           />
           <select
             aria-label="Filter by team"
             value={params.team ?? ""}
             onChange={(e) => setParams({ team: e.target.value || null })}
-            className="rounded-md border border-neutral-300 bg-transparent px-3 py-2 text-sm dark:border-neutral-700"
+            className="rounded-md border border-border bg-transparent px-3 py-2 text-sm"
           >
             <option value="">All teams</option>
             {teams.map((t) => (
@@ -158,7 +158,7 @@ export function DirectoryView({ people, teams, locations }: Props) {
               aria-label="Filter by location"
               value={params.loc ?? ""}
               onChange={(e) => setParams({ loc: e.target.value || null })}
-              className="rounded-md border border-neutral-300 bg-transparent px-3 py-2 text-sm dark:border-neutral-700"
+              className="rounded-md border border-border bg-transparent px-3 py-2 text-sm"
             >
               <option value="">All locations</option>
               {locations.map((l) => (
@@ -178,7 +178,7 @@ export function DirectoryView({ people, teams, locations }: Props) {
           </div>
         </div>
 
-        <div className="mt-3 flex items-center justify-between text-sm text-neutral-500">
+        <div className="mt-3 flex items-center justify-between text-sm text-muted-fg">
           <span role="status">
             Showing {rows.length} of {people.length}
           </span>
@@ -193,9 +193,9 @@ export function DirectoryView({ people, teams, locations }: Props) {
           ) : null}
         </div>
 
-        <div className="mt-3 overflow-x-auto rounded-lg border border-neutral-200 dark:border-neutral-800">
+        <div className="mt-3 overflow-x-auto rounded-lg border border-border">
           <table className="w-full text-left text-sm">
-            <thead className="border-b border-neutral-200 bg-neutral-50 text-xs uppercase text-neutral-500 dark:border-neutral-800 dark:bg-neutral-900">
+            <thead className="border-b border-border bg-muted text-xs uppercase text-muted-fg">
               {table.getHeaderGroups().map((group) => (
                 <tr key={group.id}>
                   {group.headers.map((header) => (
@@ -214,8 +214,8 @@ export function DirectoryView({ people, teams, locations }: Props) {
                     key={row.id}
                     id={`person-row-${row.original.id}`}
                     aria-selected={isSelected}
-                    className={`border-b border-neutral-100 align-top last:border-0 dark:border-neutral-900 ${
-                      isSelected ? "bg-amber-50 dark:bg-amber-950/40" : ""
+                    className={`border-b border-border align-top last:border-0 ${
+                      isSelected ? "bg-accent" : ""
                     }`}
                   >
                     {row.getVisibleCells().map((cell) => (
@@ -228,7 +228,7 @@ export function DirectoryView({ people, teams, locations }: Props) {
               })}
               {rows.length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="px-3 py-8 text-center text-neutral-500">
+                  <td colSpan={4} className="px-3 py-8 text-center text-muted-fg">
                     No one matches these filters.
                   </td>
                 </tr>
@@ -246,7 +246,7 @@ export function DirectoryView({ people, teams, locations }: Props) {
             onClose={() => setParams({ person: null })}
           />
         ) : (
-          <p className="rounded-lg border border-dashed border-neutral-300 p-5 text-sm text-neutral-500 dark:border-neutral-700">
+          <p className="rounded-lg border border-dashed border-border p-5 text-sm text-muted-fg">
             Select someone to see their card.
           </p>
         )}

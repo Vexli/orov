@@ -15,7 +15,7 @@ export default async function AuditPage({
   return (
     <div>
       <div className="flex flex-wrap items-center justify-between gap-4">
-        <h1 className="text-xl font-semibold">Audit log</h1>
+        <h1 className="text-xl font-heading">Audit log</h1>
         <nav className="flex gap-3 text-sm" aria-label="Filter by entity">
           {ENTITIES.map((e) => {
             const active = (e === "all" && !filter) || e === filter;
@@ -23,7 +23,7 @@ export default async function AuditPage({
               <a
                 key={e}
                 href={e === "all" ? "/admin/audit" : `/admin/audit?entity=${e}`}
-                className={active ? "font-semibold underline" : "text-neutral-600 dark:text-neutral-400"}
+                className={active ? "font-semibold underline" : "text-muted-fg"}
               >
                 {e}
               </a>
@@ -34,7 +34,7 @@ export default async function AuditPage({
 
       <div className="mt-4 overflow-x-auto">
         <table className="w-full text-left text-sm">
-          <thead className="border-b border-neutral-200 text-xs uppercase text-neutral-500 dark:border-neutral-800">
+          <thead className="border-b border-border text-xs uppercase text-muted-fg">
             <tr>
               <th className="py-2 pr-3 font-medium">When</th>
               <th className="py-2 pr-3 font-medium">Who</th>
@@ -45,17 +45,17 @@ export default async function AuditPage({
           </thead>
           <tbody>
             {rows.map((row) => (
-              <tr key={String(row.id)} className="border-b border-neutral-100 align-top dark:border-neutral-900">
-                <td className="whitespace-nowrap py-2 pr-3 tabular-nums text-neutral-500">
+              <tr key={String(row.id)} className="border-b border-border align-top">
+                <td className="whitespace-nowrap py-2 pr-3 tabular-nums text-muted-fg">
                   {row.at.toISOString().replace("T", " ").slice(0, 16)}
                 </td>
                 <td className="py-2 pr-3">{row.actorEmail}</td>
                 <td className="py-2 pr-3">
-                  {row.entity} <span className="font-mono text-xs text-neutral-500">{row.entityId}</span>
+                  {row.entity} <span className="font-mono text-xs text-muted-fg">{row.entityId}</span>
                 </td>
                 <td className="py-2 pr-3">{row.action}</td>
                 <td className="py-2">
-                  <pre className="max-w-xl overflow-x-auto whitespace-pre-wrap text-xs text-neutral-600 dark:text-neutral-400">
+                  <pre className="max-w-xl overflow-x-auto whitespace-pre-wrap text-xs text-muted-fg">
                     {summarize(row.before, row.after)}
                   </pre>
                 </td>
@@ -63,7 +63,7 @@ export default async function AuditPage({
             ))}
             {rows.length === 0 ? (
               <tr>
-                <td colSpan={5} className="py-6 text-center text-neutral-500">
+                <td colSpan={5} className="py-6 text-center text-muted-fg">
                   No changes recorded yet.
                 </td>
               </tr>
