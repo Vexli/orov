@@ -35,8 +35,10 @@ yet. The parts that work today:
   with a count per floor. A desk on a person card links to the map. A List toggle shows the same
   desks and rooms as a table for keyboard and screen reader users
 - Org chart: the reporting tree (who reports to whom) and the team tree (teams, their sub-teams
-  and members), with expand and collapse, zoom, and the person card for whoever you click. A List
-  toggle shows the same tree as an outline for keyboard and screen reader users
+  and members), with expand and collapse, zoom, and the person card for whoever you click. The
+  chart centers on the selected person and opens their direct reports, shows their reporting line
+  up to the top, and highlights a team's members (optionally with its sub-teams). A List toggle
+  shows the same tree as an outline for keyboard and screen reader users
 - Admin pages to create, edit and deactivate people and teams, with checks that reject
   manager and parent-team cycles. Desks are assigned by clicking the floor drawing; choosing a
   taken desk swaps it, after the admin confirms
@@ -49,8 +51,7 @@ yet. The parts that work today:
   adds, moves and removes before anything is saved, and keeps every version for rollback. How to
   draw one is in [`docs/map-authoring.md`](docs/map-authoring.md)
 
-Not built yet: the rest of Phase 3 (team highlight on the org chart, view tabs that keep the
-selection, ⌘K search), Google room status and Calendar
+Not built yet: the rest of Phase 3 (view tabs that keep the selection, ⌘K search), Google room status and Calendar
 presence (Phase 4), Slack (Phase 5) and brand token import (Phase 5.5). The worker is a skeleton
 that only logs a heartbeat. See [`plan.md` §12](plan.md#12-delivery-plan) for the roadmap.
 

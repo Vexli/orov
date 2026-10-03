@@ -3,6 +3,7 @@ import type { DirectoryPerson, DirectoryTeam } from "../directory/model";
 import { escapeHtml } from "./html";
 import {
   initiallyVisible,
+  managementChain,
   memberNodeId,
   nodesToReveal,
   ORG_ROOT_ID,
@@ -213,6 +214,34 @@ describe("nodesToReveal", () => {
 
     const people2 = nodesToReveal(reportingTree(people), null, new Set(["p_max"]));
     expect([...people2]).toEqual(["p_max"]);
+  });
+});
+
+describe("managementChain", () => {
+  it("runs from the top down to the person", () => {
+    expect(managementChain("p_bob", people).map((l) => l.name)).toEqual([
+      "Jane Park",
+      "Max Ito",
+      "Bob Lindqvist",
+    ]);
+    expect(managementChain("p_jane", people).map((l) => l.id)).toEqual(["p_jane"]);
+  });
+
+  it("ends at a manager who isn't in the directory, marked as such", () => {
+    expect(managementChain("p_bob", [bob])).toEqual([
+      { id: "p_max", name: "Max Ito", inDirectory: false },
+      { id: "p_bob", name: "Bob Lindqvist", inDirectory: true },
+    ]);
+  });
+
+  it("stops at a cycle", () => {
+    const a = person({ id: "p_a", name: "A", manager: { id: "p_b", name: "B" } });
+    const b = person({ id: "p_b", name: "B", manager: { id: "p_a", name: "A" } });
+    expect(managementChain("p_a", [a, b]).map((l) => l.id)).toEqual(["p_b", "p_a"]);
+  });
+
+  it("is empty for someone not in the directory", () => {
+    expect(managementChain("p_nobody", people)).toEqual([]);
   });
 });
 
