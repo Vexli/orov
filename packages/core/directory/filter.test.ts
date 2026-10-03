@@ -4,6 +4,7 @@ import {
   displayName,
   EMPTY_FILTERS,
   filterDirectory,
+  initials,
   locationSummary,
   locationText,
   teamScope,
@@ -164,5 +165,16 @@ describe("labels", () => {
     expect(locationSummary(people[0]!)).toEqual({ region: "Ontario, Canada", badge: "SF-2-003" });
     expect(locationSummary(people[2]!)).toEqual({ region: "India", badge: "Remote" });
     expect(locationText(people[0]!)).toBe("Ontario, Canada SF-2-003");
+  });
+});
+
+describe("initials", () => {
+  it.each([
+    ["Bob Lindqvist", "BL"],
+    ["priya", "P"],
+    ["Ana María de la Cruz", "AM"],
+    ["  ", ""],
+  ])("%j → %j", (name, expected) => {
+    expect(initials(name)).toBe(expected);
   });
 });

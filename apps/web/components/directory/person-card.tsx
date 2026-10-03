@@ -1,5 +1,5 @@
 import type { DirectoryPerson } from "@officeorg/core/directory/model";
-import { displayName } from "@officeorg/core/directory/filter";
+import { displayName, initials } from "@officeorg/core/directory/filter";
 import { LocationLabel } from "./location-label";
 
 interface Props {
@@ -96,13 +96,4 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
       <dd className="mt-0.5">{children}</dd>
     </div>
   );
-}
-
-function initials(name: string): string {
-  return name
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0]!.toUpperCase())
-    .join("");
 }
