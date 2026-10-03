@@ -137,8 +137,15 @@ export async function seedDemoData(db: Database): Promise<void> {
       { personId: "p_sam", teamId: "t_recruiting", isPrimary: true },
     ]);
 
-    // Jane is the admin in the seed, so the admin pages work on first run.
-    await tx.insert(s.appUser).values({ email: "jane@example.com", role: "admin" });
+    // Everyone in the seed has signed in before. Jane is the admin, so the admin pages work on
+    // first run.
+    await tx.insert(s.appUser).values([
+      { email: "jane@example.com", role: "admin" },
+      { email: "max@example.com", role: "viewer" },
+      { email: "bob@example.com", role: "viewer" },
+      { email: "priya@example.com", role: "viewer" },
+      { email: "sam@example.com", role: "viewer" },
+    ]);
   });
 }
 
