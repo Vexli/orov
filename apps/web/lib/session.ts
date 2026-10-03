@@ -25,3 +25,12 @@ export async function requireAdmin(): Promise<CurrentUser> {
   if (user.role !== "admin") redirect("/forbidden");
   return user;
 }
+
+// For route handlers, which should answer 403 rather than redirect to a page.
+export async function getCurrentUser(): Promise<CurrentUser | null> {
+  const session = await auth();
+  const email = session?.user?.email;
+  if (!email) return null;
+  const role = await getAppRole(getDb(), email);
+  return role ? { email, role } : null;
+}

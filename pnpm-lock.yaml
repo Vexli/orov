@@ -77,6 +77,16 @@ importers:
         version: 4.23.15
 
   packages/core:
+    dependencies:
+      csv-parse:
+        specifier: ^7.0.3
+        version: 7.0.3
+      csv-stringify:
+        specifier: ^6.9.0
+        version: 6.9.0
+      zod:
+        specifier: ^4.6.5
+        version: 4.6.5
     devDependencies:
       vitest:
         specifier: ^5.0.3
@@ -84,6 +94,9 @@ importers:
 
   packages/db:
     dependencies:
+      '@officeorg/core':
+        specifier: workspace:*
+        version: link:../core
       '@paralleldrive/cuid2':
         specifier: ^3.0.4
         version: 3.3.0
@@ -1802,6 +1815,12 @@ packages:
 
   csstype@3.2.3:
     resolution: {integrity: sha512-z1HGKcYy2xA8AGQfwrn0PAy+PB7X/GSj3UVJW9qKyn43xWa+gl5nXmU4qqLMRzWVLFC8KusUX8T/0kCiOYpAIQ==}
+
+  csv-parse@7.0.3:
+    resolution: {integrity: sha512-YFd3QM/yo17vH91L1IOZuvl09zM0zEEtdfTcOCKWcMdM++MNaQSyp09slXyFCLaPXvHstQFx/xC8myiFHSMUvw==}
+
+  csv-stringify@6.9.0:
+    resolution: {integrity: sha512-6b3e29CILFfSQ2nDRuZMRROzQOpPuJ+s8zPB5H7eK5ncXBbFOyVuRLU5Sx/zAUmVri3Ly49GyC8NEme4SVSAbA==}
 
   damerau-levenshtein@1.0.8:
     resolution: {integrity: sha512-sdQSFB7+llfUcQHUQO3+B8ERRj0Oa4w9POWMI/puGtuf7gFywGmkaLCElnudfTiKZV+NvHqL0ifzdrI8Ro7ESA==}
@@ -4999,6 +5018,10 @@ snapshots:
       which: 2.0.2
 
   csstype@3.2.3: {}
+
+  csv-parse@7.0.3: {}
+
+  csv-stringify@6.9.0: {}
 
   damerau-levenshtein@1.0.8: {}
 
