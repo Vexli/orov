@@ -1,7 +1,8 @@
 import { getDb } from "@officeorg/db/client";
 import { listAudit } from "@officeorg/db/queries/audit";
 
-const ENTITIES = ["all", "person", "team"] as const;
+const ENTITIES = ["all", "person", "team", "location", "floor"] as const;
+type Entity = Exclude<(typeof ENTITIES)[number], "all">;
 
 export default async function AuditPage({
   searchParams,
@@ -9,7 +10,7 @@ export default async function AuditPage({
   searchParams: Promise<{ entity?: string }>;
 }) {
   const { entity } = await searchParams;
-  const filter = entity === "person" || entity === "team" ? entity : undefined;
+  const filter = ENTITIES.includes(entity as Entity) && entity !== "all" ? (entity as Entity) : undefined;
   const rows = await listAudit(getDb(), { entity: filter, limit: 300 });
 
   return (

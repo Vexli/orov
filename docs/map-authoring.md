@@ -41,7 +41,7 @@ Rules:
   kept as "other". Add `-<n>` when a floor has more than one (`poi-restroom-2`).
 - **Every id is unique** within the file. Duplicates are rejected.
 - **Names come from the slug** the first time a room or area appears (`huddle-a` → "Huddle A").
-  An admin can rename them later, and re-uploading the drawing keeps the new name.
+  Uploading the drawing again never renames a room or area that already exists.
 
 The prefix can go on any shape (`rect`, `path`, `polygon`, `circle`) or on a group `<g>`. For a
 desk drawn as several shapes (a desk and a chair), group them and put the id on the group.
@@ -101,7 +101,7 @@ Layer Names**.
 
 ## Uploading and changing a floor
 
-An admin uploads the file on the floor's page under **Admin → Floors**. Before anything is saved
+An admin uploads the file on the floor's page under **Admin → Offices & floors**. Before anything is saved
 OfficeOrg shows what would change:
 
 | Result                     | What happens when the admin applies it                                        |

@@ -21,8 +21,8 @@ the phase-by-phase delivery plan with progress notes.
 
 ## Status
 
-**Phase 1 (Foundation) is complete.** It hasn't been released to `main` yet. The parts that work
-today:
+**Phase 1 (Foundation) is complete, and Phase 2 (Maps) is in progress.** Neither has been
+released to `main` yet. The parts that work today:
 
 - Sign-in through any SSO provider Auth.js supports (Google, Microsoft Entra ID, Okta, AWS
   Cognito or any OpenID Connect issuer), limited to one company email domain, with `viewer` and
@@ -35,8 +35,11 @@ today:
 - ISO 3166 region codes (`US`, `US-CA`, `CA-ON`), and a per-user setting for how regions are
   displayed
 - A semantic theme layer: components are styled only through theme slots, never raw colors
+- Admin pages for offices and floors. Uploading a floor drawing (SVG) sanitizes it, shows what it
+  adds, moves and removes before anything is saved, and keeps every version for rollback. How to
+  draw one is in [`docs/map-authoring.md`](docs/map-authoring.md)
 
-Not built yet: the floor map (Phase 2), the org chart (Phase 3), Google room status and Calendar
+Not built yet: the floor map view (the rest of Phase 2), the org chart (Phase 3), Google room status and Calendar
 presence (Phase 4), Slack (Phase 5) and brand token import (Phase 5.5). The worker is a skeleton
 that only logs a heartbeat. See [`plan.md` §12](plan.md#12-delivery-plan) for the roadmap.
 
@@ -130,7 +133,7 @@ apps/
   web/          Next.js (App Router) app
     app/
       (app)/      signed-in views: directory, settings
-      admin/      people, teams, CSV import, audit log
+      admin/      people, teams, offices and floors, CSV import, audit log
       api/        Auth.js routes, CSV export, health check
       login/      sign-in page
     components/   directory and admin UI
@@ -144,6 +147,8 @@ packages/
     directory/    directory model and filtering
     import/       dry-run import planning
     regions/      ISO 3166 validation and display formatting
+    spaces/       office and floor form validation
+    svg/          floor drawing sanitize, parse and diff
     teams/        team tree helpers
     theme/        semantic theme slots and their defaults
   db/           Drizzle schema, migrations, queries, seed, and database tests
@@ -192,6 +197,8 @@ OfficeOrg is built on open-source work. Thank you to the people who maintain it.
 - [CSV for Node.js](https://csv.js.org) (`csv-parse`, `csv-stringify`): CSV import and export
 - [`iso-3166`](https://github.com/wooorm/iso-3166) by Titus Wormer: ISO 3166-1 and 3166-2 data
 - [`@paralleldrive/cuid2`](https://github.com/paralleldrive/cuid2): URL-safe ids
+- [DOMPurify](https://github.com/cure53/DOMPurify), [SVGO](https://svgo.dev) and
+  [jsdom](https://github.com/jsdom/jsdom): sanitizing and reading floor drawings
 - [Vitest](https://vitest.dev), [Playwright](https://playwright.dev) and
   [Testcontainers](https://testcontainers.com): unit, end-to-end and database tests
 - [pnpm](https://pnpm.io), [TypeScript](https://www.typescriptlang.org),
@@ -199,9 +206,7 @@ OfficeOrg is built on open-source work. Thank you to the people who maintain it.
 
 **Planned for later phases**
 
-- [react-zoom-pan-pinch](https://github.com/BetterTyped/react-zoom-pan-pinch),
-  [DOMPurify](https://github.com/cure53/DOMPurify) and [SVGO](https://svgo.dev): the floor map
-  and SVG sanitizing
+- [react-zoom-pan-pinch](https://github.com/BetterTyped/react-zoom-pan-pinch): the floor map
 - [d3-org-chart](https://github.com/bumbeishvili/org-chart) by David Bumbeishvili: the org chart
 - [pg-boss](https://github.com/timgit/pg-boss): background jobs in Postgres
 - [Slack Bolt](https://tools.slack.dev/bolt-js): Slack Socket Mode
