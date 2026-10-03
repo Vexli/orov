@@ -10,19 +10,24 @@
     "dev": "pnpm --filter @officeorg/web dev",
     "build": "pnpm -r --if-present build",
     "lint": "eslint .",
-    "typecheck": "pnpm -r typecheck",
+    "typecheck": "pnpm -r typecheck && tsc -p e2e/tsconfig.json",
     "test": "pnpm -r --if-present test",
     "db:generate": "pnpm --filter @officeorg/db db:generate",
     "db:migrate": "pnpm --filter @officeorg/db db:migrate",
     "db:seed": "pnpm --filter @officeorg/db db:seed",
     "db:up": "docker compose up -d db",
-    "db:down": "docker compose down"
+    "db:down": "docker compose down",
+    "test:e2e": "playwright test -c e2e/playwright.config.ts"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.5",
+    "@officeorg/core": "workspace:*",
+    "@officeorg/db": "workspace:*",
+    "@playwright/test": "^1.63.0",
     "@types/node": "^24.19.1",
     "eslint": "^9.39.5",
     "eslint-config-next": "^16.3.8",
+    "next-auth": "5.0.0-beta.32",
     "prettier": "^3.6.2",
     "typescript": "~5.9.3",
     "typescript-eslint": "^8.71.0"
