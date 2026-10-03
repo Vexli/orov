@@ -195,7 +195,9 @@ overrides it. Each failing color comes with the nearest shade of the same hue th
 | Color-vision deficiencies       | `room.free`, `room.busy` and `room.soon`, each pair, as seen with protanopia, deuteranopia and tritanopia                                                                          | A color difference (ΔE in OKLab) of 0.06 |
 
 The last check catches the most common problem: a red and a green of the same lightness look
-the same to many people. Making one of them clearly lighter or darker fixes it.
+the same to many people. Making one of them clearly lighter or darker fixes it. The map also
+marks each room's state with a shape (a tick, a bar, a clock, a dashed "?"), so the state
+never depends on color alone.
 
 ## Using the Branding page
 

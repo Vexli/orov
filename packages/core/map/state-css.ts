@@ -5,7 +5,11 @@
 // Colors come only from theme slot variables, so a brand theme restyles the map without touching
 // the drawing (plan.md §9.1).
 
+import type { RoomDisplayState } from "./room-status";
+
 export interface MapStyleState {
+  // Meeting rooms and phone booths by status (U5). Drawn first, so a selection wins.
+  rooms?: Partial<Record<RoomDisplayState, string[]>>;
   // Desks someone else holds, in the admin seat picker.
   occupied?: string[];
   // Seats of the highlighted team.
@@ -29,7 +33,17 @@ function rule(ids: string[], declarations: string): string {
 }
 
 export function mapStateCss(state: MapStyleState): string {
+  // A room's state is a tint of its status color with a solid outline, rather than a solid fill,
+  // so the room's name drawn on it stays readable. The outline and the cue are what the theme's
+  // 3:1 contrast check guarantees.
+  const rooms = (["free", "busy", "soon", "stale"] as const).map((s) =>
+    rule(
+      state.rooms?.[s] ?? [],
+      `fill: color-mix(in srgb, var(--room-${s}) 25%, var(--card)) !important; stroke: var(--room-${s}) !important; stroke-width: 3px !important;`,
+    ),
+  );
   return [
+    ...rooms,
     rule(state.occupied ?? [], "fill: var(--border) !important;"),
     rule(state.highlighted, "fill: var(--map-highlight) !important;"),
     rule(

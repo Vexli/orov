@@ -10,13 +10,14 @@ import type {
   MapSeat,
   MapSpace,
 } from "@officeorg/core";
+import { ROOM_STATE_LABEL, type RoomDisplayState } from "@officeorg/core/map/room-status";
 import { mapStateCss } from "@officeorg/core/map/state-css";
 import { teamSeats, type TeamSeats } from "@officeorg/core/map/team-seats";
 import { displayName, initials } from "@officeorg/core/directory/filter";
 import { PersonCard } from "@/components/directory/person-card";
 import { mapParsers } from "@/lib/url-state";
 import { FloorList, KIND_LABEL } from "./floor-list";
-import { FloorMap, type Avatar } from "./floor-map";
+import { FloorMap, type Avatar, type RoomCue } from "./floor-map";
 
 interface Props {
   map: MapData;
@@ -113,15 +114,40 @@ export function MapView({ map, people, teams }: Props) {
     floor && params.space ? (floor.spaces.find((s) => s.id === params.space) ?? null) : null;
   const personSeatHere = seatsHere.find((s) => s.personId === params.person) ?? null;
 
+  const roomsByState = useMemo(() => {
+    const rooms: Partial<Record<RoomDisplayState, string[]>> = {};
+    for (const sp of floor?.spaces ?? [])
+      if (sp.status) (rooms[sp.status] ??= []).push(sp.svgElementId);
+    return rooms;
+  }, [floor]);
+
+  const roomCues = useMemo<RoomCue[]>(
+    () =>
+      (floor?.spaces ?? []).flatMap((sp) =>
+        sp.status
+          ? [
+              {
+                svgElementId: sp.svgElementId,
+                name: sp.name,
+                state: sp.status,
+                dimmed: focusArea !== null && sp.areaId !== focusArea.id,
+              },
+            ]
+          : [],
+      ),
+    [floor, focusArea],
+  );
+
   const stateCss = useMemo(
     () =>
       mapStateCss({
+        rooms: roomsByState,
         highlighted: seatsHere.filter((s) => teamPeople.has(s.personId)).map((s) => s.svgElementId),
         selected: [personSeatHere?.svgElementId, selectedSpace?.svgElementId].filter(
           (id): id is string => !!id,
         ),
       }),
-    [personSeatHere, selectedSpace, seatsHere, teamPeople],
+    [personSeatHere, selectedSpace, seatsHere, teamPeople, roomsByState],
   );
 
   const avatars = useMemo<Avatar[]>(
@@ -226,6 +252,7 @@ export function MapView({ map, people, teams }: Props) {
               svg={floor.svg}
               stateCss={stateCss}
               avatars={avatars}
+              roomCues={roomCues}
               label={`Floor plan of ${floor.locationName}, ${floor.name}`}
               onSelect={select}
               focusAreaId={focusArea?.svgElementId ?? null}
@@ -303,6 +330,12 @@ function SpaceCard({
           <dt className="text-xs uppercase tracking-wide text-muted-fg">Area</dt>
           <dd className="mt-0.5">{areaName ?? "—"}</dd>
         </div>
+        {space.status ? (
+          <div>
+            <dt className="text-xs uppercase tracking-wide text-muted-fg">Status</dt>
+            <dd className="mt-0.5">{ROOM_STATE_LABEL[space.status]}</dd>
+          </div>
+        ) : null}
         {space.capacity !== null ? (
           <div>
             <dt className="text-xs uppercase tracking-wide text-muted-fg">Seats</dt>
