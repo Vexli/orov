@@ -87,3 +87,65 @@ test.describe("floor map", () => {
     await expect(page.getByRole("link", { name: "Map" })).toHaveAttribute("aria-current", "page");
   });
 });
+
+const scaleOf = (page: Page) =>
+  page
+    .locator(".react-transform-component")
+    .evaluate((el) => new DOMMatrixReadOnly(getComputedStyle(el).transform).a);
+
+test.describe("floor and area navigation", () => {
+  test.beforeEach(async ({ context }) => {
+    await resetE2eDatabase();
+    await signInAs(context, "bob@example.com");
+  });
+
+  test("U6: the South Wing opens zoomed in, with the rest of the floor dimmed", async ({ page }) => {
+    await page.goto("/map?loc=sf&floor=2&area=south-wing");
+    await expect(page.getByRole("heading", { name: "San Francisco, Floor 2, South Wing" })).toBeVisible();
+    await expect(page.getByRole("group", { name: "Areas" }).getByRole("button", { name: "South Wing" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+
+    await expect.poll(() => scaleOf(page)).toBeGreaterThan(1.2);
+    const opacity = (id: string) =>
+      page.locator(`[data-floor-map] #${id}`).evaluate((el) => getComputedStyle(el).opacity);
+    await expect.poll(() => opacity("area-north-wing")).toBe("0.25");
+    await expect.poll(() => opacity("room-boardroom")).toBe("0.25");
+    expect(await opacity("area-south-wing")).toBe("1");
+    // Avatars follow: Max sits in the North Wing, Jane in the South Wing.
+    await expect(page.locator('[data-avatar="desk-2-010"]')).toHaveCSS("opacity", "0.25");
+    await expect(page.locator('[data-avatar="desk-2-003"]')).toHaveCSS("opacity", "1");
+
+    await page.getByRole("button", { name: "Whole floor" }).click();
+    await expect(page).not.toHaveURL(/area=/);
+    await expect.poll(() => opacity("area-north-wing")).toBe("1");
+    await expect.poll(() => scaleOf(page)).toBe(1);
+  });
+
+  test("the floor buttons load another floor's drawing and seats", async ({ page }) => {
+    await page.goto("/map");
+    await page.getByRole("group", { name: "Floors" }).getByRole("button", { name: "Floor 3" }).click();
+    await expect(page).toHaveURL(/floor=3/);
+    await expect(page.getByRole("heading", { name: "San Francisco, Floor 3" })).toBeVisible();
+    await expect(page.locator("[data-floor-map] #desk-3-001")).toBeVisible();
+    await expect(page.locator('[data-avatar="desk-3-001"]')).toContainText("SO");
+    await expect(page.locator("[data-avatar]")).toHaveCount(1);
+  });
+
+  test("the office overview counts each floor and links to it", async ({ page }) => {
+    await page.goto("/map");
+    const overview = page.getByRole("complementary", { name: "San Francisco overview" });
+    await expect(overview.getByRole("row", { name: /Floor 2/ })).toContainText(/3\s*13\s*3/);
+    await expect(overview.getByRole("row", { name: /Floor 3/ })).toContainText(/1\s*8\s*2/);
+    await overview.getByRole("button", { name: "Floor 3" }).click();
+    await expect(page.getByRole("heading", { name: "San Francisco, Floor 3" })).toBeVisible();
+  });
+
+  test("switching floors drops an area that belonged to the old floor", async ({ page }) => {
+    await page.goto("/map?loc=sf&floor=2&area=south-wing");
+    await page.getByRole("group", { name: "Floors" }).getByRole("button", { name: "Floor 3" }).click();
+    await expect(page).toHaveURL(/floor=3/);
+    await expect(page).not.toHaveURL(/area=/);
+  });
+});

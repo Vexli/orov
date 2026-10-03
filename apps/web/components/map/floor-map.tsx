@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useLayoutEffect, useRef, useState } from "react";
+import { memo, useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
   TransformComponent,
   TransformWrapper,
@@ -20,6 +20,8 @@ export interface Avatar {
   initials: string;
   name: string;
   emphasis: "selected" | "highlighted" | null;
+  // Outside the area being viewed.
+  dimmed: boolean;
 }
 
 interface Props {
@@ -31,8 +33,8 @@ interface Props {
   avatars: Avatar[];
   label: string;
   onSelect: (svgElementId: string) => void;
-  // Runs once the drawing is in the page and measured, and again for each new asset.
-  onReady?: (zoom: ReactZoomPanPinchContentRef | null, root: SVGSVGElement) => void;
+  // The svg id of the area to zoom to (U6). Everything outside it is dimmed.
+  focusAreaId: string | null;
 }
 
 // The drawing is injected once per asset and never re-rendered: React doesn't own its nodes, so
@@ -78,10 +80,11 @@ function measure(root: SVGSVGElement): Map<string, Box> {
 }
 
 const CLICKABLE = '[id^="desk-"], [id^="room-"]';
+const NOT_DRAWN = new Set(["defs", "style", "title", "desc", "metadata"]);
 // A pointer that moves further than this between down and up was a pan, not a click.
 const CLICK_SLOP = 5;
 
-export function FloorMap({ assetId, svg, stateCss, avatars, label, onSelect, onReady }: Props) {
+export function FloorMap({ assetId, svg, stateCss, avatars, label, onSelect, focusAreaId }: Props) {
   const drawingRef = useRef<HTMLDivElement>(null);
   const zoomRef = useRef<ReactZoomPanPinchContentRef>(null);
   const pointerDown = useRef<{ x: number; y: number } | null>(null);
@@ -103,10 +106,38 @@ export function FloorMap({ assetId, svg, stateCss, avatars, label, onSelect, onR
     }
     const vb = root.viewBox.baseVal;
     setMeasured({ assetId, viewBox: `${vb.x} ${vb.y} ${vb.width} ${vb.height}`, boxes });
-    onReady?.(zoomRef.current, root);
-    // onReady is a callback prop; it should run for a new drawing, not for a new function identity.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [assetId]);
+
+  const current = measured?.assetId === assetId ? measured : null;
+
+  // Area view: dim every element that isn't the area or one of its ancestors, then zoom to it.
+  // Marking siblings along the path, rather than everything outside the area, keeps the area's
+  // own labels and outline at full strength.
+  useEffect(() => {
+    const root = drawingRef.current?.querySelector("svg");
+    if (!root || !current) return;
+    for (const el of root.querySelectorAll("[data-dim]")) el.removeAttribute("data-dim");
+
+    const zoom = zoomRef.current;
+    const area = focusAreaId ? root.querySelector(`#${CSS.escape(focusAreaId)}`) : null;
+    if (!area) {
+      zoom?.resetTransform(0);
+      return;
+    }
+    for (let node: Element = area; node !== root && node.parentElement; node = node.parentElement) {
+      for (const sibling of node.parentElement.children) {
+        if (sibling !== node && !NOT_DRAWN.has(sibling.tagName.toLowerCase())) {
+          sibling.setAttribute("data-dim", "");
+        }
+      }
+    }
+    // The library measures with getBoundingClientRect, which SVG elements have too. A frame's
+    // delay lets it see the drawing's laid-out size on first load.
+    const frame = requestAnimationFrame(() => {
+      void zoom?.zoomToElement(area as unknown as HTMLElement, { maxScale: 4, animationTime: 300 });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [focusAreaId, current]);
 
   function handleClick(e: React.MouseEvent) {
     const start = pointerDown.current;
@@ -114,8 +145,6 @@ export function FloorMap({ assetId, svg, stateCss, avatars, label, onSelect, onR
     const target = (e.target as Element).closest(CLICKABLE);
     if (target && drawingRef.current?.contains(target)) onSelect(target.id);
   }
-
-  const current = measured?.assetId === assetId ? measured : null;
 
   return (
     <div className="relative overflow-hidden rounded-lg border border-border bg-map-bg">
@@ -154,6 +183,7 @@ export function FloorMap({ assetId, svg, stateCss, avatars, label, onSelect, onR
                     <g
                       key={a.svgElementId}
                       data-avatar={a.svgElementId}
+                      style={a.dimmed ? { opacity: "var(--map-dim-opacity)" } : undefined}
                       transform={`translate(${box.x + box.width / 2} ${box.y + box.height / 2})`}
                     >
                       <title>{a.name}</title>
