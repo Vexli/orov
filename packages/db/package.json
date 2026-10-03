@@ -4,9 +4,7 @@
   "private": true,
   "type": "module",
   "exports": {
-    "./client": "./client.ts",
-    "./schema": "./schema.ts",
-    "./queries/*": "./queries/*.ts"
+    "./*": "./*.ts"
   },
   "scripts": {
     "db:generate": "drizzle-kit generate",
