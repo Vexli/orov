@@ -10,6 +10,7 @@ import {
   type TokenFormat,
 } from "./parse";
 import { resolveTokens, type ResolvedToken } from "./resolve";
+import { ASSET_ID } from "./validate";
 import type { ThemeMode, ThemeValues } from "./values";
 
 // The whole import pipeline in one call (plan.md §9.1): parse the files, resolve aliases and
@@ -31,6 +32,11 @@ export const themeDraftSchema = z.object({
     .max(MAX_TOKEN_FILES),
   mapping: mappingSchema,
   darkMode: z.boolean(),
+});
+
+// A draft plus the uploaded fonts to declare, as the Branding page sends it.
+export const themeInputSchema = themeDraftSchema.extend({
+  fonts: z.array(z.string().regex(ASSET_ID)).max(20),
 });
 
 export interface ThemeBuild {

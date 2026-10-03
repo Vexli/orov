@@ -69,6 +69,16 @@ describe("applyMapping", () => {
     expect(values.dark).toBeNull();
   });
 
+  it("adds a generic fallback to a font list that has none", () => {
+    const { values } = applyMapping(
+      [],
+      { "font.sans": { light: "Inter" }, "font.mono": { light: "JetBrains Mono, monospace" } },
+      { darkMode: false },
+    );
+    expect(values.light["font.sans"]).toBe('"Inter", sans-serif');
+    expect(values.light["font.mono"]).toBe('"JetBrains Mono", monospace');
+  });
+
   it("accepts typed values, with an optional dark value", () => {
     const { values, issues } = applyMapping(
       [],

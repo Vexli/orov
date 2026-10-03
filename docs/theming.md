@@ -8,9 +8,6 @@ OfficeOrg never uses your token names directly. Every part of the app is styled 
 list of **slots** (`bg`, `primary`, `room.busy`, …). Importing a theme means mapping your tokens
 onto those slots. Any slot you don't map keeps its default, so a partial theme still works.
 
-> **Status:** the token format, mapping rules and checks below are in place. The Branding admin
-> page that imports a file, previews it and applies it is still being built (plan.md, Phase 5.5).
-
 The default theme, written as a token file, is
 [`theme/default.tokens.json`](../theme/default.tokens.json). It's generated from the slot list,
 so it's always a complete, valid example of the format.
@@ -199,6 +196,50 @@ overrides it. Each failing color comes with the nearest shade of the same hue th
 
 The last check catches the most common problem: a red and a green of the same lightness look
 the same to many people. Making one of them clearly lighter or darker fixes it.
+
+## Using the Branding page
+
+Admins find it under **Admin → Branding**. Nothing is saved until **Apply theme**.
+
+1. **Add the token files.** Each file's sets are listed with the mode they apply in. Adding a
+   file with the same name as one already there replaces it, so you can re-export from Figma and
+   add the new file. If the first files have dark values, the dark-mode switch is turned on.
+2. **Check the slots.** Each slot shows its source (a token, a custom value, or the default) and
+   the resulting value in each mode. Only tokens of a matching type are offered. A problem with a
+   slot is shown on its row.
+3. **Upload logos, a favicon and fonts** if the brand has them (see below).
+4. **Read the contrast report.** Each failure offers the nearest passing shade; **Use** sets the
+   slot to it as a custom value.
+5. **Look at the preview.** The directory, map and org chart load below the editor with the
+   draft applied. The views' own header keeps the current name and logo until you apply.
+6. **Apply.** Errors always block. Contrast failures block until you tick the box that accepts
+   them. Every apply is a new version.
+
+Under **Versions** you can roll back to any earlier version, return to the default theme, or
+export the current theme as one DTCG file. An exported file names every token after its slot,
+so importing it again maps each one back exactly. Logos, the favicon and fonts are uploads and
+aren't in the export.
+
+Every apply, rollback and upload is recorded in the audit log.
+
+## Logos, favicon and fonts
+
+| Upload                     | Format                               | Limit |
+| -------------------------- | ------------------------------------ | ----- |
+| Logo for light backgrounds | PNG or SVG                           | 1 MB  |
+| Logo for dark backgrounds  | PNG or SVG                           | 1 MB  |
+| Favicon                    | PNG or SVG                           | 1 MB  |
+| Font                       | WOFF2, one weight and style per file | 2 MB  |
+
+The type is read from the file's content, not its name. SVGs are cleaned the same way as floor
+drawings (scripts, external links and `<style>` blocks are removed), and need a `viewBox`. The
+dark logo is used only when the theme follows dark mode; with no dark logo, the light one is
+used everywhere. Without any logo, the header shows the app name.
+
+To use a brand font, upload each weight you need with its family name, tick it, and name the
+family in `font.sans` or `font.mono`, such as `Acme Sans, sans-serif`. If a font list has no
+generic family (`sans-serif`, `monospace`, `system-ui`, …), OfficeOrg adds `sans-serif` to
+`font.sans` and `monospace` to `font.mono`, so text never falls back to a serif.
 
 ## The default theme for a deployment
 

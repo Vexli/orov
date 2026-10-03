@@ -138,6 +138,16 @@ export interface ApplyOptions {
 // The final, validated value of every slot. A slot whose mapped value fails the grammar is an
 // error; a mapped token that no longer exists in the files falls back to the default with a
 // warning, so re-importing an export that renamed a token doesn't block the admin.
+// Token files often name only the brand family ("Inter"). Without a generic family after it, a
+// viewer who doesn't have the font gets the browser's default serif.
+const FALLBACK: Record<string, string> = { "font.sans": "sans-serif", "font.mono": "monospace" };
+const GENERIC = /(^|, )(serif|sans-serif|monospace|system-ui|ui-[a-z]+|cursive|fantasy|math|emoji|fangsong)(,|$)/;
+
+function withFallback(slot: string, value: string): string {
+  const fallback = FALLBACK[slot];
+  return fallback && !GENERIC.test(value) ? `${value}, ${fallback}` : value;
+}
+
 export function applyMapping(
   tokens: ResolvedToken[],
   mapping: SlotMapping,
@@ -196,8 +206,8 @@ export function applyMapping(
           message: `${slot.name} (${mode}) from ${source}: ${result.error}`,
         });
     }
-    if (l.ok) light[slot.name] = l.value;
-    if (d.ok) dark[slot.name] = d.value;
+    if (l.ok) light[slot.name] = withFallback(slot.name, l.value);
+    if (d.ok) dark[slot.name] = withFallback(slot.name, d.value);
   }
 
   return { values: { light, dark: options.darkMode ? dark : null }, issues };
