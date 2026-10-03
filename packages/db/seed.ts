@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { readFileSync } from "node:fs";
 import { eq } from "drizzle-orm";
 import { createDb, type Database } from "./client";
 import { resetDatabase } from "./reset";
@@ -9,17 +10,12 @@ import * as s from "./schema";
 // (CA-ON) with a desk in SF, a South Wing area, and rooms in several states.
 //
 // Ids are fixed so URLs in tests and docs stay readable (for example ?person=p_bob).
+//
+// The floor drawings in seed-floors/ follow docs/map-authoring.md, and the space and area rows
+// below match the ids in them. Sam sits on Floor 3, so a team spans two floors (U2).
 
-const SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 800">
-  <g id="area-south-wing"><rect id="desk-2-003" x="40" y="40" width="40" height="30"/></g>
-  <rect id="desk-2-010" x="120" y="40" width="40" height="30"/>
-  <rect id="desk-2-014" x="200" y="40" width="40" height="30"/>
-  <rect id="desk-2-016" x="280" y="40" width="40" height="30"/>
-  <rect id="room-boardroom" x="40" y="200" width="200" height="120"/>
-  <rect id="room-huddle-a" x="280" y="200" width="120" height="80"/>
-  <rect id="room-phone-1" x="440" y="200" width="60" height="60"/>
-  <rect id="poi-kitchen" x="560" y="200" width="100" height="100"/>
-</svg>`;
+const floorSvg = (name: string) =>
+  readFileSync(new URL(`./seed-floors/${name}.svg`, import.meta.url), "utf8");
 
 export async function seedDemoData(db: Database): Promise<void> {
   await db.transaction(async (tx) => {
@@ -33,41 +29,47 @@ export async function seedDemoData(db: Database): Promise<void> {
     });
 
     // svgAssetId is set after the asset exists, because the two tables reference each other.
-    await tx.insert(s.floor).values({
-      id: "fl_sf_2",
-      locationId: "loc_sf",
-      slug: "2",
-      name: "Floor 2",
-      level: 2,
-      sortOrder: 2,
-    });
-    await tx.insert(s.svgAsset).values({
-      id: "svg_sf_2_v1",
-      floorId: "fl_sf_2",
-      version: 1,
-      sanitizedSvg: SVG,
-      sha256: createHash("sha256").update(SVG).digest("hex"),
-      uploadedBy: "seed",
-    });
-    await tx.update(s.floor).set({ svgAssetId: "svg_sf_2_v1" }).where(eq(s.floor.id, "fl_sf_2"));
+    await tx.insert(s.floor).values([
+      { id: "fl_sf_2", locationId: "loc_sf", slug: "2", name: "Floor 2", level: 2, sortOrder: 2 },
+      { id: "fl_sf_3", locationId: "loc_sf", slug: "3", name: "Floor 3", level: 3, sortOrder: 3 },
+    ]);
+    for (const level of [2, 3]) {
+      const svg = floorSvg(`sf-${level}`);
+      await tx.insert(s.svgAsset).values({
+        id: `svg_sf_${level}_v1`,
+        floorId: `fl_sf_${level}`,
+        version: 1,
+        sanitizedSvg: svg,
+        sha256: createHash("sha256").update(svg).digest("hex"),
+        uploadedBy: "seed",
+      });
+      await tx
+        .update(s.floor)
+        .set({ svgAssetId: `svg_sf_${level}_v1` })
+        .where(eq(s.floor.id, `fl_sf_${level}`));
+    }
 
-    await tx.insert(s.area).values({
-      id: "area_south_wing",
-      floorId: "fl_sf_2",
-      slug: "south-wing",
-      name: "South Wing",
-      svgElementId: "area-south-wing",
-    });
+    await tx.insert(s.area).values([
+      area("area_north_wing", "fl_sf_2", "north-wing", "North Wing"),
+      area("area_south_wing", "fl_sf_2", "south-wing", "South Wing"),
+      area("area_west_wing", "fl_sf_3", "west-wing", "West Wing"),
+    ]);
 
     await tx.insert(s.space).values([
-      desk("sp_sf_2_003", "SF-2-003", "desk-2-003", "area_south_wing"),
-      desk("sp_sf_2_010", "SF-2-010", "desk-2-010", null),
-      desk("sp_sf_2_014", "SF-2-014", "desk-2-014", null),
-      desk("sp_sf_2_016", "SF-2-016", "desk-2-016", null),
-      room("sp_boardroom", "Boardroom", "meeting_room", "room-boardroom", 12),
-      room("sp_huddle_a", "Huddle A", "meeting_room", "room-huddle-a", 4),
-      room("sp_phone_1", "Phone Booth 1", "phone_booth", "room-phone-1", 1),
-      room("sp_kitchen", "Kitchen", "kitchen", "poi-kitchen", null),
+      ...[10, 11, 12, 13, 14, 15, 16].map((n) => desk(2, n, "area_north_wing")),
+      ...[1, 2, 3, 4, 5, 6].map((n) => desk(2, n, "area_south_wing")),
+      room("sp_boardroom", "fl_sf_2", null, "Boardroom", "meeting_room", "room-boardroom", 12),
+      room("sp_huddle_a", "fl_sf_2", "area_south_wing", "Huddle A", "meeting_room", "room-huddle-a", 4),
+      room("sp_phone_1", "fl_sf_2", null, "Phone Booth 1", "phone_booth", "room-phone-1", 1),
+      room("sp_kitchen", "fl_sf_2", null, "Kitchen", "kitchen", "poi-kitchen", null),
+      room("sp_elevator_2", "fl_sf_2", null, "Elevator", "elevator", "poi-elevator", null),
+      room("sp_restroom_2", "fl_sf_2", null, "Restroom", "restroom", "poi-restroom", null),
+
+      ...[1, 2, 3, 4, 5, 6, 7, 8].map((n) => desk(3, n, "area_west_wing")),
+      room("sp_phone_2", "fl_sf_3", "area_west_wing", "Phone Booth 2", "phone_booth", "room-phone-2", 1),
+      room("sp_workshop", "fl_sf_3", null, "Workshop", "meeting_room", "room-workshop", 20),
+      room("sp_kitchen_3", "fl_sf_3", null, "Kitchen", "kitchen", "poi-kitchen", null),
+      room("sp_elevator_3", "fl_sf_3", null, "Elevator", "elevator", "poi-elevator", null),
     ]);
 
     await tx.insert(s.person).values([
@@ -118,6 +120,7 @@ export async function seedDemoData(db: Database): Promise<void> {
         title: "Recruiter",
         homeRegion: "US",
         managerId: "p_max",
+        assignedDeskId: "sp_sf_3_001",
         startDate: "2025-02-03",
       },
     ]);
@@ -149,25 +152,33 @@ export async function seedDemoData(db: Database): Promise<void> {
   });
 }
 
-function desk(id: string, name: string, svgElementId: string, areaId: string | null) {
+// Desk "desk-2-014" on SF floor 2 is space sp_sf_2_014 with the code SF-2-014.
+function desk(level: number, n: number, areaId: string) {
+  const num = String(n).padStart(3, "0");
   return {
-    id,
-    floorId: "fl_sf_2",
+    id: `sp_sf_${level}_${num}`,
+    floorId: `fl_sf_${level}`,
     areaId,
     kind: "desk" as const,
-    svgElementId,
-    name,
+    svgElementId: `desk-${level}-${num}`,
+    name: `SF-${level}-${num}`,
   };
+}
+
+function area(id: string, floorId: string, slug: string, name: string) {
+  return { id, floorId, slug, name, svgElementId: `area-${slug}` };
 }
 
 function room(
   id: string,
+  floorId: string,
+  areaId: string | null,
   name: string,
-  kind: "meeting_room" | "phone_booth" | "kitchen",
+  kind: "meeting_room" | "phone_booth" | "kitchen" | "elevator" | "restroom",
   svgElementId: string,
   capacity: number | null,
 ) {
-  return { id, floorId: "fl_sf_2", kind, svgElementId, name, capacity };
+  return { id, floorId, areaId, kind, svgElementId, name, capacity };
 }
 
 // CLI: `pnpm db:seed` wipes the database and loads the demo data. It refuses to run in production.

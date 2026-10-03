@@ -504,7 +504,10 @@ The five spikes from §2 and `docs/spikes.md`.
 
 ### Phase 2: Maps (1.5–2 weeks) → U1, U2, U6, U11
 
-- [ ] `docs/map-authoring.md`, plus a sample floor SVG for seeding
+- [x] `docs/map-authoring.md`, plus a sample floor SVG for seeding
+    - **Completed:** 2026-10-03
+    - **Branch:** merged from `feature/map-authoring`
+    - **Notes:** Two sample floors in `packages/db/seed-floors/` (SF Floor 2 with North and South Wings, Floor 3 with a West Wing), loaded by the seed. Sam now has desk SF-3-001, so HR spans two floors for U2's per-floor counts; the directory and settings specs were updated for that. The guide fixes conventions the parser must follow: a desk's `<floor>` must equal the floor slug, the desk code is `<LOC>-<floor>-<n>`, `room-phone-*` is a phone booth, names come from the slug only on first appearance, and decoration should use `currentColor` so it follows the theme.
 - [ ] SVG sanitize, parse, and diff pipeline, the upload UI, versions and rollback
 - [ ] Map renderer: single injection, CSS-state `<style>` block, overlay layer, zoom and pan
 - [ ] Location, floor, and area navigation, zoom-to-area with dimming

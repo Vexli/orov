@@ -1,0 +1,131 @@
+# Drawing floor maps
+
+This guide is for whoever draws the floor plans, in Figma, Illustrator, Inkscape or any tool that
+exports SVG. OfficeOrg reads the drawing's element **ids** to find desks, rooms and areas, so the
+ids are the only part of the file with rules. Everything else is up to you.
+
+Two sample floors that follow every rule here live in
+[`packages/db/seed-floors/`](../packages/db/seed-floors/). They're what the demo data loads.
+
+## The file
+
+- **One SVG file per floor.**
+- The root `<svg>` needs a `viewBox`. If it only has `width` and `height`, OfficeOrg uses those as
+  the viewBox. The units don't matter; the map scales to fit the screen.
+- Keep it under 2 MB. A floor with a few hundred desks is usually well under 200 KB.
+
+## Element ids
+
+Give an element an id with one of these prefixes and OfficeOrg treats it as part of the map.
+Anything without one of these prefixes is **decoration**: walls, labels, furniture, plants.
+
+| Prefix             | What it is                          | Example           | Becomes                      |
+| ------------------ | ----------------------------------- | ----------------- | ---------------------------- |
+| `area-<slug>`      | A zoomable region of the floor      | `area-south-wing` | Area "South Wing"            |
+| `desk-<floor>-<n>` | A desk someone can be assigned to   | `desk-2-014`      | Desk with the code SF-2-014  |
+| `room-<slug>`      | A meeting room                      | `room-boardroom`  | Meeting room "Boardroom"     |
+| `room-phone-<n>`   | A phone booth                       | `room-phone-1`    | Phone booth "Phone 1"        |
+| `poi-<kind>[-<n>]` | A kitchen, elevator or restroom     | `poi-kitchen`     | Point of interest "Kitchen"  |
+
+Rules:
+
+- **Slugs** are lowercase letters, digits and single hyphens: `south-wing`, `huddle-a`.
+- **`<floor>` in a desk id must be the floor's slug** in OfficeOrg (usually its number), so
+  `desk-2-…` only goes on floor 2. The upload is rejected otherwise, because desk codes have to
+  be unique across every office.
+- **`<n>` is the desk number.** Any digits work. Padding them to the same width (`001`, `014`)
+  keeps desk codes sorting in order.
+- **Desk codes** are built from the office, the floor and the number: `desk-2-014` in the `sf`
+  office becomes **SF-2-014**. That code is what the directory shows and what CSV imports use.
+- **`poi-` kinds** are `kitchen`, `elevator` and `restroom`. Any other kind (`poi-lockers`) is
+  kept as "other". Add `-<n>` when a floor has more than one (`poi-restroom-2`).
+- **Every id is unique** within the file. Duplicates are rejected.
+- **Names come from the slug** the first time a room or area appears (`huddle-a` → "Huddle A").
+  An admin can rename them later, and re-uploading the drawing keeps the new name.
+
+The prefix can go on any shape (`rect`, `path`, `polygon`, `circle`) or on a group `<g>`. For a
+desk drawn as several shapes (a desk and a chair), group them and put the id on the group.
+
+## Areas
+
+An area is a part of the floor that people can open as a zoomed view, such as the South Wing.
+The map zooms to fit the area and dims everything outside it.
+
+OfficeOrg decides which area a desk or room belongs to in two ways:
+
+1. **Nesting (preferred).** If the desk is inside the area's group in the layer tree, it belongs
+   to that area. This is exact, so use it when you can.
+2. **Position (fallback).** If the desk isn't nested in any area, it belongs to the area whose
+   bounding box contains the desk's center.
+
+Desks and rooms that are in no area are fine. They show on the floor and in the full-floor view.
+
+Draw the area's outline as a shape inside its group (it can have `fill="none"`), so that the
+zoom fits the whole area and not just the desks in it.
+
+## Colors and styling
+
+OfficeOrg colors desks and rooms itself: the selected person, the highlighted team, and later
+the room status. It overrides the fill and stroke of every `desk-`, `room-` and `poi-` element,
+so the colors you pick for those don't matter.
+
+For decoration, **use `currentColor`** for walls, outlines and labels (`stroke="currentColor"`,
+`fill="currentColor"`). OfficeOrg sets that color from the active theme, so the drawing works in
+light and dark mode and follows the organization's brand. Fixed colors work too, but they won't
+adapt.
+
+## What the upload removes
+
+Floor drawings are shown directly in the page, so OfficeOrg cleans every upload before storing it:
+
+- `<script>`, `<foreignObject>`, event handlers such as `onclick`, and any link or image that
+  points outside the file. An embedded PNG, JPEG, GIF or WebP image (a `data:` URL) is kept.
+- `<style>` blocks. Their rules are first copied onto the elements they match, so the drawing
+  looks the same, but a stylesheet can't reach the rest of the page.
+- Editor metadata and comments.
+
+Ids are never renamed or removed.
+
+## Exporting
+
+**Figma.** Name each layer with its id (`desk-2-014`). In the export panel choose SVG, open the
+settings, and turn on **Include "id" attribute**. Figma replaces spaces in layer names, so keep
+ids free of spaces.
+
+**Illustrator.** Name each layer or object with its id. Export with **File → Export → Export
+As… → SVG**, and in the options set **Styling: Presentation Attributes** and **Object IDs:
+Layer Names**.
+
+**Inkscape.** Set ids in **Object → Object Properties** (the `id` field), and save as
+**Plain SVG**.
+
+## Uploading and changing a floor
+
+An admin uploads the file on the floor's page under **Admin → Floors**. Before anything is saved
+OfficeOrg shows what would change:
+
+| Result                     | What happens when the admin applies it                                        |
+| -------------------------- | ----------------------------------------------------------------------------- |
+| **Added**                  | New desks, rooms and areas are created                                        |
+| **Unchanged**              | Kept as they are, including names and the person at each desk                 |
+| **Moved**                  | A desk or room now sits in a different area; its area is updated               |
+| **Removed, unassigned**    | Archived automatically                                                        |
+| **Removed, assigned**      | Blocks the upload until the admin moves the person, or confirms they become deskless |
+| **Error**                  | A duplicate id, or a desk numbered for another floor. Fix the drawing and upload again |
+
+Every upload is kept as a new version. An admin can roll back to an earlier version from the same
+page, and the rollback shows the same kind of diff first.
+
+A desk that was removed and later comes back with the same id is restored, not created again, so
+its history stays attached to it.
+
+## Checklist
+
+- [ ] The root `<svg>` has a `viewBox`
+- [ ] Every desk is `desk-<floor>-<n>`, with this floor's slug
+- [ ] Every meeting room is `room-<slug>`, and phone booths are `room-phone-<n>`
+- [ ] Desks and rooms in an area are nested inside the `area-<slug>` group
+- [ ] Each area group has an outline shape
+- [ ] Walls and labels use `currentColor`
+- [ ] No two elements share an id
+- [ ] Exported with ids switched on

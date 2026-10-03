@@ -12,3 +12,4 @@ test-results
 .venv
 !plan.md
 !README.md
+!docs/*.md

@@ -64,11 +64,11 @@ test.describe("directory", () => {
     await page.goto("/directory?person=p_bob&team=t_hr&sub=true&desk=true");
     await expect(page.getByRole("complementary", { name: "Bob Lindqvist details" })).toBeVisible();
     await expect(page.getByRole("checkbox", { name: "Has a desk" })).toBeChecked();
-    await expect(page.getByRole("status")).toContainText("Showing 3 of 5");
+    await expect(page.getByRole("status")).toContainText("Showing 4 of 5");
 
     await page.reload();
     await expect(page.getByRole("complementary", { name: "Bob Lindqvist details" })).toBeVisible();
-    await expect(page.getByRole("status")).toContainText("Showing 3 of 5");
+    await expect(page.getByRole("status")).toContainText("Showing 4 of 5");
   });
 
   test("clearing filters restores the full list", async ({ page }) => {

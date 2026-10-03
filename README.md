@@ -83,8 +83,8 @@ pnpm dev
 
 Open <http://localhost:3000> and sign in as `jane@example.com` (admin) or `bob@example.com`
 (viewer) with the dev password. The demo data includes Bob → Max → Jane, an HR team with two
-sub-teams, a San Francisco office with a South Wing, and Jane based in Ontario (`CA-ON`) with a
-desk in SF.
+sub-teams, a San Francisco office with two floors (Floor 2 has a North and a South Wing), and
+Jane based in Ontario (`CA-ON`) with a desk in SF.
 
 `AUTH_DEV_PASSWORD` and `AUTH_DEV_BYPASS_EMAIL` only take effect under `next dev` with a
 `localhost` `AUTH_URL`. A production build ignores them. To use real SSO, set `AUTH_PROVIDERS`
@@ -147,6 +147,8 @@ packages/
     teams/        team tree helpers
     theme/        semantic theme slots and their defaults
   db/           Drizzle schema, migrations, queries, seed, and database tests
+    seed-floors/  sample floor SVGs that the demo data loads
+docs/           guides, such as map-authoring.md for drawing floor SVGs
 e2e/            Playwright specs, one or more per user story
 docker/         Postgres init script
 Dockerfile      one image with `web` and `worker` targets
