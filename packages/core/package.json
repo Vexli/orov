@@ -11,6 +11,11 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
   },
+  "dependencies": {
+    "csv-parse": "^7.0.3",
+    "csv-stringify": "^6.9.0",
+    "zod": "^4.6.5"
+  },
   "devDependencies": {
     "vitest": "^5.0.3"
   }
