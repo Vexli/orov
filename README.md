@@ -28,6 +28,8 @@ released to `main` yet. The parts that work today:
   Cognito or any OpenID Connect issuer), limited to one company email domain, with `viewer` and
   `admin` roles
 - Directory with search, team and location filters, a person card, and selection kept in the URL
+- Floor map: the floor drawing with an avatar at each occupied desk, zoom and pan, and a card for
+  the person, desk or room you click
 - Admin pages to create, edit and deactivate people and teams, with checks that reject
   manager and parent-team cycles
 - CSV import with a dry-run diff before anything is written, CSV export, and an audit log of
@@ -39,7 +41,8 @@ released to `main` yet. The parts that work today:
   adds, moves and removes before anything is saved, and keeps every version for rollback. How to
   draw one is in [`docs/map-authoring.md`](docs/map-authoring.md)
 
-Not built yet: the floor map view (the rest of Phase 2), the org chart (Phase 3), Google room status and Calendar
+Not built yet: floor and area navigation, team highlights, the seat picker and the map's list
+view (the rest of Phase 2), the org chart (Phase 3), Google room status and Calendar
 presence (Phase 4), Slack (Phase 5) and brand token import (Phase 5.5). The worker is a skeleton
 that only logs a heartbeat. See [`plan.md` §12](plan.md#12-delivery-plan) for the roadmap.
 
@@ -132,11 +135,11 @@ A pnpm workspace with two apps and two shared packages:
 apps/
   web/          Next.js (App Router) app
     app/
-      (app)/      signed-in views: directory, settings
+      (app)/      signed-in views: directory, map, settings
       admin/      people, teams, offices and floors, CSV import, audit log
       api/        Auth.js routes, CSV export, health check
       login/      sign-in page
-    components/   directory and admin UI
+    components/   directory, map and admin UI
     lib/          auth config, SSO providers, session helpers, URL state (nuqs)
     proxy.ts      route protection (Next 16's replacement for middleware.ts)
   worker/       long-running background process (heartbeat only for now)
@@ -146,6 +149,7 @@ packages/
     csv/          CSV parsing and validation for people and teams
     directory/    directory model and filtering
     import/       dry-run import planning
+    map/          floor map model and the generated state stylesheet
     regions/      ISO 3166 validation and display formatting
     spaces/       office and floor form validation
     svg/          floor drawing sanitize, parse and diff
@@ -199,6 +203,8 @@ OfficeOrg is built on open-source work. Thank you to the people who maintain it.
 - [`@paralleldrive/cuid2`](https://github.com/paralleldrive/cuid2): URL-safe ids
 - [DOMPurify](https://github.com/cure53/DOMPurify), [SVGO](https://svgo.dev) and
   [jsdom](https://github.com/jsdom/jsdom): sanitizing and reading floor drawings
+- [react-zoom-pan-pinch](https://github.com/BetterTyped/react-zoom-pan-pinch): zoom and pan on
+  the floor map
 - [Vitest](https://vitest.dev), [Playwright](https://playwright.dev) and
   [Testcontainers](https://testcontainers.com): unit, end-to-end and database tests
 - [pnpm](https://pnpm.io), [TypeScript](https://www.typescriptlang.org),
@@ -206,7 +212,6 @@ OfficeOrg is built on open-source work. Thank you to the people who maintain it.
 
 **Planned for later phases**
 
-- [react-zoom-pan-pinch](https://github.com/BetterTyped/react-zoom-pan-pinch): the floor map
 - [d3-org-chart](https://github.com/bumbeishvili/org-chart) by David Bumbeishvili: the org chart
 - [pg-boss](https://github.com/timgit/pg-boss): background jobs in Postgres
 - [Slack Bolt](https://tools.slack.dev/bolt-js): Slack Socket Mode

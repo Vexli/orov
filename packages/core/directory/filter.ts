@@ -65,6 +65,16 @@ export function displayName(person: Pick<DirectoryPerson, "name" | "preferredNam
   return person.preferredName ?? person.name;
 }
 
+// Up to two letters for an avatar: "Bob Lindqvist" → "BL".
+export function initials(name: string): string {
+  return name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]!.toUpperCase())
+    .join("");
+}
+
 export interface LocationSummary {
   // The home region, in the viewer's region format.
   region: string;

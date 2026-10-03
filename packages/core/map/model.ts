@@ -1,0 +1,69 @@
+import type { SpaceKind } from "../svg/parse";
+
+// Shapes the floor map works with. Plain data, so the server loads them once and the browser
+// derives every highlight from them without another request.
+
+export interface MapFloorLink {
+  slug: string;
+  name: string;
+  level: number;
+  hasDrawing: boolean;
+}
+
+export interface MapLocation {
+  slug: string;
+  name: string;
+  // The office's region in the viewer's display style (plan.md §7.1).
+  regionLabel: string;
+  floors: MapFloorLink[];
+}
+
+export interface MapArea {
+  id: string;
+  slug: string;
+  name: string;
+  svgElementId: string;
+}
+
+export interface MapSpace {
+  id: string;
+  svgElementId: string;
+  kind: SpaceKind;
+  name: string;
+  capacity: number | null;
+  areaId: string | null;
+}
+
+// Where one person sits. Loaded for every floor, so the map can follow a person to another
+// floor and count a team's seats per floor without asking the server again.
+export interface MapSeat {
+  personId: string;
+  spaceId: string;
+  svgElementId: string;
+  deskName: string;
+  floorSlug: string;
+  floorName: string;
+  locationSlug: string;
+  locationName: string;
+  areaSlug: string | null;
+}
+
+export interface MapFloor {
+  id: string;
+  slug: string;
+  name: string;
+  locationSlug: string;
+  locationName: string;
+  // Changes whenever the drawing does, so the browser can cache measurements per version.
+  assetId: string;
+  svg: string;
+  areas: MapArea[];
+  spaces: MapSpace[];
+}
+
+export interface MapData {
+  locations: MapLocation[];
+  // Null when no floor has a drawing yet.
+  floor: MapFloor | null;
+  seats: MapSeat[];
+}
