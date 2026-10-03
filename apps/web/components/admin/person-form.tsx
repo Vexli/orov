@@ -97,15 +97,19 @@ export function PersonFormEditor({ id, initial, managers, desks, teams }: Props)
       <div className="space-y-4">
         <div className="grid grid-cols-2 gap-4">
           <label className="block text-sm font-medium">
-            Home country
+            Home region
             <input
               className={inputClass}
-              maxLength={2}
-              placeholder="US"
-              value={values.homeCountry}
-              onChange={(e) => set("homeCountry", e.target.value.toUpperCase())}
+              maxLength={6}
+              placeholder="US-CA"
+              aria-describedby="home-region-hint"
+              value={values.homeRegion}
+              onChange={(e) => set("homeRegion", e.target.value.toUpperCase())}
             />
-            {fieldError("homeCountry")}
+            <span id="home-region-hint" className="mt-1 block text-xs font-normal text-muted-fg">
+              ISO 3166 country (US) or subdivision (US-CA)
+            </span>
+            {fieldError("homeRegion")}
           </label>
           <label className="block text-sm font-medium">
             Home timezone

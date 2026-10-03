@@ -11,3 +11,4 @@ export * from "./people/form";
 export * from "./teams/form";
 export * from "./directory/model";
 export * from "./directory/filter";
+export * from "./regions/iso3166";

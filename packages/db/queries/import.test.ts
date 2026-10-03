@@ -29,7 +29,7 @@ beforeEach(async () => {
   await seedDemoData(t.db);
 });
 
-const HEADER = "email,name,preferred_name,title,home_country,home_timezone,phone,start_date,active,manager_email,desk,teams,primary_team";
+const HEADER = "email,name,preferred_name,title,home_region,home_timezone,phone,start_date,active,manager_email,desk,teams,primary_team";
 
 function people(...rows: string[]) {
   return [HEADER, ...rows].join("\n") + "\n";

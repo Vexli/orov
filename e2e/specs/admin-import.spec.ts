@@ -11,9 +11,9 @@ test.describe("admin CSV import (U10)", () => {
     await page.goto("/admin/import");
 
     const csv = [
-      "email,name,preferred_name,title,home_country,home_timezone,phone,start_date,active,manager_email,desk,teams,primary_team",
-      "bob@example.com,Bob Lindqvist,,Payroll Analyst,US,,,2023-01-09,true,max@example.com,SF-2-014,hr;payroll,payroll",
-      "lee@example.com,Lee Chen,,Team Lead,US,,,,,jane@example.com,,hr,hr",
+      "email,name,preferred_name,title,home_region,home_timezone,phone,start_date,active,manager_email,desk,teams,primary_team",
+      "bob@example.com,Bob Lindqvist,,Payroll Analyst,US-CA,,,2023-01-09,true,max@example.com,SF-2-014,hr;payroll,payroll",
+      "lee@example.com,Lee Chen,,Team Lead,US-NY,,,,,jane@example.com,,hr,hr",
       "ama@example.com,Ama Ito,,Recruiter,US,,,,,lee@example.com,SF-2-016,recruiting,recruiting",
       "",
     ].join("\n");
@@ -43,7 +43,7 @@ test.describe("admin CSV import (U10)", () => {
     await page.goto("/admin/import");
 
     const csv = [
-      "email,name,preferred_name,title,home_country,home_timezone,phone,start_date,active,manager_email,desk,teams,primary_team",
+      "email,name,preferred_name,title,home_region,home_timezone,phone,start_date,active,manager_email,desk,teams,primary_team",
       "good@example.com,Good Person,,,US,,,,,,,,",
       "not-an-email,Bad Row,,,US,,,,,,,,",
       "",

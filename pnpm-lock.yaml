@@ -105,6 +105,9 @@ importers:
       csv-stringify:
         specifier: ^6.9.0
         version: 6.9.0
+      iso-3166:
+        specifier: ^4.4.0
+        version: 4.4.0
       zod:
         specifier: ^4.6.5
         version: 4.6.5
@@ -2569,6 +2572,9 @@ packages:
 
   isexe@2.0.0:
     resolution: {integrity: sha512-RHxMLp9lnKHGHRng9QFhRCMbYAcVpn69smSGcq3f36xjgVVWThj4qqLbTLlq7Ssj8B+fIQ1EuCEGI2lKsyQeIw==}
+
+  iso-3166@4.4.0:
+    resolution: {integrity: sha512-I6ylkNQgxVh7cYADMUJpqBUdremGvyGZkDRSk9Cdic/ITBUemsllQnUeRpz7yDKyfgAXI9oPa5A9dia+7IXLqw==}
 
   iterator.prototype@1.1.5:
     resolution: {integrity: sha512-H0dkQoCa3b2VEeKQBOxFph+JAbcrQdE7KC0UkqwpLmv2EC4P41QXP+rqo9wYodACiG5/WM5s9oDApTU8utwj9g==}
@@ -5956,6 +5962,8 @@ snapshots:
   isarray@2.0.5: {}
 
   isexe@2.0.0: {}
+
+  iso-3166@4.4.0: {}
 
   iterator.prototype@1.1.5:
     dependencies:

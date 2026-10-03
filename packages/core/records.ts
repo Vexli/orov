@@ -7,7 +7,7 @@ export interface PersonRecord {
   preferredName: string | null;
   title: string | null;
   phone: string | null;
-  homeCountry: string;
+  homeRegion: string;
   homeTimezone: string | null;
   startDate: string | null;
   active: boolean;
@@ -57,7 +57,7 @@ export const PERSON_FIELDS = [
   "preferredName",
   "title",
   "phone",
-  "homeCountry",
+  "homeRegion",
   "homeTimezone",
   "startDate",
   "active",

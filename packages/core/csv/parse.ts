@@ -20,6 +20,9 @@ interface CsvShape {
   columns: readonly string[];
   // Columns that must appear in the header row. Others may be left out of the file.
   required: readonly string[];
+  // Old header names and the column they now mean, so older spreadsheets keep importing.
+  // Ignored when the file also has the new name.
+  aliases?: Readonly<Record<string, string>>;
 }
 
 // Header names are case-insensitive and trimmed. Unknown columns are ignored, so someone can
@@ -33,7 +36,11 @@ export function parseCsv(text: string, shape: CsvShape): ParsedCsv {
       relax_column_count: true,
       info: true,
       columns: (header: string[]) => {
-        const normalized = header.map((h) => h.trim().toLowerCase());
+        const lowered = header.map((h) => h.trim().toLowerCase());
+        const normalized = lowered.map((h) => {
+          const target = shape.aliases?.[h];
+          return target && !lowered.includes(target) ? target : h;
+        });
         const missing = shape.required.filter((r) => !normalized.includes(r));
         if (missing.length > 0) {
           throw new Error(`Missing required column(s): ${missing.join(", ")}`);
