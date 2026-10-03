@@ -148,7 +148,8 @@ apps/
     app/
       (app)/      signed-in views: directory, map, org chart, settings
       admin/      people, teams, offices and floors, CSV import, audit log
-      api/        Auth.js routes, search, CSV export, health check
+      api/        Auth.js routes, search, CSV export, brand files, health check
+      theme.css/  the active theme as a stylesheet
       login/      sign-in page
     components/   directory, map, org chart, search and admin UI
     lib/          auth config, SSO providers, session helpers, URL state (nuqs)
@@ -194,9 +195,12 @@ docker build --target worker -t officeorg-worker .
 
 The web container applies migrations on start and then serves on port 3000. It needs
 `DATABASE_URL`, `AUTH_URL`, `AUTH_SECRET`, `COMPANY_DOMAIN`, `ADMIN_EMAILS` and the SSO variables
-for each provider in `AUTH_PROVIDERS`. The search uses the `pg_trgm` extension, which a migration
+for each provider in `AUTH_PROVIDERS`. `THEME_TOKENS_PATH` optionally names a token file to use
+as the theme until an admin applies one (see [`docs/theming.md`](docs/theming.md)). The search uses the `pg_trgm` extension, which a migration
 creates, so the database user needs permission to create it (managed Postgres such as Cloud SQL
-and RDS allow it). `GET /api/health` is a liveness check. Run one web replica
+and RDS allow it). `GET /api/health` is a liveness check. `/theme.css` and
+`/api/brand-assets/*` are served without signing in, because the sign-in page uses the theme and
+logo. Run one web replica
 at a time while a schema change is being deployed, because two replicas migrating at once can
 race.
 

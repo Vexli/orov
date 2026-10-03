@@ -22,7 +22,9 @@ export default defineConfig({
   },
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
   webServer: {
-    command: `pnpm --filter @officeorg/web build && pnpm --filter @officeorg/web start -H localhost -p ${PORT}`,
+    // Migrates first, as the web container does: every page reads the active theme, so the
+    // server can't answer the readiness check until the schema is current.
+    command: `pnpm --filter @officeorg/db db:migrate && pnpm --filter @officeorg/web build && pnpm --filter @officeorg/web start -H localhost -p ${PORT}`,
     url: BASE_URL,
     reuseExistingServer: !process.env.CI,
     timeout: 300_000,

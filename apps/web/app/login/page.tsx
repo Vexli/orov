@@ -1,4 +1,6 @@
+import { BrandMark } from "@/components/brand-mark";
 import { getAuthSetup } from "@/lib/auth-providers";
+import { getBrand } from "@/lib/theme";
 import { signInWithDevBypass, signInWithDevPassword, signInWithProvider } from "./actions";
 
 const MESSAGES: Record<string, string> = {
@@ -11,8 +13,7 @@ const PRIMARY_BUTTON =
   "w-full rounded-md bg-primary px-4 py-2.5 text-sm font-medium text-primary-fg hover:bg-primary/85";
 const SECONDARY_BUTTON =
   "w-full rounded-md border border-border px-4 py-2.5 text-sm font-medium hover:bg-muted";
-const INPUT =
-  "w-full rounded-md border border-border bg-transparent px-3 py-2 text-sm";
+const INPUT = "w-full rounded-md border border-border bg-transparent px-3 py-2 text-sm";
 
 export default async function LoginPage({
   searchParams,
@@ -22,20 +23,20 @@ export default async function LoginPage({
   const { error } = await searchParams;
   const message = error ? (MESSAGES[error] ?? "Sign-in failed. Try again.") : null;
   const setup = getAuthSetup();
+  const brand = await getBrand();
 
   return (
     <main className="mx-auto flex min-h-screen max-w-sm flex-col justify-center gap-6 p-8">
       <div>
-        <h1 className="text-2xl font-heading">OfficeOrg</h1>
+        <h1 className="text-2xl font-heading">
+          <BrandMark brand={brand} className="h-10 w-auto" />
+        </h1>
         <p className="mt-2 text-sm text-muted-fg">
           People, seats, teams and presence for our offices.
         </p>
       </div>
       {message ? (
-        <p
-          role="alert"
-          className="rounded-md bg-accent p-3 text-sm text-accent-fg"
-        >
+        <p role="alert" className="rounded-md bg-accent p-3 text-sm text-accent-fg">
           {message}
         </p>
       ) : null}

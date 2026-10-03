@@ -1,5 +1,7 @@
 @import "tailwindcss";
-@import "./theme-defaults.css";
+/* The defaults sit in a cascade layer, so the unlayered /theme.css the root layout links always
+   wins over them, whatever order the two stylesheets end up in. */
+@import "./theme-defaults.css" layer(theme-defaults);
 
 /* Utilities read only the semantic slots from packages/core/theme/slots.ts (plan.md §9.1).
    Tailwind's own palette is cleared, so a raw class such as `bg-white` or `text-neutral-500`

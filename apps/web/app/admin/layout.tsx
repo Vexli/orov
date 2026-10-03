@@ -1,6 +1,8 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { BrandMark } from "@/components/brand-mark";
 import { requireAdmin } from "@/lib/session";
+import { getBrand } from "@/lib/theme";
 
 const NAV = [
   { href: "/admin/people", label: "People" },
@@ -11,12 +13,12 @@ const NAV = [
 ];
 
 export default async function AdminLayout({ children }: { children: ReactNode }) {
-  const user = await requireAdmin();
+  const [user, brand] = await Promise.all([requireAdmin(), getBrand()]);
   return (
     <div className="mx-auto max-w-6xl p-6">
       <header className="flex flex-wrap items-center gap-6 border-b border-border pb-4">
-        <Link href="/" className="font-semibold">
-          OfficeOrg
+        <Link href="/">
+          <BrandMark brand={brand} />
         </Link>
         <nav className="flex gap-4 text-sm">
           {NAV.map((item) => (
