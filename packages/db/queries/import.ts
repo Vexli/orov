@@ -178,7 +178,7 @@ function personValues(rec: PersonRecord) {
     preferredName: rec.preferredName,
     title: rec.title,
     phone: rec.phone,
-    homeCountry: rec.homeCountry,
+    homeRegion: rec.homeRegion,
     homeTimezone: rec.homeTimezone,
     startDate: rec.startDate,
     active: rec.active,

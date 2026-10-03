@@ -19,14 +19,14 @@ test.describe("directory", () => {
 
     const card = page.getByRole("complementary", { name: "Bob Lindqvist details" });
     await expect(card).toContainText("SF-2-014 · San Francisco, Floor 2");
-    await expect(card).toContainText("Based in US · Desk SF-2-014");
+    await expect(card).toContainText("Based in California, United States · Desk SF-2-014");
     await expect(card.getByRole("button", { name: "Max Osei" })).toBeVisible();
   });
 
   test("U4: Jane is based in Canada and still has a desk in San Francisco", async ({ page }) => {
     await page.goto("/directory?person=p_jane");
     const card = page.getByRole("complementary", { name: "Jane Park details" });
-    await expect(card).toContainText("Based in CA · Desk SF-2-003");
+    await expect(card).toContainText("Based in Ontario, Canada · Desk SF-2-003");
     await expect(card).toContainText("SF-2-003 · San Francisco, Floor 2");
   });
 
@@ -41,10 +41,10 @@ test.describe("directory", () => {
     await expect(page).toHaveURL(/sub=true/);
   });
 
-  test("someone remote shows their home country, and no seat", async ({ page }) => {
+  test("someone remote shows their home region, and no seat", async ({ page }) => {
     await page.goto("/directory?person=p_priya");
     const card = page.getByRole("complementary", { name: "Priya Raman details" });
-    await expect(card).toContainText("Remote – IN");
+    await expect(card).toContainText("Remote – Karnātaka, India");
     await expect(card).toContainText("No desk assigned");
   });
 

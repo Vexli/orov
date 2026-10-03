@@ -2,7 +2,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { eq } from "drizzle-orm";
 import { appUser } from "../schema";
 import { startTestDatabase, type TestDatabase } from "../test-utils";
-import { getAppRole, recordSignIn } from "./app-users";
+import { getAppRole, getAppUser, recordSignIn, setRegionDisplay } from "./app-users";
 
 let t: TestDatabase;
 
@@ -48,5 +48,29 @@ describe("recordSignIn", () => {
 describe("getAppRole", () => {
   it("returns null for someone with no row", async () => {
     await expect(getAppRole(t.db, "stranger@example.com")).resolves.toBeNull();
+  });
+});
+
+describe("region display preference", () => {
+  it("defaults to region and country names", async () => {
+    await recordSignIn(t.db, "bob@example.com", false);
+    await expect(getAppUser(t.db, "bob@example.com")).resolves.toEqual({
+      role: "viewer",
+      regionDisplay: "country_region",
+    });
+  });
+
+  it("is stored per user, and a later sign-in keeps it", async () => {
+    await recordSignIn(t.db, "bob@example.com", false);
+    await recordSignIn(t.db, "jane@example.com", true);
+    await setRegionDisplay(t.db, "bob@example.com", "code");
+    await recordSignIn(t.db, "bob@example.com", false);
+
+    await expect(getAppUser(t.db, "bob@example.com")).resolves.toMatchObject({ regionDisplay: "code" });
+    await expect(getAppUser(t.db, "jane@example.com")).resolves.toMatchObject({ regionDisplay: "country_region" });
+  });
+
+  it("returns null for someone with no row", async () => {
+    await expect(getAppUser(t.db, "stranger@example.com")).resolves.toBeNull();
   });
 });

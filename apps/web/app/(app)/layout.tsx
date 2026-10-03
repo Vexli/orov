@@ -24,6 +24,9 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
                 Admin
               </Link>
             ) : null}
+            <Link href="/settings" className="underline underline-offset-4">
+              Settings
+            </Link>
             <span className="hidden sm:inline">{user.email}</span>
             <form action={signOutAction}>
               <button type="submit" className="underline underline-offset-4">

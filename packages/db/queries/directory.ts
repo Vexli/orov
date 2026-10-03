@@ -1,5 +1,11 @@
 import { asc, eq } from "drizzle-orm";
-import type { DirectoryPerson, DirectoryTeam } from "@officeorg/core";
+import {
+  DEFAULT_REGION_DISPLAY,
+  formatRegion,
+  type DirectoryPerson,
+  type DirectoryTeam,
+  type RegionDisplay,
+} from "@officeorg/core";
 import type { Executor } from "../client";
 import * as s from "../schema";
 
@@ -10,8 +16,12 @@ export interface DirectoryData {
 }
 
 // Everything the directory needs in one read. Inactive people are left out. The directory is
-// for finding colleagues, and the admin pages still show everyone.
-export async function loadDirectory(db: Executor): Promise<DirectoryData> {
+// for finding colleagues, and the admin pages still show everyone. Region labels are formatted
+// here, in the viewer's preferred style, so the browser never loads the ISO 3166-2 list.
+export async function loadDirectory(
+  db: Executor,
+  regionDisplay: RegionDisplay = DEFAULT_REGION_DISPLAY,
+): Promise<DirectoryData> {
   const rows = await db.query.person.findMany({
     where: eq(s.person.active, true),
     with: {
@@ -40,7 +50,8 @@ export async function loadDirectory(db: Executor): Promise<DirectoryData> {
     preferredName: row.preferredName,
     email: row.email,
     title: row.title,
-    homeCountry: row.homeCountry,
+    homeRegion: row.homeRegion,
+    homeRegionLabel: formatRegion(row.homeRegion, regionDisplay),
     homeTimezone: row.homeTimezone,
     manager: row.manager ? { id: row.manager.id, name: row.manager.name } : null,
     desk: row.assignedDesk
@@ -50,7 +61,7 @@ export async function loadDirectory(db: Executor): Promise<DirectoryData> {
           floorName: row.assignedDesk.floor.name,
           locationName: row.assignedDesk.floor.location.name,
           locationSlug: row.assignedDesk.floor.location.slug,
-          locationCountry: row.assignedDesk.floor.location.country,
+          locationRegion: row.assignedDesk.floor.location.region,
         }
       : null,
     teams: row.teamMembers
