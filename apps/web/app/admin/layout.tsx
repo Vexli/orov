@@ -5,6 +5,7 @@ import { requireAdmin } from "@/lib/session";
 const NAV = [
   { href: "/admin/people", label: "People" },
   { href: "/admin/teams", label: "Teams" },
+  { href: "/admin/locations", label: "Offices & floors" },
   { href: "/admin/import", label: "Import & export" },
   { href: "/admin/audit", label: "Audit log" },
 ];

@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import { PersonFormEditor } from "@/components/admin/person-form";
 import { getDb } from "@officeorg/db/client";
 import { getPersonForEdit, listPeopleForAdmin } from "@officeorg/db/queries/people";
-import { listDeskOptions } from "@officeorg/db/queries/spaces";
+import { listDeskOptions, listPickerFloors } from "@officeorg/db/queries/spaces";
 import { listTeamsForAdmin } from "@officeorg/db/queries/teams";
 
 export default async function EditPersonPage({ params }: { params: Promise<{ id: string }> }) {
@@ -11,7 +11,12 @@ export default async function EditPersonPage({ params }: { params: Promise<{ id:
   const initial = await getPersonForEdit(db, id);
   if (!initial) notFound();
 
-  const [people, desks, teams] = await Promise.all([listPeopleForAdmin(db), listDeskOptions(db, id), listTeamsForAdmin(db)]);
+  const [people, desks, floors, teams] = await Promise.all([
+    listPeopleForAdmin(db),
+    listDeskOptions(db, id),
+    listPickerFloors(db),
+    listTeamsForAdmin(db),
+  ]);
 
   // A manager can't be this person or anyone who reports to them, directly or not. Excluding
   // them here keeps the picker honest. saveTeam/savePerson check the same thing on the server.
@@ -39,6 +44,7 @@ export default async function EditPersonPage({ params }: { params: Promise<{ id:
           initial={initial}
           managers={people.filter((p) => !excluded.has(p.id)).map((p) => ({ id: p.id, name: p.name }))}
           desks={desks}
+          floors={floors}
           teams={teams.map((t) => ({ id: t.id, name: t.name }))}
         />
       </div>

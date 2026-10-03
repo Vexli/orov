@@ -3,7 +3,7 @@ import type { Executor } from "../client";
 import { auditLog } from "../schema";
 
 export interface AuditEntry {
-  entity: "person" | "team";
+  entity: "person" | "team" | "location" | "floor";
   entityId: string;
   action: "create" | "update" | "delete";
   before?: unknown;

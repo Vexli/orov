@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { signOutAction } from "@/app/actions";
+import { ViewTabs } from "@/components/view-tabs";
 import { requireUser } from "@/lib/session";
 
 // Shell for the signed-in views. The admin area has its own layout.
@@ -13,11 +14,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
           <Link href="/directory" className="font-semibold">
             OfficeOrg
           </Link>
-          <nav className="flex gap-4 text-sm">
-            <Link href="/directory" className="font-medium underline underline-offset-4">
-              Directory
-            </Link>
-          </nav>
+          <ViewTabs />
           <div className="ml-auto flex items-center gap-4 text-sm text-muted-fg">
             {user.role === "admin" ? (
               <Link href="/admin" className="underline underline-offset-4">
