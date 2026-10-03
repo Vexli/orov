@@ -20,5 +20,16 @@ jobs:
         run: pnpm lint
       - name: Typecheck
         run: pnpm typecheck
+      - name: Database tests (Testcontainers)
+        run: pnpm --filter @officeorg/db test
+      - name: Migrations match the schema
+        run: |
+          pnpm --filter @officeorg/db db:generate
+          # `git diff` misses new files, so check for any change under the migrations folder.
+          if [ -n "$(git status --porcelain packages/db/migrations)" ]; then
+            echo "Schema changed without a migration. Run pnpm db:generate and commit the result."
+            git status --porcelain packages/db/migrations
+            exit 1
+          fi
       - name: Build
         run: pnpm --filter @officeorg/web build

@@ -1,0 +1,14 @@
+import { defineConfig } from "drizzle-kit";
+
+export default defineConfig({
+  dialect: "postgresql",
+  schema: "./schema.ts",
+  out: "./migrations",
+  dbCredentials: {
+    url:
+      process.env.DATABASE_URL ??
+      "postgres://officeorg:officeorg@localhost:5432/officeorg",
+  },
+  strict: true,
+  verbose: true,
+});
