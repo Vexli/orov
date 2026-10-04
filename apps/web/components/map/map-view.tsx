@@ -141,25 +141,18 @@ export function MapView({ map, people, teams }: Props) {
     [floor, focusArea],
   );
 
-  // Every room, point of interest and area gets its name from the database; desks show avatars
-  // instead. Spaces and areas outside an open area are dimmed with the rest of the drawing.
+  // Every room and point of interest gets its name from the database; desks show avatars
+  // instead. Areas aren't labelled on the drawing: they're picked with the buttons above it.
+  // Names outside an open area are dimmed with the rest of the drawing.
   const labels = useMemo<MapLabel[]>(
-    () => [
-      ...(floor?.areas ?? []).map((a) => ({
-        svgElementId: a.svgElementId,
-        name: a.name,
-        kind: "area" as const,
-        dimmed: focusArea !== null && a.id !== focusArea.id,
-      })),
-      ...(floor?.spaces ?? [])
+    () =>
+      (floor?.spaces ?? [])
         .filter((sp) => sp.kind !== "desk")
         .map((sp) => ({
           svgElementId: sp.svgElementId,
           name: sp.name,
-          kind: "room" as const,
           dimmed: focusArea !== null && sp.areaId !== focusArea.id,
         })),
-    ],
     [floor, focusArea],
   );
 
