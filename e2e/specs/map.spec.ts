@@ -163,7 +163,11 @@ test.describe("person focus and team highlight", () => {
     await page.goto("/directory");
     await page.getByRole("searchbox", { name: "Search people" }).fill("bob");
     await page.getByRole("button", { name: /Bob Lindqvist/ }).click();
-    await page.getByRole("link", { name: "Show SF-2-014 on the map" }).click();
+    // The card's desk link. The list row has one too, since #15.
+    await page
+      .getByRole("complementary", { name: "Bob Lindqvist details" })
+      .getByRole("link", { name: "Show SF-2-014 on the map" })
+      .click();
 
     await expect(page).toHaveURL(/\/map\?.*person=p_bob/);
     await expect(page.getByRole("heading", { name: "San Francisco, Floor 2" })).toBeVisible();
@@ -218,12 +222,15 @@ test.describe("person focus and team highlight", () => {
     await page.goto("/map");
     await page.getByRole("combobox", { name: "Highlight team" }).selectOption({ label: "HR" });
     const status = page.getByRole("status", { name: "Team seats" });
+    await page.getByRole("checkbox", { name: "Include sub-teams" }).uncheck();
+    await expect(page).toHaveURL(/sub=false/);
     await expect(status).toContainText("HR: 3 seats");
     await expect(status).toContainText("Floor 2: 3");
 
+    // Sub-teams are the default, so ticking the box again drops the param.
     await page.getByRole("checkbox", { name: "Include sub-teams" }).check();
     await expect(page).toHaveURL(/team=t_hr/);
-    await expect(page).toHaveURL(/sub=true/);
+    await expect(page).not.toHaveURL(/sub=/);
     await expect(status).toContainText("HR and sub-teams: 4 seats");
     await expect(status).toContainText("Floor 3: 1");
     await expect(status).toContainText("1 without a desk");

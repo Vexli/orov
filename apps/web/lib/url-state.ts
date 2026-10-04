@@ -6,10 +6,13 @@ import { ORG_TREES } from "@officeorg/core/org/tree";
 //
 // Imported from nuqs/server, which has no client-only code, so server pages can parse the same
 // params with a loader and client components can pass these parsers to useQueryStates.
+//
+// `sub` defaults to true: a team means the team and everything under it, unless the viewer
+// unticks "Include sub-teams". nuqs leaves defaults out of the URL, so only `sub=false` is written.
 export const selectionParsers = {
   person: parseAsString,
   team: parseAsString,
-  sub: parseAsBoolean.withDefault(false),
+  sub: parseAsBoolean.withDefault(true),
 };
 
 export const directoryParsers = {

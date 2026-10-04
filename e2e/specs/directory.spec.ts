@@ -35,15 +35,18 @@ test.describe("directory", () => {
     await expect(card).toContainText("SF-2-003 · San Francisco, Floor 2");
   });
 
-  test("U2 (directory part): a team includes its sub-teams only when asked", async ({ page }) => {
+  test("U2 (directory part): a team includes its sub-teams unless they're turned off", async ({ page }) => {
     await page.goto("/directory");
     await page.getByRole("combobox", { name: "Filter by team" }).selectOption({ label: "HR" });
-    await expect(page.getByRole("status")).toContainText("Showing 3 of 5");
-
-    await page.getByRole("checkbox", { name: "Include sub-teams" }).check();
     await expect(page.getByRole("status")).toContainText("Showing 5 of 5");
+    await expect(page.getByRole("checkbox", { name: "Include sub-teams" })).toBeChecked();
     await expect(page).toHaveURL(/team=t_hr/);
-    await expect(page).toHaveURL(/sub=true/);
+    // The default isn't written to the URL.
+    await expect(page).not.toHaveURL(/sub=/);
+
+    await page.getByRole("checkbox", { name: "Include sub-teams" }).uncheck();
+    await expect(page.getByRole("status")).toContainText("Showing 3 of 5");
+    await expect(page).toHaveURL(/sub=false/);
   });
 
   test("someone remote shows their home region, and no seat", async ({ page }) => {

@@ -100,18 +100,18 @@ describe("filterDirectory", () => {
     expect(names(filterDirectory(people, EMPTY_FILTERS, teams))).toHaveLength(4);
   });
 
-  it("matches the team directly, without sub-teams", () => {
-    const hrOnly = filterDirectory(people, { ...EMPTY_FILTERS, teamId: "t_hr" }, teams);
-    expect(names(hrOnly)).toEqual(["p_jane", "p_bob"]);
+  it("includes sub-team members by default (U2)", () => {
+    const hrTree = filterDirectory(people, { ...EMPTY_FILTERS, teamId: "t_hr" }, teams);
+    expect(names(hrTree)).toEqual(["p_jane", "p_bob", "p_priya"]);
   });
 
-  it("includes sub-team members when asked (U2)", () => {
-    const hrTree = filterDirectory(
+  it("matches the team directly when sub-teams are turned off", () => {
+    const hrOnly = filterDirectory(
       people,
-      { ...EMPTY_FILTERS, teamId: "t_hr", includeSubteams: true },
+      { ...EMPTY_FILTERS, teamId: "t_hr", includeSubteams: false },
       teams,
     );
-    expect(names(hrTree)).toEqual(["p_jane", "p_bob", "p_priya"]);
+    expect(names(hrOnly)).toEqual(["p_jane", "p_bob"]);
   });
 
   it("searches name, preferred name, title and seat code, case-insensitively", () => {

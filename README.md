@@ -28,17 +28,18 @@ the phase-by-phase delivery plan with progress notes.
   Cognito or any OpenID Connect issuer), limited to one company email domain, with `viewer` and
   `admin` roles
 - Directory with search, team and location filters, a person card, and selection kept in the URL
-- Floor map: the floor drawing with an avatar at each occupied desk, zoom and pan, and a card for
-  the person, desk or room you click. Switch offices and floors, open an area such as the South
-  Wing as a zoomed view, and see each floor's headcount, desks and rooms. The map follows a
-  selected person to their floor, and highlights a team's seats (optionally with its sub-teams)
-  with a count per floor. A desk code in the directory or on a person card links to the map. A List toggle shows the same
-  desks and rooms as a table for keyboard and screen reader users
+- Floor map: the floor drawing with an avatar at each occupied desk, zoom and pan, and a card
+  for the person, desk or room you click. Switch offices and floors, open an area such as the
+  South Wing as a zoomed view, and see each floor's headcount, desks and rooms. The map follows
+  a selected person to their floor, and highlights a team's seats (with its sub-teams, unless
+  you untick them) with a count per floor. A desk code in the directory or on a person card
+  links to the map. A List toggle shows the same desks and rooms as a table for keyboard and
+  screen reader users
 - Org chart: the reporting tree (who reports to whom) and the team tree (teams, their sub-teams
   and members), with expand and collapse, zoom, and the person card for whoever you click. The
-  chart centers on the selected person and opens their direct reports, shows their reporting line
-  up to the top, and highlights a team's members (optionally with its sub-teams). A List toggle
-  shows the same tree as an outline for keyboard and screen reader users
+  chart centers on the selected person and opens their direct reports, shows their reporting
+  line up to the top, and highlights a team's members (with its sub-teams, unless you untick
+  them). A List toggle shows the same tree as an outline for keyboard and screen reader users
 - Switching between the directory, map and org chart keeps the selected person and team. ⌘K
   (Ctrl+K) searches people, teams and rooms, with typo tolerance, from any view
 - Admin pages to create, edit and deactivate people and teams, with checks that reject
