@@ -663,7 +663,10 @@ The improvement backlog raised after Phases 1–3. Each item keeps its number fr
     - **Completed:** 2026-10-04
     - **Branch:** merged from `feature/admin-list-filters`
     - **Notes:** `packages/core/admin/filter.ts`: `filterAdminPeople` (text, team with `teamScope`, `status` active/inactive/all, `desk` any/with/without) and `filterAdminTeams` (name/slug match plus ancestors; `matched` vs `visible`). `matchesQuery` was extracted from `filterDirectory`, and `teamScope` now takes any `{ id, parentTeamId }[]`. The pages are client tables (`components/admin/{people,teams}-table.tsx`) with nuqs params `adminPeopleParsers` (`q`, `team`, `sub`, `status`, `desk`) and `adminTeamsParsers` (`q`); defaults stay out of the URL. **Status defaults to `active`**, so #8's strike-through shows when "Inactive" or "Active and inactive" is chosen. Test note: nuqs writes the URL a moment after a change, so a spec that reloads must wait for the URL first. Tests: 8 unit, 2 Playwright, 1 updated.
-- [ ] #17 Export the audit log
+- [x] #17 Export the audit log
+    - **Completed:** 2026-10-04
+    - **Branch:** merged from `feature/audit-export`
+    - **Notes:** `packages/core/csv/audit.ts` (`auditToCsv`, `changedFields`, `summarizeAuditChange`, moved from the page). `listAudit` takes `entity`, `from`/`to` (inclusive UTC dates), `actor` (contains, wildcards literal via `containsPattern`), `beforeId` (keyset paging) and `limit` (`null` = all). `AUDIT_ENTITIES` is now exported from `queries/audit.ts`. Page: a GET filter form, 100 rows a page with "Older →"/"← Newest", and "Export CSV" with the same query; the filters are parsed once in `apps/web/lib/audit-filters.ts` for both. **Decided:** exports are audited (`entity: "audit_log"`, `action: "export"`, `after: { filters, rows }`). Times are still shown in UTC (column header says so); #27 adds the user's format and zone. Tests: 5 unit, 6 DB, 2 Playwright.
 
 **B. Data quality**
 
