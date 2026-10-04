@@ -61,6 +61,9 @@ test.describe("admin people and teams", () => {
     await page.getByLabel("Active").uncheck();
     await page.getByRole("button", { name: "Save person" }).click();
     await expect(page).toHaveURL(/\/admin\/people$/);
+    // The list shows active people unless asked.
+    await expect(page.getByRole("row", { name: /Sam Ortiz/ })).toHaveCount(0);
+    await page.getByLabel("Filter by status").selectOption("all");
 
     const sam = page.getByRole("row", { name: /Sam Ortiz/ });
     await expect(sam).toHaveAccessibleName(/Sam Ortiz \(inactive\)/);
@@ -68,6 +71,49 @@ test.describe("admin people and teams", () => {
     const max = page.getByRole("row", { name: /max@example\.com/ });
     await expect(max).not.toHaveAccessibleName(/inactive/);
     await expect(max.getByText("Max Osei").first()).not.toHaveClass(/line-through/);
+  });
+
+  test("the people list filters by text, team and desk, and keeps the filters in the URL", async ({
+    page,
+    context,
+  }) => {
+    await signInAs(context, "jane@example.com");
+    await page.goto("/admin/people");
+    const status = page.getByRole("status");
+    await expect(status).toHaveText("Showing 5 of 5");
+
+    // Every word must match somewhere: "max" is Max himself and the manager of Bob, Priya and Sam.
+    await page.getByLabel("Search people").fill("max");
+    await expect(status).toHaveText("Showing 4 of 5");
+    await page.getByLabel("Search people").fill("max payroll");
+    await expect(status).toHaveText("Showing 1 of 5");
+    await expect(page.getByRole("row", { name: /Bob Lindqvist/ })).toBeVisible();
+    await expect(page).toHaveURL(/q=max\+payroll/);
+
+    await page.getByRole("button", { name: "Clear filters" }).click();
+    await page.getByLabel("Filter by team").selectOption({ label: "Recruiting" });
+    await expect(status).toHaveText("Showing 2 of 5");
+    await page.getByLabel("Filter by desk").selectOption("without");
+    await expect(status).toHaveText("Showing 1 of 5");
+    await expect(page.getByRole("row", { name: /Priya Raman/ })).toBeVisible();
+
+    // A reload, or a shared link, gives the same list. nuqs writes the URL a moment after the
+    // change, so wait for it first.
+    await expect(page).toHaveURL(/team=t_recruiting.*desk=without|desk=without.*team=t_recruiting/);
+    await page.reload();
+    await expect(status).toHaveText("Showing 1 of 5");
+    await expect(page.getByLabel("Filter by desk")).toHaveValue("without");
+  });
+
+  test("the teams list search keeps a match's parent team", async ({ page, context }) => {
+    await signInAs(context, "jane@example.com");
+    await page.goto("/admin/teams");
+    await page.getByLabel("Search teams").fill("payr");
+    await expect(page.getByRole("status")).toHaveText("1 of 3 match");
+    await expect(page.getByRole("row", { name: /Payroll/ })).toBeVisible();
+    // HR stays, so Payroll still shows nested under it.
+    await expect(page.getByRole("row", { name: /^HR/ })).toBeVisible();
+    await expect(page.getByRole("row", { name: /Recruiting/ })).toHaveCount(0);
   });
 
   test("an admin sets profile accounts, and the person card links to them", async ({ page, context }) => {

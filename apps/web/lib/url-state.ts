@@ -1,4 +1,5 @@
 import { createLoader, parseAsBoolean, parseAsString, parseAsStringLiteral } from "nuqs/server";
+import { DESK_FILTERS, PERSON_STATUSES } from "@officeorg/core/admin/filter";
 import { ORG_TREES } from "@officeorg/core/org/tree";
 
 // The one definition of URL state. Every view imports it, so the same person, team and filters
@@ -43,4 +44,17 @@ export const orgParsers = {
   ...selectionParsers,
   tree: parseAsStringLiteral(ORG_TREES).withDefault("reporting"),
   view: parseAsStringLiteral(["chart", "list"] as const).withDefault("chart"),
+};
+
+// Filters on the admin people list (/admin/people). Inactive people are hidden unless asked for.
+export const adminPeopleParsers = {
+  q: parseAsString.withDefault(""),
+  team: parseAsString,
+  sub: parseAsBoolean.withDefault(true),
+  status: parseAsStringLiteral(PERSON_STATUSES).withDefault("active"),
+  desk: parseAsStringLiteral(DESK_FILTERS).withDefault("any"),
+};
+
+export const adminTeamsParsers = {
+  q: parseAsString.withDefault(""),
 };

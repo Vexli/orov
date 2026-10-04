@@ -43,7 +43,8 @@ the phase-by-phase delivery plan with progress notes.
 - Switching between the directory, map and org chart keeps the selected person and team. ⌘K
   (Ctrl+K) searches people, teams and rooms, with typo tolerance, from any view
 - Admin pages to create, edit and deactivate people and teams, with checks that reject
-  manager and parent-team cycles. Desks are assigned by clicking the floor drawing; choosing a
+  manager and parent-team cycles. The people list filters by text, team, status and desk (active
+  people by default), and the teams list by name. Desks are assigned by clicking the floor drawing; choosing a
   taken desk swaps it, after the admin confirms
 - Links to a person's other accounts (GitHub, GitLab, LinkedIn, a website) on their card, set in
   the admin form or the people CSV. An account can belong to only one person
