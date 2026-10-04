@@ -767,7 +767,10 @@ Built after #21 step 2, #22 and #29, at the project owner's direction; #30 still
 - [ ] N5 People and teams sorted alphabetically in every dropdown
 - [ ] N6 Final date (admin view only)
     - **Decided (2026-10-04):** a person's last working day: `person.endDate` beside `startDate`, in the admin form, admin list and people CSV; never sent to viewers.
-- [ ] N7 Flags as a standalone region display option (adjusts #28: a flag-only mode alongside the four text modes; the flag stays `aria-hidden`, so the accessible text needs a fallback)
+- [x] N7 Flags as a standalone region display option
+    - **Completed:** 2026-10-04
+    - **Branch:** merged from `feature/flag-only-display`
+    - **Notes:** `REGION_DISPLAYS` gained `flag` ("Flag only"; migration `0012` adds the enum value). `formatRegion(code, "flag")` is the country name; `regionLabel` returns `flagOnly: true` with the flag and that name, or the bare code when there's no flag. `DirectoryPerson.homeRegionFlagOnly`, `MapLocation.regionFlagOnly`; `RegionText` in `location-label.tsx` renders the flag `aria-hidden` with the name in an `sr-only` span and a `title`. The #28 checkbox is irrelevant in this mode. **Also on this branch:** a fix to #22's archive spec, whose `name: "Archive floor"` matched "Unarchive floor" as a substring (the intermittent failure noted under N8). Tests: 5 unit, 1 Playwright.
 - [x] N8 Don't draw area names on the map; use areas only to filter
     - **Completed:** 2026-10-04
     - **Branch:** merged from `feature/no-area-labels`
