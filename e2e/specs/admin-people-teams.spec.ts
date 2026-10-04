@@ -52,6 +52,24 @@ test.describe("admin people and teams", () => {
     await expect(page).toHaveURL(/\/admin\/people\/new$/);
   });
 
+  test("an inactive person is struck through in the list, and labelled for screen readers", async ({
+    page,
+    context,
+  }) => {
+    await signInAs(context, "jane@example.com");
+    await page.goto("/admin/people/p_sam");
+    await page.getByLabel("Active").uncheck();
+    await page.getByRole("button", { name: "Save person" }).click();
+    await expect(page).toHaveURL(/\/admin\/people$/);
+
+    const sam = page.getByRole("row", { name: /Sam Ortiz/ });
+    await expect(sam).toHaveAccessibleName(/Sam Ortiz \(inactive\)/);
+    await expect(sam.getByText("Sam Ortiz", { exact: false }).first()).toHaveClass(/line-through/);
+    const max = page.getByRole("row", { name: /max@example\.com/ });
+    await expect(max).not.toHaveAccessibleName(/inactive/);
+    await expect(max.getByText("Max Osei").first()).not.toHaveClass(/line-through/);
+  });
+
   test("an admin sets profile accounts, and the person card links to them", async ({ page, context }) => {
     await signInAs(context, "jane@example.com");
     await page.goto("/admin/people/p_max");

@@ -36,7 +36,12 @@ export default async function PeopleAdminPage() {
             {people.map((p) => (
               <tr key={p.id} className="border-b border-border">
                 <td className="py-2 pr-3">
-                  <div className="font-medium">{p.name}</div>
+                  {/* Struck through so inactive people stand out at a glance; the hidden text says
+                      the same to screen readers, which don't announce styling. */}
+                  <div className={p.active ? "font-medium" : "font-medium text-muted-fg line-through"}>
+                    {p.name}
+                    {p.active ? null : <span className="sr-only"> (inactive)</span>}
+                  </div>
                   <div className="text-xs text-muted-fg">{p.email}</div>
                 </td>
                 <td className="py-2 pr-3 text-muted-fg">{p.title ?? "—"}</td>
