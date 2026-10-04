@@ -77,3 +77,15 @@ export const personFormSchema = z
   });
 
 export type PersonForm = z.infer<typeof personFormSchema>;
+
+// What anyone can change about themself (#20), without an admin. Everything else (name, email,
+// title, manager, desk, teams, region) stays an admin's. The phone is normalized against the
+// person's home region when saved, since the form doesn't carry it.
+export const selfProfileSchema = z.object({
+  preferredName: optionalText,
+  phone: optionalText,
+  homeTimezone: optionalTimeZoneSchema(),
+  identities: identitiesInputSchema,
+});
+
+export type SelfProfileForm = z.infer<typeof selfProfileSchema>;

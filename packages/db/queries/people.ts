@@ -6,6 +6,8 @@ import {
   defaultTimeZone,
   identityProvider,
   inheritedManager,
+  normalizePhone,
+  type SelfProfileForm,
   PROFILE_PROVIDER_IDS,
   type Identities,
   type PersonForm,
@@ -230,23 +232,7 @@ async function savePersonIn(
     }
   }
 
-  for (const [provider, value] of Object.entries(input.identities)) {
-    const holder = await tx
-      .select({ name: s.person.name })
-      .from(s.personIdentity)
-      .innerJoin(s.person, eq(s.person.id, s.personIdentity.personId))
-      .where(
-        and(
-          eq(s.personIdentity.provider, provider),
-          eq(s.personIdentity.value, value),
-          id ? ne(s.personIdentity.personId, id) : undefined,
-        ),
-      );
-    if (holder[0]) {
-      const label = identityProvider(provider)?.label ?? provider;
-      throw new ValidationError(`${holder[0].name} already has this ${label} account.`, `identities.${provider}`);
-    }
-  }
+  await checkIdentitiesFree(tx, input.identities, id);
 
   const values = {
     email: input.email,
@@ -322,6 +308,88 @@ async function deskTimeZone(tx: Executor, deskId: string): Promise<string | null
     .innerJoin(s.location, eq(s.location.id, s.floor.locationId))
     .where(eq(s.space.id, deskId));
   return row?.timezone ?? null;
+}
+
+// Refuses an account someone else already has, naming them, before the unique index would.
+async function checkIdentitiesFree(tx: Executor, identities: Identities, personId?: string) {
+  for (const [provider, value] of Object.entries(identities)) {
+    const holder = await tx
+      .select({ name: s.person.name })
+      .from(s.personIdentity)
+      .innerJoin(s.person, eq(s.person.id, s.personIdentity.personId))
+      .where(
+        and(
+          eq(s.personIdentity.provider, provider),
+          eq(s.personIdentity.value, value),
+          personId ? ne(s.personIdentity.personId, personId) : undefined,
+        ),
+      );
+    if (holder[0]) {
+      const label = identityProvider(provider)?.label ?? provider;
+      throw new ValidationError(`${holder[0].name} already has this ${label} account.`, `identities.${provider}`);
+    }
+  }
+}
+
+// The person record of a signed-in user, matched by email (#20). Null if they aren't in the
+// directory.
+export async function findOwnProfile(db: Executor, email: string) {
+  const row = await db.query.person.findFirst({
+    where: eq(s.person.email, email),
+    with: { identities: true },
+  });
+  if (!row) return null;
+  return {
+    id: row.id,
+    name: row.name,
+    homeRegion: row.homeRegion,
+    form: {
+      preferredName: row.preferredName,
+      phone: row.phone,
+      homeTimezone: row.homeTimezone,
+      identities: profileIdentities(row.identities),
+    } satisfies SelfProfileForm,
+  };
+}
+
+// A person's change to their own record (#20). Only the self-editable fields are written,
+// whatever else is sent; the person is found by the signed-in email, never by an id from the
+// form; and the audit entry names them as the actor.
+// Returns what was stored (the phone normalized, a blank time zone defaulted), for the form.
+export async function saveOwnProfile(db: Database, email: string, input: SelfProfileForm): Promise<SelfProfileForm> {
+  return db.transaction(async (tx) => {
+    const row = await tx.query.person.findFirst({
+      where: eq(s.person.email, email),
+      columns: { id: true, homeRegion: true, assignedDeskId: true },
+    });
+    if (!row) throw new ValidationError("Your account isn't linked to a person in the directory yet.");
+    const phone = normalizePhone(input.phone, row.homeRegion);
+    if (!phone.ok) throw new ValidationError(phone.message, "phone");
+    await checkIdentitiesFree(tx, input.identities, row.id);
+
+    const before = await loadPersonRecord(tx, row.id);
+    await tx
+      .update(s.person)
+      .set({
+        preferredName: input.preferredName,
+        phone: phone.value,
+        homeTimezone: defaultTimeZone(
+          input.homeTimezone,
+          row.assignedDeskId ? await deskTimeZone(tx, row.assignedDeskId) : null,
+        ),
+        updatedAt: new Date(),
+      })
+      .where(eq(s.person.id, row.id));
+    await writeProfileIdentities(tx, row.id, input.identities);
+    const after = await loadPersonRecord(tx, row.id);
+    await recordAudit(tx, email, { entity: "person", entityId: row.id, action: "update", before, after });
+    return {
+      preferredName: after!.preferredName,
+      phone: after!.phone,
+      homeTimezone: after!.homeTimezone,
+      identities: after!.identities,
+    };
+  });
 }
 
 // Applies one change to several people (#7) in a single transaction: each person goes through
