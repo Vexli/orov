@@ -1,11 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useQueryStates } from "nuqs";
 import { filterAdminPeople, type AdminPersonRow } from "@officeorg/core/admin/filter";
 import { adminPeopleParsers } from "@/lib/url-state";
 import { TeamChip } from "../team-chip";
+import { BulkActionBar } from "./bulk-action-bar";
 
 export interface PeopleTableRow extends AdminPersonRow {
   id: string;
@@ -30,6 +31,25 @@ export function PeopleTable({ people, teams }: Props) {
     [people, teams, q, team, sub, status, desk],
   );
   const hasFilters = q !== "" || team !== null || status !== "active" || desk !== "any";
+
+  // Bulk changes (#7) apply to the ticked rows that the filters still show.
+  const [picked, setPicked] = useState<ReadonlySet<string>>(new Set());
+  const [notice, setNotice] = useState<string | null>(null);
+  const selected = rows.filter((p) => picked.has(p.id));
+  const allShownPicked = rows.length > 0 && selected.length === rows.length;
+  const pick = (ids: string[], on: boolean) =>
+    setPicked((current) => {
+      const next = new Set(current);
+      for (const id of ids) {
+        if (on) next.add(id);
+        else next.delete(id);
+      }
+      return next;
+    });
+  const managers = useMemo(
+    () => people.filter((p) => p.active).map((p) => ({ id: p.id, name: p.name })),
+    [people],
+  );
 
   return (
     <>
@@ -101,10 +121,27 @@ export function PeopleTable({ people, teams }: Props) {
         ) : null}
       </div>
 
+      {notice ? (
+        <p role="status" aria-label="Bulk change result" className="mt-3 rounded-md bg-muted p-3 text-sm">
+          {notice}
+        </p>
+      ) : null}
+
       <div className="mt-3 overflow-x-auto">
         <table className="w-full text-left text-sm">
           <thead className="border-b border-border text-xs uppercase text-muted-fg">
             <tr>
+              <th className="py-2 pr-3 font-medium">
+                <input
+                  type="checkbox"
+                  aria-label="Select everyone shown"
+                  checked={allShownPicked}
+                  ref={(el) => {
+                    if (el) el.indeterminate = selected.length > 0 && !allShownPicked;
+                  }}
+                  onChange={(e) => pick(rows.map((p) => p.id), e.target.checked)}
+                />
+              </th>
               <th className="py-2 pr-3 font-medium">Name</th>
               <th className="py-2 pr-3 font-medium">Title</th>
               <th className="py-2 pr-3 font-medium">Teams</th>
@@ -119,6 +156,14 @@ export function PeopleTable({ people, teams }: Props) {
           <tbody>
             {rows.map((p) => (
               <tr key={p.id} className="border-b border-border">
+                <td className="py-2 pr-3 align-top">
+                  <input
+                    type="checkbox"
+                    aria-label={`Select ${p.name}`}
+                    checked={picked.has(p.id)}
+                    onChange={(e) => pick([p.id], e.target.checked)}
+                  />
+                </td>
                 <td className="py-2 pr-3">
                   {/* Struck through so inactive people stand out at a glance; the hidden text says
                       the same to screen readers, which don't announce styling. */}
@@ -150,7 +195,7 @@ export function PeopleTable({ people, teams }: Props) {
             ))}
             {rows.length === 0 ? (
               <tr>
-                <td colSpan={7} className="py-6 text-center text-muted-fg">
+                <td colSpan={8} className="py-6 text-center text-muted-fg">
                   No one matches these filters.
                 </td>
               </tr>
@@ -158,6 +203,18 @@ export function PeopleTable({ people, teams }: Props) {
           </tbody>
         </table>
       </div>
+
+      {selected.length > 0 ? (
+        <BulkActionBar
+          selected={selected.map((p) => ({ id: p.id, name: p.name }))}
+          managers={managers}
+          teams={teams}
+          onDone={(message) => {
+            setPicked(new Set());
+            setNotice(message);
+          }}
+        />
+      ) : null}
     </>
   );
 }

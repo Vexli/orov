@@ -8,7 +8,7 @@ import { listAudit } from "./audit";
 import { ValidationError } from "./errors";
 import { listDeskOptions, listPickerFloors } from "./spaces";
 import { deleteTeam, getTeamForEdit, listTeamsForAdmin, saveTeam } from "./teams";
-import { getPersonForEdit, listPeopleForAdmin, savePerson, setPersonActive } from "./people";
+import { bulkUpdatePeople, getPersonForEdit, listPeopleForAdmin, savePerson, setPersonActive } from "./people";
 
 let t: TestDatabase;
 
@@ -294,6 +294,32 @@ describe("savePerson", () => {
     const sam = await t.db.query.person.findFirst({ where: eq(s.person.id, "p_sam") });
     expect(sam?.active).toBe(false);
     expect((await listAudit(t.db, { entity: "person" }))[0]).toMatchObject({ action: "update", entityId: "p_sam" });
+  });
+});
+
+describe("bulkUpdatePeople", () => {
+  it("deactivates several people in one go, with an audit entry each", async () => {
+    await bulkUpdatePeople(t.db, ACTOR, ["p_bob", "p_priya", "p_sam"], { active: false });
+    const rows = await t.db.select({ id: s.person.id, active: s.person.active }).from(s.person);
+    expect(rows.filter((r) => !r.active).map((r) => r.id).sort()).toEqual(["p_bob", "p_priya", "p_sam"]);
+    const audit = await listAudit(t.db, { entity: "person" });
+    expect(audit.map((a) => a.entityId).sort()).toEqual(["p_bob", "p_priya", "p_sam"]);
+  });
+
+  it("rejects the whole batch when one manager change would loop, naming the person", async () => {
+    // Bob reports to Max, so Max can't report to Bob. Priya would have been fine.
+    await expectValidation(
+      bulkUpdatePeople(t.db, ACTOR, ["p_priya", "p_max"], { managerId: "p_bob" }),
+      /^Max Osei: That manager reports .* Nothing was changed\.$/,
+    );
+    expect((await getPersonForEdit(t.db, "p_priya"))?.managerId).toBe("p_max");
+    expect(await listAudit(t.db)).toEqual([]);
+  });
+
+  it("adds a team to several people, keeping their other teams", async () => {
+    await bulkUpdatePeople(t.db, ACTOR, ["p_bob", "p_sam"], { addTeamIds: ["t_payroll"] });
+    expect((await getPersonForEdit(t.db, "p_bob"))?.teamIds.sort()).toEqual(["t_hr", "t_payroll"]);
+    expect((await getPersonForEdit(t.db, "p_sam"))?.teamIds.sort()).toEqual(["t_payroll", "t_recruiting"]);
   });
 });
 

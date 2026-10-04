@@ -1,5 +1,7 @@
 import { and, eq, inArray, ne, sql } from "drizzle-orm";
 import {
+  applyBulkPatch,
+  type BulkPatch,
   compareByFamilyName,
   defaultTimeZone,
   identityProvider,
@@ -181,126 +183,135 @@ export async function savePerson(
   input: PersonForm,
   id?: string,
 ): Promise<{ id: string }> {
-  return db.transaction(async (tx) => {
-    const before = id ? await loadPersonRecord(tx, id) : null;
-    if (id && !before) throw new ValidationError("This person no longer exists.");
+  return db.transaction((tx) => savePersonIn(tx, actorEmail, input, id));
+}
 
-    const emailTaken = await tx.query.person.findFirst({
-      where: and(eq(s.person.email, input.email), id ? ne(s.person.id, id) : undefined),
-      columns: { id: true },
-    });
-    if (emailTaken) throw new ValidationError("Another person already uses this email.", "email");
+// savePerson's checks and writes, inside a transaction the caller holds (bulkUpdatePeople runs
+// several in one).
+async function savePersonIn(
+  tx: Executor,
+  actorEmail: string,
+  input: PersonForm,
+  id?: string,
+): Promise<{ id: string }> {
+  const before = id ? await loadPersonRecord(tx, id) : null;
+  if (id && !before) throw new ValidationError("This person no longer exists.");
 
-    // No manager chosen: the primary team's lead (#11), unless that would close a loop.
-    let managerId = input.managerId;
-    if (managerId === null && input.primaryTeamId !== null) {
-      const teams = await tx.select({ id: s.team.id, parentTeamId: s.team.parentTeamId, leadId: s.team.leadId }).from(s.team);
-      const lead = inheritedManager(id ?? "", input.primaryTeamId, new Map(teams.map((t) => [t.id, t])));
-      if (lead && !(id && (await managerWouldLoop(tx, id, lead)))) managerId = lead;
-    }
-
-    if (managerId) {
-      const manager = await tx.query.person.findFirst({ where: eq(s.person.id, managerId), columns: { id: true } });
-      if (!manager) throw new ValidationError("Choose an existing manager.", "managerId");
-      if (id && (await managerWouldLoop(tx, id, managerId))) {
-        throw new ValidationError("That manager reports (directly or not) to this person, which would create a loop.", "managerId");
-      }
-    }
-
-    const holder = input.assignedDeskId
-      ? await checkDesk(tx, input.assignedDeskId, id ?? null, input.swapDesk === true)
-      : null;
-
-    if (input.teamIds.length > 0) {
-      const found = await tx.query.team.findMany({ where: inArray(s.team.id, input.teamIds), columns: { id: true } });
-      if (found.length !== new Set(input.teamIds).size) {
-        throw new ValidationError("One of the selected teams no longer exists.", "teamIds");
-      }
-    }
-
-    for (const [provider, value] of Object.entries(input.identities)) {
-      const holder = await tx
-        .select({ name: s.person.name })
-        .from(s.personIdentity)
-        .innerJoin(s.person, eq(s.person.id, s.personIdentity.personId))
-        .where(
-          and(
-            eq(s.personIdentity.provider, provider),
-            eq(s.personIdentity.value, value),
-            id ? ne(s.personIdentity.personId, id) : undefined,
-          ),
-        );
-      if (holder[0]) {
-        const label = identityProvider(provider)?.label ?? provider;
-        throw new ValidationError(`${holder[0].name} already has this ${label} account.`, `identities.${provider}`);
-      }
-    }
-
-    const values = {
-      email: input.email,
-      givenName: input.givenName,
-      familyName: input.familyName,
-      preferredName: input.preferredName,
-      title: input.title,
-      phone: input.phone,
-      homeRegion: input.homeRegion,
-      homeTimezone: defaultTimeZone(
-        input.homeTimezone,
-        input.assignedDeskId ? await deskTimeZone(tx, input.assignedDeskId) : null,
-      ),
-      startDate: input.startDate,
-      active: input.active,
-      managerId,
-      assignedDeskId: input.assignedDeskId,
-      updatedAt: new Date(),
-    };
-
-    // A swap: the holder takes this person's old desk, or becomes deskless if there wasn't one.
-    // One desk, one person is a unique index, so the holder lets go first and moves last.
-    const previousDeskId = id
-      ? ((await tx.query.person.findFirst({ where: eq(s.person.id, id), columns: { assignedDeskId: true } }))
-          ?.assignedDeskId ?? null)
-      : null;
-    const holderBefore = holder ? await loadPersonRecord(tx, holder.id) : null;
-    if (holder) await tx.update(s.person).set({ assignedDeskId: null }).where(eq(s.person.id, holder.id));
-
-    const personId = id
-      ? (await tx.update(s.person).set(values).where(eq(s.person.id, id)).returning({ id: s.person.id }))[0]!.id
-      : (await tx.insert(s.person).values(values).returning({ id: s.person.id }))[0]!.id;
-
-    if (holder) {
-      await tx
-        .update(s.person)
-        .set({ assignedDeskId: previousDeskId, updatedAt: new Date() })
-        .where(eq(s.person.id, holder.id));
-      const holderAfter = await loadPersonRecord(tx, holder.id);
-      await recordAudit(tx, actorEmail, { entity: "person", entityId: holder.id, action: "update", before: holderBefore, after: holderAfter });
-    }
-
-    await tx.delete(s.teamMember).where(eq(s.teamMember.personId, personId));
-    if (input.teamIds.length > 0) {
-      await tx.insert(s.teamMember).values(
-        input.teamIds.map((teamId) => ({
-          personId,
-          teamId,
-          isPrimary: teamId === input.primaryTeamId,
-        })),
-      );
-    }
-
-    await writeProfileIdentities(tx, personId, input.identities);
-    await syncInheritedMemberships(tx);
-
-    const after = await loadPersonRecord(tx, personId);
-    await recordAudit(tx, actorEmail, {
-      entity: "person",
-      entityId: personId,
-      action: id ? "update" : "create",
-      before,
-      after,
-    });
-    return { id: personId };
+  const emailTaken = await tx.query.person.findFirst({
+    where: and(eq(s.person.email, input.email), id ? ne(s.person.id, id) : undefined),
+    columns: { id: true },
   });
+  if (emailTaken) throw new ValidationError("Another person already uses this email.", "email");
+
+  // No manager chosen: the primary team's lead (#11), unless that would close a loop.
+  let managerId = input.managerId;
+  if (managerId === null && input.primaryTeamId !== null) {
+    const teams = await tx.select({ id: s.team.id, parentTeamId: s.team.parentTeamId, leadId: s.team.leadId }).from(s.team);
+    const lead = inheritedManager(id ?? "", input.primaryTeamId, new Map(teams.map((t) => [t.id, t])));
+    if (lead && !(id && (await managerWouldLoop(tx, id, lead)))) managerId = lead;
+  }
+
+  if (managerId) {
+    const manager = await tx.query.person.findFirst({ where: eq(s.person.id, managerId), columns: { id: true } });
+    if (!manager) throw new ValidationError("Choose an existing manager.", "managerId");
+    if (id && (await managerWouldLoop(tx, id, managerId))) {
+      throw new ValidationError("That manager reports (directly or not) to this person, which would create a loop.", "managerId");
+    }
+  }
+
+  const holder = input.assignedDeskId
+    ? await checkDesk(tx, input.assignedDeskId, id ?? null, input.swapDesk === true)
+    : null;
+
+  if (input.teamIds.length > 0) {
+    const found = await tx.query.team.findMany({ where: inArray(s.team.id, input.teamIds), columns: { id: true } });
+    if (found.length !== new Set(input.teamIds).size) {
+      throw new ValidationError("One of the selected teams no longer exists.", "teamIds");
+    }
+  }
+
+  for (const [provider, value] of Object.entries(input.identities)) {
+    const holder = await tx
+      .select({ name: s.person.name })
+      .from(s.personIdentity)
+      .innerJoin(s.person, eq(s.person.id, s.personIdentity.personId))
+      .where(
+        and(
+          eq(s.personIdentity.provider, provider),
+          eq(s.personIdentity.value, value),
+          id ? ne(s.personIdentity.personId, id) : undefined,
+        ),
+      );
+    if (holder[0]) {
+      const label = identityProvider(provider)?.label ?? provider;
+      throw new ValidationError(`${holder[0].name} already has this ${label} account.`, `identities.${provider}`);
+    }
+  }
+
+  const values = {
+    email: input.email,
+    givenName: input.givenName,
+    familyName: input.familyName,
+    preferredName: input.preferredName,
+    title: input.title,
+    phone: input.phone,
+    homeRegion: input.homeRegion,
+    homeTimezone: defaultTimeZone(
+      input.homeTimezone,
+      input.assignedDeskId ? await deskTimeZone(tx, input.assignedDeskId) : null,
+    ),
+    startDate: input.startDate,
+    active: input.active,
+    managerId,
+    assignedDeskId: input.assignedDeskId,
+    updatedAt: new Date(),
+  };
+
+  // A swap: the holder takes this person's old desk, or becomes deskless if there wasn't one.
+  // One desk, one person is a unique index, so the holder lets go first and moves last.
+  const previousDeskId = id
+    ? ((await tx.query.person.findFirst({ where: eq(s.person.id, id), columns: { assignedDeskId: true } }))
+        ?.assignedDeskId ?? null)
+    : null;
+  const holderBefore = holder ? await loadPersonRecord(tx, holder.id) : null;
+  if (holder) await tx.update(s.person).set({ assignedDeskId: null }).where(eq(s.person.id, holder.id));
+
+  const personId = id
+    ? (await tx.update(s.person).set(values).where(eq(s.person.id, id)).returning({ id: s.person.id }))[0]!.id
+    : (await tx.insert(s.person).values(values).returning({ id: s.person.id }))[0]!.id;
+
+  if (holder) {
+    await tx
+      .update(s.person)
+      .set({ assignedDeskId: previousDeskId, updatedAt: new Date() })
+      .where(eq(s.person.id, holder.id));
+    const holderAfter = await loadPersonRecord(tx, holder.id);
+    await recordAudit(tx, actorEmail, { entity: "person", entityId: holder.id, action: "update", before: holderBefore, after: holderAfter });
+  }
+
+  await tx.delete(s.teamMember).where(eq(s.teamMember.personId, personId));
+  if (input.teamIds.length > 0) {
+    await tx.insert(s.teamMember).values(
+      input.teamIds.map((teamId) => ({
+        personId,
+        teamId,
+        isPrimary: teamId === input.primaryTeamId,
+      })),
+    );
+  }
+
+  await writeProfileIdentities(tx, personId, input.identities);
+  await syncInheritedMemberships(tx);
+
+  const after = await loadPersonRecord(tx, personId);
+  await recordAudit(tx, actorEmail, {
+    entity: "person",
+    entityId: personId,
+    action: id ? "update" : "create",
+    before,
+    after,
+  });
+  return { id: personId };
 }
 
 async function deskTimeZone(tx: Executor, deskId: string): Promise<string | null> {
@@ -311,6 +322,32 @@ async function deskTimeZone(tx: Executor, deskId: string): Promise<string | null
     .innerJoin(s.location, eq(s.location.id, s.floor.locationId))
     .where(eq(s.space.id, deskId));
   return row?.timezone ?? null;
+}
+
+// Applies one change to several people (#7) in a single transaction: each person goes through
+// the same checks and writes as a single edit (savePersonIn), with an audit entry each. If any
+// of them fails, nothing is saved, and the error names the person. People are saved one after
+// another, so a manager who reports to someone earlier in the batch is caught as a loop too.
+export async function bulkUpdatePeople(
+  db: Database,
+  actorEmail: string,
+  ids: readonly string[],
+  patch: BulkPatch,
+): Promise<{ updated: number }> {
+  return db.transaction(async (tx) => {
+    for (const id of new Set(ids)) {
+      const form = await getPersonForEdit(tx, id);
+      if (!form) throw new ValidationError("One of the selected people no longer exists.");
+      try {
+        await savePersonIn(tx, actorEmail, applyBulkPatch(form, patch), id);
+      } catch (error) {
+        if (!(error instanceof ValidationError)) throw error;
+        const name = (await tx.query.person.findFirst({ where: eq(s.person.id, id), columns: { name: true } }))?.name;
+        throw new ValidationError(`${name ?? id}: ${error.message} Nothing was changed.`);
+      }
+    }
+    return { updated: new Set(ids).size };
+  });
 }
 
 // Checks the desk can be assigned. If someone else holds it, returns them when the admin asked
