@@ -83,6 +83,9 @@ export const regionDisplay = pgEnum("region_display", [
   "country_region",
 ]);
 
+// Mirrors DATE_FORMATS in packages/core/dates/format.ts.
+export const dateFormat = pgEnum("date_format", ["iso", "dmy", "mdy"]);
+
 // A region column holds an ISO 3166-1 alpha-2 country ("US") or an ISO 3166-2 subdivision
 // ("US-CA"). The database checks the shape; the app checks the code exists, because the
 // subdivision list changes and a migration shouldn't be needed to follow it.
@@ -377,6 +380,8 @@ export const appUser = pgTable("app_user", {
   regionDisplay: regionDisplay("region_display")
     .notNull()
     .default("country_region"),
+  // How this user sees dates and times (#27).
+  dateFormat: dateFormat("date_format").notNull().default("iso"),
   lastSeenAt: timestamp("last_seen_at", { withTimezone: true }),
 });
 

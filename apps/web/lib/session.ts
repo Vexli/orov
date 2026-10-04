@@ -1,14 +1,27 @@
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { getDb } from "@officeorg/db/client";
-import type { RegionDisplay } from "@officeorg/core";
-import { getAppUser, type AppRole } from "@officeorg/db/queries/app-users";
+import { canonicalTimeZone, type DateFormat, type RegionDisplay } from "@officeorg/core";
+import { findHomeTimeZone, getAppUser, type AppRole, type AppUser } from "@officeorg/db/queries/app-users";
 import { auth } from "./auth";
+import { TIME_ZONE_COOKIE } from "./time-zone-cookie";
 
 export interface CurrentUser {
   email: string;
   role: AppRole;
   // The user's own setting for how region codes are shown (plan.md §7).
   regionDisplay: RegionDisplay;
+  // The user's own setting for how dates and times are shown (#27).
+  dateFormat: DateFormat;
+  // The zone their times are shown in: their home time zone if they're in the directory, else
+  // their browser's (TimeZoneCookie), else UTC.
+  timeZone: string;
+}
+
+async function currentUser(email: string, user: AppUser): Promise<CurrentUser> {
+  const home = await findHomeTimeZone(getDb(), email);
+  const browser = canonicalTimeZone((await cookies()).get(TIME_ZONE_COOKIE)?.value ?? "");
+  return { email, ...user, timeZone: home ?? browser ?? "UTC" };
 }
 
 // Every page and server action calls one of these. The role and settings come from the database
@@ -21,7 +34,7 @@ export async function requireUser(): Promise<CurrentUser> {
 
   const user = await getAppUser(getDb(), email);
   if (!user) redirect("/login");
-  return { email, ...user };
+  return currentUser(email, user);
 }
 
 export async function requireAdmin(): Promise<CurrentUser> {
@@ -36,5 +49,5 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
   const email = session?.user?.email;
   if (!email) return null;
   const user = await getAppUser(getDb(), email);
-  return user ? { email, ...user } : null;
+  return user ? currentUser(email, user) : null;
 }

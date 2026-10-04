@@ -4,8 +4,11 @@ import { FloorDrawingPanel } from "@/components/admin/floor-drawing";
 import { FloorFormEditor } from "@/components/admin/location-form";
 import { getDb } from "@officeorg/db/client";
 import { getFloorForAdmin } from "@officeorg/db/queries/floors";
+import { formatDateTime } from "@officeorg/core";
+import { requireAdmin } from "@/lib/session";
 
 export default async function FloorAdminPage({ params }: { params: Promise<{ id: string }> }) {
+  const user = await requireAdmin();
   const { id } = await params;
   const floor = await getFloorForAdmin(getDb(), id);
   if (!floor) notFound();
@@ -28,7 +31,7 @@ export default async function FloorAdminPage({ params }: { params: Promise<{ id:
           id: v.id,
           version: v.version,
           uploadedBy: v.uploadedBy,
-          uploadedAt: v.uploadedAt,
+          uploadedLabel: formatDateTime(v.uploadedAt, user.dateFormat, user.timeZone, { zone: true }),
         }))}
       />
 

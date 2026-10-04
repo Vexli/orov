@@ -302,6 +302,8 @@ Anything without one of these prefixes is decoration.
 - A code that is no longer in ISO 3166 shows as the raw code, not as an error.
 - Filters and URL state use codes, never labels, so a shared link works the same for every viewer.
 
+**Date format** (`app_user.dateFormat`, Phase 7 #27): `iso` (default, `2026-10-04 14:30`), `dmy` (`04/10/2026 14:30`) or `mdy` (`10/04/2026 2:30 PM`), formatted on the server by `formatDateTime` in `packages/core/dates/format.ts`. Times are shown in the viewer's home time zone if they have a person row, else their browser's (a `tz` cookie), else UTC, and timestamps carry the zone's abbreviation. Date filters (the audit log's) are read in the same zone. CSV files always use ISO 8601 in UTC.
+
 ---
 
 ## 8. Integrations

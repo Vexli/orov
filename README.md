@@ -60,8 +60,9 @@ the phase-by-phase delivery plan with progress notes.
   skipped. Files saved by Excel (Windows-1252 or UTF-16, separated by commas, semicolons or tabs)
   are detected. CSV export, and an audit log of every admin change, filterable by entity, date and
   admin, and exportable as CSV
-- ISO 3166 region codes (`US`, `US-CA`, `CA-ON`), and a per-user setting for how regions are
-  displayed
+- ISO 3166 region codes (`US`, `US-CA`, `CA-ON`), and per-user settings for how regions are
+  displayed and how dates are written (ISO, day/month/year or month/day/year, in the user's own
+  time zone)
 - A semantic theme layer: components are styled only through theme slots, never raw colors
 - Admin pages for offices and floors. Uploading a floor drawing (SVG) sanitizes it, shows what it
   adds, moves and removes before anything is saved, and keeps every version for rollback. How to

@@ -47,6 +47,15 @@ describe("listAudit", () => {
     expect(ids(await listAudit(t.db, { from: "2026-10-02", to: "2026-10-02" }))).toEqual(["p_2"]);
   });
 
+  it("reads the dates in the viewer's time zone", async () => {
+    // 2026-10-01 in Los Angeles runs from 07:00 UTC that day to 07:00 UTC on the 2nd.
+    expect(ids(await listAudit(t.db, { from: "2026-10-01", to: "2026-10-01", timeZone: "America/Los_Angeles" }))).toEqual([
+      "p_2",
+      "t_1",
+      "p_1",
+    ]);
+  });
+
   it("filters by part of the actor's email, taking LIKE wildcards literally", async () => {
     expect(ids(await listAudit(t.db, { actor: "MAX" }))).toEqual(["p_3", "p_2"]);
     expect(ids(await listAudit(t.db, { actor: "ja_ne" }))).toEqual(["fl_1"]);

@@ -1,7 +1,8 @@
-import { summarizeAuditChange } from "@officeorg/core";
+import { formatDateTime, summarizeAuditChange } from "@officeorg/core";
 import { getDb } from "@officeorg/db/client";
 import { AUDIT_ENTITIES, listAudit } from "@officeorg/db/queries/audit";
 import { auditQuery, parseAuditFilters } from "@/lib/audit-filters";
+import { requireAdmin } from "@/lib/session";
 
 const PAGE_SIZE = 100;
 
@@ -12,12 +13,15 @@ export default async function AuditPage({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
+  const user = await requireAdmin();
   const params = await searchParams;
   const filters = parseAuditFilters(params);
   const before =
     typeof params.before === "string" && /^\d+$/.test(params.before) ? params.before : null;
+  // Dates in the filter, and the times shown, are in the viewer's time zone.
   const rows = await listAudit(getDb(), {
     ...filters,
+    timeZone: user.timeZone,
     beforeId: before ? BigInt(before) : undefined,
     limit: PAGE_SIZE,
   });
@@ -90,7 +94,7 @@ export default async function AuditPage({
         <table className="w-full text-left text-sm">
           <thead className="border-b border-border text-xs uppercase text-muted-fg">
             <tr>
-              <th className="py-2 pr-3 font-medium">When (UTC)</th>
+              <th className="py-2 pr-3 font-medium">When</th>
               <th className="py-2 pr-3 font-medium">Who</th>
               <th className="py-2 pr-3 font-medium">Entity</th>
               <th className="py-2 pr-3 font-medium">Action</th>
@@ -101,7 +105,7 @@ export default async function AuditPage({
             {rows.map((row) => (
               <tr key={String(row.id)} className="border-b border-border align-top">
                 <td className="whitespace-nowrap py-2 pr-3 tabular-nums text-muted-fg">
-                  {row.at.toISOString().replace("T", " ").slice(0, 16)}
+                  {formatDateTime(row.at, user.dateFormat, user.timeZone, { zone: true })}
                 </td>
                 <td className="py-2 pr-3">{row.actorEmail}</td>
                 <td className="py-2 pr-3">
