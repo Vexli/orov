@@ -12,9 +12,12 @@ import {
   getFloorForAdmin,
   previewFloorRollback,
   previewFloorUpload,
+  listFloorSpacesForAdmin,
   rollbackFloor,
+  saveArea,
   saveFloor,
   saveLocation,
+  saveSpace,
 } from "./floors";
 
 let t: TestDatabase;
@@ -275,5 +278,36 @@ describe("offices and floors", () => {
       "fl_sf_2",
     );
     expect((await getFloorForAdmin(t.db, "fl_sf_2"))!.name).toBe("Second floor");
+  });
+});
+
+describe("renaming rooms and areas", () => {
+  it("renames a room and sets its capacity, audited, and a re-upload keeps the name", async () => {
+    await saveSpace(t.db, ACTOR, "sp_huddle_a", { name: "Fjord", capacity: 6 });
+    const room = await t.db.query.space.findFirst({ where: eq(s.space.id, "sp_huddle_a") });
+    expect(room).toMatchObject({ name: "Fjord", capacity: 6 });
+    expect((await listAudit(t.db, { entity: "space" }))[0]).toMatchObject({ entityId: "sp_huddle_a", action: "update" });
+
+    // The drawing still says room-huddle-a; uploading it again doesn't bring "Huddle A" back.
+    await applyFloorUpload(t.db, ACTOR, "fl_sf_2", FLOOR_2.replace("</svg>", `<circle cx="5" cy="5" r="2" fill="currentColor"/></svg>`), NO);
+    expect((await t.db.query.space.findFirst({ where: eq(s.space.id, "sp_huddle_a") }))?.name).toBe("Fjord");
+  });
+
+  it("renames an area", async () => {
+    await saveArea(t.db, ACTOR, "area_south_wing", { name: "Fjord Wing" });
+    const { areas } = await listFloorSpacesForAdmin(t.db, "fl_sf_2");
+    expect(areas.map((a) => a.name)).toContain("Fjord Wing");
+  });
+
+  it("won't rename a desk, whose name is its code", async () => {
+    await expect(saveSpace(t.db, ACTOR, "sp_sf_2_014", { name: "Bob's desk", capacity: null })).rejects.toThrow(
+      /can't be renamed/,
+    );
+  });
+
+  it("lists rooms and points of interest but not desks", async () => {
+    const { spaces } = await listFloorSpacesForAdmin(t.db, "fl_sf_2");
+    expect(spaces.some((sp) => sp.kind === "desk")).toBe(false);
+    expect(spaces.map((sp) => sp.name)).toContain("Boardroom");
   });
 });

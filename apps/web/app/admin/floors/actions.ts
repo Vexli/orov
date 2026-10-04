@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import type { FloorDiff } from "@officeorg/core";
+import { areaEditSchema, spaceEditSchema, type FloorDiff } from "@officeorg/core";
 import { getDb } from "@officeorg/db/client";
 import { ValidationError } from "@officeorg/db/queries/errors";
 import {
@@ -9,6 +9,8 @@ import {
   previewFloorRollback,
   previewFloorUpload,
   rollbackFloor,
+  saveArea,
+  saveSpace,
 } from "@officeorg/db/queries/floors";
 import { requireAdmin } from "@/lib/session";
 
@@ -87,4 +89,36 @@ export async function rollbackAction(
     revalidatePath(`/admin/floors/${input.floorId}`);
     return { ok: true as const, version: result.version };
   });
+}
+
+export type RenameState = { ok: true } | { ok: false; error: string; field?: string };
+
+// Renames a room or point of interest, and sets a meeting room's capacity (#21).
+export async function saveSpaceAction(floorId: string, id: string, input: unknown): Promise<RenameState> {
+  const user = await requireAdmin();
+  const parsed = spaceEditSchema.safeParse(input);
+  if (!parsed.success) {
+    const issue = parsed.error.issues[0];
+    return { ok: false, error: issue?.message ?? "Check the values", field: String(issue?.path[0] ?? "") };
+  }
+  const result = await attempt(async () => {
+    await saveSpace(getDb(), user.email, text(id), parsed.data);
+    return { ok: true as const };
+  });
+  revalidatePath(`/admin/floors/${text(floorId)}`);
+  revalidatePath("/map");
+  return result;
+}
+
+export async function saveAreaAction(floorId: string, id: string, input: unknown): Promise<RenameState> {
+  const user = await requireAdmin();
+  const parsed = areaEditSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? "Check the name", field: "name" };
+  const result = await attempt(async () => {
+    await saveArea(getDb(), user.email, text(id), parsed.data);
+    return { ok: true as const };
+  });
+  revalidatePath(`/admin/floors/${text(floorId)}`);
+  revalidatePath("/map");
+  return result;
 }

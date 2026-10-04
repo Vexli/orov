@@ -46,3 +46,22 @@ export const floorFormSchema = z.object({
 });
 
 export type FloorForm = z.infer<typeof floorFormSchema>;
+
+// Renaming a room, point of interest or area in the app (#21). The name is what the map, cards,
+// lists and search show; the drawing's id stays as it is, so re-uploading the drawing keeps the
+// new name. Desks can't be renamed here: their code is how imports and the seat picker find them.
+const spaceName = z.string().trim().min(1, "Name is required").max(80, "Keep it under 80 characters");
+
+export const spaceEditSchema = z.object({
+  name: spaceName,
+  // Seats in a meeting room or phone booth. Blank means unknown.
+  capacity: z
+    .union([z.null(), z.literal(""), z.coerce.number().int("Use a whole number").min(1, "At least 1").max(1000)])
+    .transform((v) => (v === "" ? null : v)),
+});
+
+export type SpaceEdit = z.infer<typeof spaceEditSchema>;
+
+export const areaEditSchema = z.object({ name: spaceName });
+
+export type AreaEdit = z.infer<typeof areaEditSchema>;

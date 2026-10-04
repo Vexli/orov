@@ -10,6 +10,9 @@ export const AUDIT_ENTITIES = [
   "floor",
   "theme",
   "brand_asset",
+  // Rooms, points of interest and areas renamed in the app (#21).
+  "space",
+  "area",
   // A download of the audit log itself, so the log shows who took a copy.
   "audit_log",
 ] as const;

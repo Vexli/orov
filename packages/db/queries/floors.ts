@@ -8,6 +8,8 @@ import {
   type FloorDiff,
   type FloorForm,
   type LocationForm,
+  type AreaEdit,
+  type SpaceEdit,
 } from "@officeorg/core";
 import { parseFloorSvg } from "@officeorg/core/svg/parse";
 import { sanitizeSvg, SvgError } from "@officeorg/core/svg/sanitize";
@@ -507,5 +509,50 @@ async function applyDiff(
       spacesArchived: ids(archived),
       madeDeskless: diff.spaces.removedAssigned.map((sp) => sp.assignedTo!.name),
     },
+  });
+}
+
+// The rooms, points of interest and areas of a floor, for renaming them (#21). Desks are left out:
+// their names are codes that imports and the seat picker look them up by.
+export async function listFloorSpacesForAdmin(db: Executor, floorId: string) {
+  const [areas, spaces] = await Promise.all([
+    db.query.area.findMany({
+      where: eq(s.area.floorId, floorId),
+      columns: { id: true, name: true, svgElementId: true },
+      orderBy: (a, { asc }) => [asc(a.name)],
+    }),
+    db.query.space.findMany({
+      where: and(eq(s.space.floorId, floorId), isNull(s.space.archivedAt), ne(s.space.kind, "desk")),
+      columns: { id: true, name: true, kind: true, capacity: true, svgElementId: true },
+      orderBy: (sp, { asc }) => [asc(sp.name)],
+    }),
+  ]);
+  return { areas, spaces };
+}
+
+export async function saveSpace(db: Database, actorEmail: string, id: string, input: SpaceEdit): Promise<void> {
+  await db.transaction(async (tx) => {
+    const before = await tx.query.space.findFirst({ where: eq(s.space.id, id) });
+    if (!before) throw new ValidationError("This room no longer exists.");
+    if (before.kind === "desk") {
+      throw new ValidationError("A desk's name is its code, which imports and the seat picker use. It can't be renamed.");
+    }
+    // Capacity only means something for rooms people meet in.
+    const capacity = before.kind === "meeting_room" || before.kind === "phone_booth" ? input.capacity : before.capacity;
+    const [after] = await tx
+      .update(s.space)
+      .set({ name: input.name, capacity })
+      .where(eq(s.space.id, id))
+      .returning();
+    await recordAudit(tx, actorEmail, { entity: "space", entityId: id, action: "update", before, after });
+  });
+}
+
+export async function saveArea(db: Database, actorEmail: string, id: string, input: AreaEdit): Promise<void> {
+  await db.transaction(async (tx) => {
+    const before = await tx.query.area.findFirst({ where: eq(s.area.id, id) });
+    if (!before) throw new ValidationError("This area no longer exists.");
+    const [after] = await tx.update(s.area).set({ name: input.name }).where(eq(s.area.id, id)).returning();
+    await recordAudit(tx, actorEmail, { entity: "area", entityId: id, action: "update", before, after });
   });
 }

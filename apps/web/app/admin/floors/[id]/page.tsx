@@ -3,7 +3,8 @@ import { notFound } from "next/navigation";
 import { FloorDrawingPanel } from "@/components/admin/floor-drawing";
 import { FloorFormEditor } from "@/components/admin/location-form";
 import { getDb } from "@officeorg/db/client";
-import { getFloorForAdmin } from "@officeorg/db/queries/floors";
+import { getFloorForAdmin, listFloorSpacesForAdmin } from "@officeorg/db/queries/floors";
+import { SpaceNames } from "@/components/admin/space-names";
 import { formatDateTime, tierLabel } from "@officeorg/core";
 import { requireAdmin } from "@/lib/session";
 
@@ -12,6 +13,7 @@ export default async function FloorAdminPage({ params }: { params: Promise<{ id:
   const { id } = await params;
   const floor = await getFloorForAdmin(getDb(), id);
   if (!floor) notFound();
+  const names = await listFloorSpacesForAdmin(getDb(), id);
   // What this office calls its floors (#16).
   const tier = { singular: floor.location.floorLabelSingular, plural: floor.location.floorLabelPlural };
 
@@ -37,6 +39,16 @@ export default async function FloorAdminPage({ params }: { params: Promise<{ id:
           uploadedLabel: formatDateTime(v.uploadedAt, user.dateFormat, user.timeZone, { zone: true }),
         }))}
       />
+
+      <section aria-labelledby="names-heading">
+        <h2 id="names-heading" className="font-heading">
+          Room and area names
+        </h2>
+        <p className="mt-1 text-sm text-muted-fg">
+          What the map, cards, lists and search call them. Renaming here needs no new drawing.
+        </p>
+        <SpaceNames floorId={floor.id} areas={names.areas} spaces={names.spaces} />
+      </section>
 
       <section aria-labelledby="details-heading">
         <h2 id="details-heading" className="font-heading">
