@@ -655,7 +655,10 @@ The improvement backlog raised after Phases 1–3. Each item keeps its number fr
     - **Completed:** 2026-10-04
     - **Branch:** merged from `feature/org-team-member-highlight`
     - **Notes:** `teamHighlightIds("team", …)` adds `memberNodeId(team, person)` for each membership of an in-scope team. Bob's node under HR stays unlit when only Payroll is highlighted. Member nodes use the same `--map-highlight` ring as team nodes; a lighter style wasn't needed. The `chart.fit` framing on more nodes looked fine. Tests: 1 unit added and 1 updated, 2 Playwright updated and 1 added.
-- [ ] #25 Include sub-teams by default
+- [x] #25 Include sub-teams by default
+    - **Completed:** 2026-10-04
+    - **Branch:** merged from `feature/subteams-default`
+    - **Notes:** `selectionParsers.sub` defaults to `true` and `EMPTY_FILTERS.includeSubteams` is `true`. Only `sub=false` appears in URLs (nuqs `clearOnDefault`); the palette copies the raw value, so `sub=false` carries into room links. Every `sub: null` reset now means "include". §7 updated. The branch also carries a fix to `map.spec.ts` U1, which #15 broke (the list row and the card both had a "Show SF-2-014 on the map" link). Tests: 1 unit rewritten; 5 Playwright specs rewritten and 1 added (`sub=false` carries across tabs).
 - [ ] #9 Filter the admin lists
 - [ ] #17 Export the audit log
 
