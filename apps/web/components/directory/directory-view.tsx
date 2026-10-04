@@ -209,12 +209,19 @@ export function DirectoryView({ people, teams, locations }: Props) {
               {table.getRowModel().rows.map((row) => {
                 const isSelected = row.original.id === params.person;
                 return (
+                  // The whole row is a click target for pointer users. The name button stays the
+                  // keyboard and screen reader route, so rows aren't focusable themselves. A click
+                  // on a link or button inside (the desk link) does its own thing instead.
                   <tr
                     key={row.id}
                     id={`person-row-${row.original.id}`}
-                    aria-selected={isSelected}
-                    className={`border-b border-border align-top last:border-0 ${
-                      isSelected ? "bg-accent" : ""
+                    aria-current={isSelected ? "true" : undefined}
+                    onClick={(e) => {
+                      if ((e.target as Element).closest("a,button,input,select")) return;
+                      meta.selectPerson(row.original.id);
+                    }}
+                    className={`cursor-pointer border-b border-border align-top last:border-0 ${
+                      isSelected ? "bg-accent" : "hover:bg-muted"
                     }`}
                   >
                     {row.getVisibleCells().map((cell) => (

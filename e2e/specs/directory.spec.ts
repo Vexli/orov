@@ -96,4 +96,25 @@ test.describe("directory", () => {
     await expect(page).toHaveURL(/floor=3/);
     await expect.poll(() => fillOf(page, "desk-3-001")).toBe(SELECTION);
   });
+
+  test("clicking anywhere in a row selects that person, and the name button still works by keyboard", async ({
+    page,
+  }) => {
+    await page.goto("/directory");
+    const maxRow = page.locator("#person-row-p_max");
+    await maxRow.getByText("HR Business Partner").click();
+    await expect(page).toHaveURL(/person=p_max/);
+    await expect(maxRow).toHaveAttribute("aria-current", "true");
+    await expect(page.getByRole("complementary", { name: "Max Osei details" })).toBeVisible();
+
+    // The desk link in a row navigates; it doesn't just select.
+    await page.locator("#person-row-p_jane").getByRole("link", { name: "Show SF-2-003 on the map" }).click();
+    await expect(page).toHaveURL(/\/map\?.*person=p_jane/);
+
+    await page.goto("/directory");
+    await page.getByRole("button", { name: /Priya Raman/ }).focus();
+    await page.keyboard.press("Enter");
+    await expect(page).toHaveURL(/person=p_priya/);
+    await expect(page.locator("#person-row-p_priya")).toHaveAttribute("aria-current", "true");
+  });
 });
