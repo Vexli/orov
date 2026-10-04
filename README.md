@@ -45,7 +45,8 @@ the phase-by-phase delivery plan with progress notes.
   (Ctrl+K) searches people, teams and rooms, with typo tolerance, from any view
 - Admin pages to create, edit and deactivate people and teams, with checks that reject
   manager and parent-team cycles. The people list filters by text, team, status and desk (active
-  people by default), and the teams list by name. Desks are assigned by clicking the floor drawing; choosing a
+  people by default), and the teams list by name. Several people can be changed at once
+  (activate or deactivate, manager, teams), after reviewing who the change applies to Desks are assigned by clicking the floor drawing; choosing a
   taken desk swaps it, after the admin confirms
 - Links to a person's other accounts (GitHub, GitLab, LinkedIn, a website) on their card, set in
   the admin form or the people CSV. An account can belong to only one person

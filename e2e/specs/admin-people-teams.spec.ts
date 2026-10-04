@@ -197,6 +197,46 @@ test.describe("admin people and teams", () => {
     await expect(page.getByLabel("Filter by desk")).toHaveValue("without");
   });
 
+  test("an admin deactivates several people at once after reviewing the change", async ({ page, context }) => {
+    await signInAs(context, "jane@example.com");
+    await page.goto("/admin/people");
+    for (const name of ["Bob Lindqvist", "Priya Raman", "Sam Ortiz"]) {
+      await page.getByLabel(`Select ${name}`).check();
+    }
+    const bar = page.getByRole("region", { name: "Change selected people" });
+    await expect(bar).toContainText("3 selected");
+    await bar.getByLabel("Change").selectOption({ label: "Deactivate" });
+    await bar.getByRole("button", { name: "Review change" }).click();
+
+    const dialog = page.getByRole("dialog", { name: "Deactivate for 3 people?" });
+    await expect(dialog.getByRole("listitem")).toHaveText(["Bob Lindqvist", "Sam Ortiz", "Priya Raman"]);
+    await dialog.getByRole("button", { name: "Apply" }).click();
+    await expect(page.getByRole("status", { name: "Bulk change result" })).toHaveText(
+      "Deactivate · 3 people updated.",
+    );
+    // The default filter shows active people, so they're gone from the list.
+    await expect(page.getByRole("status").first()).toHaveText("Showing 2 of 5");
+  });
+
+  test("a bulk manager change that would loop changes nobody, and names who blocked it", async ({
+    page,
+    context,
+  }) => {
+    await signInAs(context, "jane@example.com");
+    await page.goto("/admin/people");
+    await page.getByLabel("Select Priya Raman").check();
+    await page.getByLabel("Select Max Osei").check();
+    const bar = page.getByRole("region", { name: "Change selected people" });
+    await bar.getByLabel("Change").selectOption({ label: "Set manager" });
+    await bar.getByLabel("New manager").selectOption({ label: "Bob Lindqvist" });
+    await bar.getByRole("button", { name: "Review change" }).click();
+    const dialog = page.getByRole("dialog", { name: "Set manager: Bob Lindqvist for 2 people?" });
+    await dialog.getByRole("button", { name: "Apply" }).click();
+    await expect(dialog.getByRole("alert")).toContainText(/^Max Osei: That manager reports/);
+    await dialog.getByRole("button", { name: "Cancel" }).click();
+    await expect(page.getByRole("row", { name: /priya@example\.com/ })).toContainText("Max Osei");
+  });
+
   test("the teams list search keeps a match's parent team", async ({ page, context }) => {
     await signInAs(context, "jane@example.com");
     await page.goto("/admin/teams");
@@ -314,8 +354,8 @@ test.describe("admin people and teams", () => {
     await swap.check();
     await page.getByRole("button", { name: "Save person" }).click();
     await expect(page).toHaveURL(/\/admin\/people$/);
-    await expect(page.getByRole("row", { name: /^Max Osei/ })).toContainText("SF-2-014");
-    await expect(page.getByRole("row", { name: /^Bob Lindqvist/ })).toContainText("SF-2-010");
+    await expect(page.getByRole("row", { name: /max@example\.com/ })).toContainText("SF-2-014");
+    await expect(page.getByRole("row", { name: /bob@example\.com/ })).toContainText("SF-2-010");
   });
 
   test("a sub-team is created under HR and appears nested beneath it", async ({
