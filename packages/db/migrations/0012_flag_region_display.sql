@@ -1,0 +1,1 @@
+ALTER TYPE "public"."region_display" ADD VALUE 'flag';

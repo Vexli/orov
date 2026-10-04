@@ -10,12 +10,7 @@ export function LocationLabel({ person, linkDesk = false }: { person: DirectoryP
   const { region, badge } = locationSummary(person);
   return (
     <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
-      <span>
-        {/* Screen readers would read "flag: Canada" before "Canada", so the flag is hidden from
-            them; the text says the same. */}
-        {person.homeRegionFlag ? <span aria-hidden="true">{person.homeRegionFlag} </span> : null}
-        {region}
-      </span>{" "}
+      <RegionText flag={person.homeRegionFlag} flagOnly={person.homeRegionFlagOnly} label={region} />{" "}
       {linkDesk && person.desk ? (
         <Link
           href={{ pathname: "/map", query: { person: person.id } }}
@@ -27,6 +22,26 @@ export function LocationLabel({ person, linkDesk = false }: { person: DirectoryP
       ) : (
         <span className={badgeClass}>{badge}</span>
       )}
+    </span>
+  );
+}
+
+// A region label with the viewer's flag choice (#28, N7). Screen readers would read "flag:
+// Canada" before "Canada", so the flag is always hidden from them; with flags alone, the name is
+// still in the page for them, and as a tooltip.
+export function RegionText({ flag, flagOnly, label }: { flag: string | null; flagOnly: boolean; label: string }) {
+  if (flag && flagOnly) {
+    return (
+      <span title={label}>
+        <span aria-hidden="true">{flag}</span>
+        <span className="sr-only">{label}</span>
+      </span>
+    );
+  }
+  return (
+    <span>
+      {flag ? <span aria-hidden="true">{flag} </span> : null}
+      {label}
     </span>
   );
 }

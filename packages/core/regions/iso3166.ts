@@ -11,7 +11,9 @@ import { z } from "zod";
 export const REGION_CODE_PATTERN = /^[A-Z]{2}(-[A-Z0-9]{1,3})?$/;
 
 // How a viewer prefers to see a region code. Stored per user in app_user.region_display.
-export const REGION_DISPLAYS = ["code", "country", "region", "country_region"] as const;
+// "flag" shows only the country's flag (N7); the country name stays in the page for screen
+// readers and as a tooltip.
+export const REGION_DISPLAYS = ["code", "country", "region", "country_region", "flag"] as const;
 export type RegionDisplay = (typeof REGION_DISPLAYS)[number];
 export const DEFAULT_REGION_DISPLAY: RegionDisplay = "country_region";
 
@@ -24,6 +26,7 @@ export const REGION_DISPLAY_LABELS: Record<RegionDisplay, string> = {
   country: "Country name",
   region: "Region name",
   country_region: "Region and country name",
+  flag: "Flag only",
 };
 
 const countries = new Map(
@@ -90,7 +93,9 @@ export function formatRegion(code: string, display: RegionDisplay, locale = "en"
   const country = countryName(code, locale);
   const region = subdivisionName(code);
   switch (display) {
+    // In flag-only mode the text is what screen readers get, and the fallback for no flag.
     case "country":
+    case "flag":
       return country;
     case "region":
       return region ?? country;
@@ -121,8 +126,15 @@ export interface RegionLabel {
   label: string;
   // Null unless the user asked for flags.
   flag: string | null;
+  // Show the flag alone, with the label only for screen readers and as a tooltip (N7).
+  flagOnly: boolean;
 }
 
 export function regionLabel(code: string, format: RegionFormat, locale = "en"): RegionLabel {
-  return { label: formatRegion(code, format.display, locale), flag: format.flag ? flagEmoji(code) : null };
+  if (format.display === "flag") {
+    const flag = flagEmoji(code);
+    // No flag (an unassigned code): the code itself.
+    return flag ? { label: formatRegion(code, "flag", locale), flag, flagOnly: true } : { label: code, flag: null, flagOnly: false };
+  }
+  return { label: formatRegion(code, format.display, locale), flag: format.flag ? flagEmoji(code) : null, flagOnly: false };
 }

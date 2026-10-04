@@ -81,6 +81,7 @@ export const regionDisplay = pgEnum("region_display", [
   "country",
   "region",
   "country_region",
+  "flag",
 ]);
 
 // Mirrors DATE_FORMATS in packages/core/dates/format.ts.

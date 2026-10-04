@@ -297,6 +297,7 @@ Anything without one of these prefixes is decoration.
 | `country`                  | United States             | India                |
 | `region`                   | California                | India (falls back)   |
 | `country_region` (default) | California, United States | India                |
+| `flag` (Phase 7 N7)        | 🇺🇸 (United States for screen readers) | 🇮🇳                  |
 
 - Labels are formatted **on the server** by `formatRegion` in `packages/core/regions/iso3166.ts`. Queries such as `loadDirectory(db, regionDisplay)` return the finished label next to the code, so the ISO 3166-2 list (about 5,000 rows) never reaches the browser. Client code must not import that module.
 - Country names come from `Intl.DisplayNames`, so they use everyday names ("United States") and can follow a locale later. ICU has no subdivision names, so those come from the ISO 3166-2 list as published (local spellings such as "Karnātaka"). A nested subdivision such as `FR-75C` shows its own name ("Paris, France").

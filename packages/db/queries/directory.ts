@@ -63,6 +63,7 @@ export async function loadDirectory(
       homeRegion: row.homeRegion,
       homeRegionLabel: region.label,
       homeRegionFlag: region.flag,
+      homeRegionFlagOnly: region.flagOnly,
       homeTimezone: row.homeTimezone,
       phone: row.phone ? displayPhone(row.phone) : null,
       manager: row.manager ? { id: row.manager.id, name: row.manager.name } : null,
