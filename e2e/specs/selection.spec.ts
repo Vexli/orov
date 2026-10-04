@@ -29,7 +29,7 @@ const jane: Person = { id: "p_jane", name: "Jane Park", desk: "desk-2-003", mana
 // Each view, checked for the same person: the card, plus that view's own sign of focus.
 async function expectDirectoryFocus(page: Page, p: Person) {
   await expect(page).toHaveURL(new RegExp(`/directory\\?person=${p.id}`));
-  await expect(page.locator(`#person-row-${p.id}`)).toHaveAttribute("aria-selected", "true");
+  await expect(page.locator(`#person-row-${p.id}`)).toHaveAttribute("aria-current", "true");
   await expect(page.getByRole("complementary", { name: `${p.name} details` })).toBeVisible();
 }
 
