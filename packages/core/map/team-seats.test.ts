@@ -21,6 +21,7 @@ const person = (id: string, teamIds: string[]): DirectoryPerson => ({
   title: null,
   homeRegion: "US",
   homeRegionLabel: "United States",
+  homeRegionFlag: null,
   homeTimezone: null,
   manager: null,
   desk: null,
@@ -53,6 +54,7 @@ const locations: MapLocation[] = [
     slug: "sf",
     name: "San Francisco",
     regionLabel: "",
+    regionFlag: null,
     floors: [floor("2"), floor("3"), floor("4")],
   },
 ];

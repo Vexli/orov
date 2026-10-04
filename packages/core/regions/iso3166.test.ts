@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
+  flagEmoji,
   formatRegion,
+  regionLabel,
   isKnownRegion,
   isRegionDisplay,
   normalizeRegionCode,
@@ -105,5 +107,31 @@ describe("isRegionDisplay", () => {
     expect(REGION_DISPLAYS.every(isRegionDisplay)).toBe(true);
     expect(isRegionDisplay("name")).toBe(false);
     expect(isRegionDisplay(null)).toBe(false);
+  });
+});
+
+describe("flagEmoji", () => {
+  it.each([
+    ["CA", "🇨🇦"],
+    ["CA-ON", "🇨🇦"],
+    ["IN-KA", "🇮🇳"],
+    ["FR-75C", "🇫🇷"],
+  ])("%s → %s", (code, flag) => {
+    expect(flagEmoji(code)).toBe(flag);
+  });
+
+  it.each(["XX", "XX-1", "ca", ""])("has no flag for %j", (code) => {
+    expect(flagEmoji(code)).toBeNull();
+  });
+});
+
+describe("regionLabel", () => {
+  it("adds the flag only when asked, in every display mode", () => {
+    expect(regionLabel("CA-ON", { display: "country_region", flag: true })).toEqual({
+      label: "Ontario, Canada",
+      flag: "🇨🇦",
+    });
+    expect(regionLabel("CA-ON", { display: "code", flag: true })).toEqual({ label: "CA-ON", flag: "🇨🇦" });
+    expect(regionLabel("CA-ON", { display: "country_region", flag: false }).flag).toBeNull();
   });
 });

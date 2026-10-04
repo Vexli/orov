@@ -38,6 +38,7 @@ function person(
     title: null,
     homeRegion: "US",
     homeRegionLabel: "United States",
+    homeRegionFlag: null,
     homeTimezone: null,
     manager: null,
     desk: null,

@@ -35,6 +35,7 @@ export async function recordSignIn(
 export interface AppUser {
   role: AppRole;
   regionDisplay: RegionDisplay;
+  regionFlag: boolean;
   dateFormat: DateFormat;
 }
 
@@ -43,12 +44,12 @@ export interface AppUser {
 export async function getAppUser(db: Executor, email: string): Promise<AppUser | null> {
   const row = await db.query.appUser.findFirst({
     where: eq(appUser.email, email),
-    columns: { role: true, regionDisplay: true, dateFormat: true },
+    columns: { role: true, regionDisplay: true, regionFlag: true, dateFormat: true },
   });
   return row ?? null;
 }
 
-export type UserSettings = Pick<AppUser, "regionDisplay" | "dateFormat">;
+export type UserSettings = Pick<AppUser, "regionDisplay" | "regionFlag" | "dateFormat">;
 
 // A user's own preferences; fields left out keep their value. Not audited: they change only
 // what that user sees.

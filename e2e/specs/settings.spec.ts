@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { resetE2eDatabase } from "../support/database";
-import { signInAs } from "../support/session";
+import { signInAs, switchUser } from "../support/session";
 
 // Each user picks how region codes appear (plan.md §7): ISO 3166 code, country name, region
 // name, or region and country name. The setting is theirs alone.
@@ -82,6 +82,32 @@ test.describe("region display setting", () => {
   });
 });
 
+test.describe("country flags", () => {
+  test.beforeEach(resetE2eDatabase);
+
+  test("a user can put the country's flag in front of every region label, just for themself", async ({
+    page,
+    context,
+  }) => {
+    await signInAs(context, "bob@example.com");
+    await page.goto("/settings");
+    await page.getByRole("checkbox", { name: /Show country flags/ }).check();
+    await page.getByRole("radio", { name: /ISO 3166 code/ }).check();
+    await page.getByRole("button", { name: "Save settings" }).click();
+    await expect(page.getByRole("status")).toContainText("Settings saved");
+
+    await page.goto("/directory?person=p_jane");
+    const card = page.getByRole("complementary", { name: "Jane Park details" });
+    await expect(card).toContainText("🇨🇦 CA-ON SF-2-003");
+    // The flag is decoration: assistive technology gets the text only.
+    await expect(card.locator('[aria-hidden="true"]', { hasText: "🇨🇦" })).toHaveCount(1);
+
+    await switchUser(page, context, "max@example.com");
+    await page.goto("/directory?person=p_jane");
+    await expect(page.getByRole("complementary", { name: "Jane Park details" })).not.toContainText("🇨🇦");
+  });
+});
+
 // Each user also picks how dates appear (#27). Times are shown in their home time zone.
 test.describe("date format setting", () => {
   test.beforeEach(resetE2eDatabase);
@@ -110,8 +136,7 @@ test.describe("date format setting", () => {
     await expect(when).toHaveText(/^\d\d\/\d\d\/\d{4} \d\d:\d\d E[DS]T$/);
 
     // Max's setting is still the default.
-    await context.clearCookies();
-    await signInAs(context, "max@example.com");
+    await switchUser(page, context, "max@example.com");
     await page.goto("/settings");
     await expect(page.getByRole("radio", { name: /Year-month-day/ })).toBeChecked();
   });

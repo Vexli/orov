@@ -1,0 +1,1 @@
+ALTER TABLE "app_user" ADD COLUMN "region_flag" boolean DEFAULT false NOT NULL;

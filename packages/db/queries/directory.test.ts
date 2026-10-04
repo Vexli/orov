@@ -1,4 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import type { RegionDisplay } from "@officeorg/core";
 import { seedDemoData } from "../seed";
 import { startTestDatabase, type TestDatabase } from "../test-utils";
 import { loadDirectory } from "./directory";
@@ -15,8 +16,8 @@ afterAll(async () => {
 });
 
 describe("loadDirectory", () => {
-  const labelsFor = async (display: Parameters<typeof loadDirectory>[1]) => {
-    const { people } = await loadDirectory(t.db, display);
+  const labelsFor = async (display?: RegionDisplay) => {
+    const { people } = await loadDirectory(t.db, display && { display, flag: false });
     return Object.fromEntries(
       people.map((p) => [p.id, { code: p.homeRegion, label: p.homeRegionLabel }]),
     );
@@ -34,6 +35,13 @@ describe("loadDirectory", () => {
     expect((await labelsFor("region")).p_bob?.label).toBe("California");
     // A country-only code has no region name, so it falls back to the country.
     expect((await labelsFor("region")).p_sam?.label).toBe("United States");
+  });
+
+  it("adds the country's flag when the viewer asks for it", async () => {
+    const { people } = await loadDirectory(t.db, { display: "country_region", flag: true });
+    const jane = people.find((p) => p.id === "p_jane");
+    expect(jane).toMatchObject({ homeRegionLabel: "Ontario, Canada", homeRegionFlag: "🇨🇦" });
+    expect((await loadDirectory(t.db)).people.find((p) => p.id === "p_jane")?.homeRegionFlag).toBeNull();
   });
 
   it("carries the office's region code with the desk", async () => {
