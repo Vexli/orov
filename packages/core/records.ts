@@ -16,7 +16,8 @@ export interface PersonRecord {
   // The last working day (N6). Admin-only: never sent to the directory, map or org chart.
   endDate: string | null;
   active: boolean;
-  managerEmail: string | null;
+  // Everyone this person reports to, equally (N1). Order is kept but doesn't change the meaning.
+  managerEmails: string[];
   deskCode: string | null;
   // Only for someone without a desk (N9); with a desk, the office is the desk's.
   officeSlug: string | null;
@@ -73,7 +74,7 @@ export const PERSON_FIELDS = [
   "startDate",
   "endDate",
   "active",
-  "managerEmail",
+  "managerEmails",
   "deskCode",
   "officeSlug",
   "teamSlugs",

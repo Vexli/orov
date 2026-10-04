@@ -62,3 +62,22 @@ export function inheritedTeams(
   }
   return [...inherited].sort();
 }
+
+// reachesAncestor for a graph where each node can have several parents, such as people with
+// several managers (N1): does any path up from `starts` reach `target`? Cycle-safe.
+export function reachesAncestorAny(
+  parentsOf: (id: string) => readonly string[],
+  starts: readonly string[],
+  target: string,
+): boolean {
+  const seen = new Set<string>();
+  const queue = [...starts];
+  while (queue.length > 0) {
+    const current = queue.shift()!;
+    if (current === target) return true;
+    if (seen.has(current)) continue;
+    seen.add(current);
+    queue.push(...parentsOf(current));
+  }
+  return false;
+}

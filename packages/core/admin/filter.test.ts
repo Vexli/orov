@@ -16,7 +16,7 @@ const row = (o: Partial<AdminPersonRow> & { name: string }): AdminPersonRow & { 
   id: o.name.toLowerCase(),
   email: `${o.name.toLowerCase()}@x.com`,
   title: null,
-  managerName: null,
+  managerNames: [],
   deskName: null,
   active: true,
   teams: [],
@@ -25,7 +25,7 @@ const row = (o: Partial<AdminPersonRow> & { name: string }): AdminPersonRow & { 
 
 const people = [
   row({ name: "Jane", title: "Head of HR", deskName: "SF-2-003", teams: [{ id: "t_hr" }] }),
-  row({ name: "Bob", managerName: "Jane", deskName: "SF-2-014", teams: [{ id: "t_payroll" }] }),
+  row({ name: "Bob", managerNames: ["Jane"], deskName: "SF-2-014", teams: [{ id: "t_payroll" }] }),
   row({ name: "Sam", active: false, teams: [{ id: "t_eng" }] }),
 ];
 

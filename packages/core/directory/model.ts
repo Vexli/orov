@@ -32,7 +32,8 @@ export interface DirectoryPerson {
   homeTimezone: string | null;
   // Formatted on the server, like homeRegionLabel, so the browser never loads the phone metadata.
   phone: PhoneDisplay | null;
-  manager: { id: string; name: string } | null;
+  // Everyone they report to (N1), in the order they were given.
+  managers: { id: string; name: string }[];
   desk: {
     id: string;
     name: string;

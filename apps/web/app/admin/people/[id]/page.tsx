@@ -24,7 +24,7 @@ export default async function EditPersonPage({ params }: { params: Promise<{ id:
   // them here keeps the picker honest. saveTeam/savePerson check the same thing on the server.
   const reports = new Map<string, string[]>();
   for (const p of people) {
-    if (p.managerId) reports.set(p.managerId, [...(reports.get(p.managerId) ?? []), p.id]);
+    for (const managerId of p.managerIds) reports.set(managerId, [...(reports.get(managerId) ?? []), p.id]);
   }
   const excluded = new Set<string>([id]);
   const queue = [id];

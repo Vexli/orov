@@ -168,11 +168,13 @@ space         (id, floorId, areaId?, kind, svgElementId, name, capacity?,
 person        (id, email UNIQUE, givenName, familyName?, name (generated: "given family"),
                preferredName?, title?, photoUrl?, phone? (E.164),
                homeRegion (ISO 3166 code), homeTimezone?,
-               managerId → person?, assignedDeskId → space? UNIQUE (partial, non-null),
+               assignedDeskId → space? UNIQUE (partial, non-null),
                officeId → location? (only without a desk, N9),
                startDate?, endDate? (last day, admin-only, N6), active bool, createdAt, updatedAt)
 team          (id, slug UNIQUE, name, parentTeamId → team?, leadId → person?,
                chatChannelId?, color?)
+person_manager (personId, managerId → person, position)   PK(personId, managerId)
+               -- any number of equal managers per person (Phase 7 N1; was person.managerId)
 team_member   (personId, teamId, isPrimary bool, source: explicit | inherited)
                 PK(personId, teamId), partial UNIQUE(personId) WHERE isPrimary
                 inherited: derived from an explicit membership of a sub-team (Phase 7 #23)
@@ -214,7 +216,7 @@ brand_asset   (id, kind: logo_light|logo_dark|favicon|font, mime, bytes bytea, s
 
 ### Invariants, enforced in code and covered by tests
 
-- **No cycles** in `person.managerId` or `team.parentTeamId`. Check with a recursive CTE inside the same transaction as the write, and reject the write if it would create a cycle.
+- **No cycles** through any of a person's managers (`person_manager`) or in `team.parentTeamId`. Check with a recursive CTE inside the same transaction as the write, and reject the write if it would create a cycle.
 - **One person per desk** (partial unique index). Reassigning a desk is a single transaction that swaps the two people.
 - **The desk must be `kind = desk`**, and its floor must not be archived.
 - `homeRegion` and `assignedDeskId` are **independent** (U4). The UI shows "Ontario, Canada [SF-2-003]", with the seat code as a badge, in the viewer's region format (§7.1).

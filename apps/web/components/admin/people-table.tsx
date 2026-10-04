@@ -185,7 +185,7 @@ export function PeopleTable({ people, teams }: Props) {
                     ? "—"
                     : p.teams.map((t) => <TeamChip key={t.id} team={t} className="mr-1" />)}
                 </td>
-                <td className="py-2 pr-3">{p.managerName ?? "—"}</td>
+                <td className="py-2 pr-3">{p.managerNames.length > 0 ? p.managerNames.join(", ") : "—"}</td>
                 <td className="py-2 pr-3 font-mono text-xs">
                   {p.deskName ?? (p.officeName ? <span className="font-sans">{p.officeName}, no desk</span> : "—")}
                 </td>

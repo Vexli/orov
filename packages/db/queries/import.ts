@@ -17,7 +17,7 @@ import type { Database, Executor } from "../client";
 import * as s from "../schema";
 import { recordAudit } from "./audit";
 import { syncInheritedMemberships } from "./memberships";
-import { hasManagerCycle, loadPersonRecords, writeProfileIdentities } from "./people";
+import { hasManagerCycle, loadPersonRecords, writeManagers, writeProfileIdentities } from "./people";
 import { hasTeamCycle, loadTeamRecords } from "./teams";
 
 export class ImportRejectedError extends Error {
@@ -172,7 +172,7 @@ export async function applyPeopleCsv(
         .values(personValues(rec))
         .onConflictDoUpdate({
           target: s.person.email,
-          set: { ...personValues(rec), managerId: null, assignedDeskId: null, updatedAt: new Date() },
+          set: { ...personValues(rec), assignedDeskId: null, updatedAt: new Date() },
         });
     }
 
@@ -201,6 +201,11 @@ export async function applyPeopleCsv(
       const personId = idByEmail.get(rec.email)!;
 
       await writeProfileIdentities(tx, personId, rec.identities);
+      await writeManagers(
+        tx,
+        personId,
+        rec.managerEmails.map((email) => idByEmail.get(email)!),
+      );
       await tx.delete(s.teamMember).where(eq(s.teamMember.personId, personId));
       if (rec.teamSlugs.length > 0) {
         const teamIds = await tx
@@ -220,7 +225,6 @@ export async function applyPeopleCsv(
       await tx
         .update(s.person)
         .set({
-          managerId: rec.managerEmail ? (idByEmail.get(rec.managerEmail) ?? null) : null,
           assignedDeskId: rec.deskCode ? (idByDeskCode.get(rec.deskCode) ?? null) : null,
           officeId: rec.officeSlug ? (idByOfficeSlug.get(rec.officeSlug) ?? null) : null,
         })

@@ -38,7 +38,7 @@ function people(...rows: string[]) {
 async function personByEmail(email: string) {
   return t.db.query.person.findFirst({
     where: eq(s.person.email, email),
-    with: { manager: true, assignedDesk: true, teamMembers: { with: { team: true } } },
+    with: { managers: { with: { manager: true } }, assignedDesk: true, teamMembers: { with: { team: true } } },
   });
 }
 
@@ -61,7 +61,7 @@ describe("people import", () => {
     await applyPeopleCsv(t.db, "jane@example.com", csv);
 
     const ama = await personByEmail("ama@example.com");
-    expect(ama?.manager?.email).toBe("lee@example.com");
+    expect(ama?.managers[0]?.manager.email).toBe("lee@example.com");
     expect(ama?.assignedDesk?.name).toBe("SF-2-016");
     expect(ama?.teamMembers.filter((m) => m.source === "explicit").map((m) => m.team.slug)).toEqual([
       "recruiting",
@@ -70,7 +70,7 @@ describe("people import", () => {
     expect(ama?.teamMembers.find((m) => m.team.slug === "hr")?.source).toBe("inherited");
 
     const lee = await personByEmail("lee@example.com");
-    expect(lee?.manager?.email).toBe("jane@example.com");
+    expect(lee?.managers[0]?.manager.email).toBe("jane@example.com");
     const primary = lee?.teamMembers.find((m) => m.isPrimary);
     expect(primary?.team.slug).toBe("recruiting");
   });
@@ -136,6 +136,13 @@ describe("people import", () => {
     expect(await personByEmail("ama@example.com")).toBeUndefined();
   });
 
+  it("imports several managers per person, and exports them back the same way", async () => {
+    const csv = (await exportPeopleCsv(t.db)).replace(/^(priya@example\.com,(?:[^,]*,){10})max@example\.com,/m, "$1max@example.com;jane@example.com,");
+    expect(csv).toContain("max@example.com;jane@example.com");
+    await applyPeopleCsv(t.db, "jane@example.com", csv);
+    expect(await exportPeopleCsv(t.db)).toBe(csv);
+  });
+
   it("writes nothing when any row is invalid", async () => {
     const before = await t.db.select().from(s.person);
     const csv = people(
@@ -158,7 +165,7 @@ describe("people import", () => {
     await expect(applyPeopleCsv(t.db, "jane@example.com", csv)).rejects.toThrow(
       /First problem, line 2: manager chain loops back to jane@example.com/,
     );
-    expect((await personByEmail("jane@example.com"))?.managerId).toBeNull();
+    expect((await personByEmail("jane@example.com"))?.managers).toEqual([]);
   });
 
   it("reports an unknown team and an unknown desk as row errors in the dry run", async () => {

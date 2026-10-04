@@ -49,7 +49,7 @@ function personInput(overrides: Partial<PersonForm>): PersonForm {
     startDate: null,
     endDate: null,
     active: true,
-    managerId: null,
+    managerIds: [],
     assignedDeskId: null,
     officeId: null,
     teamIds: [],
@@ -87,7 +87,7 @@ describe("savePerson", () => {
       t.db,
       ACTOR,
       personInput({
-        managerId: "p_max",
+        managerIds: ["p_max"],
         assignedDeskId: "sp_sf_2_016",
         teamIds: ["t_recruiting", "t_hr"],
         primaryTeamId: "t_recruiting",
@@ -96,9 +96,9 @@ describe("savePerson", () => {
 
     const row = await t.db.query.person.findFirst({
       where: eq(s.person.id, id),
-      with: { manager: true, assignedDesk: true, teamMembers: true },
+      with: { managers: { with: { manager: true } }, assignedDesk: true, teamMembers: true },
     });
-    expect(row?.manager?.id).toBe("p_max");
+    expect(row?.managers[0]?.manager.id).toBe("p_max");
     expect(row?.assignedDesk?.name).toBe("SF-2-016");
     expect(row?.teamMembers.find((m) => m.isPrimary)?.teamId).toBe("t_recruiting");
     expect(row?.teamMembers).toHaveLength(2);
@@ -119,19 +119,18 @@ describe("savePerson", () => {
   it("rejects a manager that would close a loop, and leaves the chain unchanged", async () => {
     // Bob reports to Max, who reports to Jane. Making Jane report to Bob closes the loop.
     await expectValidation(
-      savePerson(t.db, ACTOR, personInput({ email: "jane@example.com", givenName: "Jane", familyName: "Park", managerId: "p_bob" }), "p_jane"),
+      savePerson(t.db, ACTOR, personInput({ email: "jane@example.com", givenName: "Jane", familyName: "Park", managerIds: ["p_bob"] }), "p_jane"),
       /would create a loop/,
-      "managerId",
+      "managerIds",
     );
-    const jane = await t.db.query.person.findFirst({ where: eq(s.person.id, "p_jane") });
-    expect(jane?.managerId).toBeNull();
+    expect((await getPersonForEdit(t.db, "p_jane"))?.managerIds).toEqual([]);
   });
 
   it("rejects being your own manager", async () => {
     await expectValidation(
-      savePerson(t.db, ACTOR, personInput({ email: "max@example.com", givenName: "Max", familyName: "Osei", managerId: "p_max" }), "p_max"),
+      savePerson(t.db, ACTOR, personInput({ email: "max@example.com", givenName: "Max", familyName: "Osei", managerIds: ["p_max"] }), "p_max"),
       /would create a loop/,
-      "managerId",
+      "managerIds",
     );
   });
 
@@ -147,7 +146,7 @@ describe("savePerson", () => {
     await savePerson(
       t.db,
       ACTOR,
-      personInput({ email: "max@example.com", givenName: "Max", familyName: "Osei", managerId: "p_jane", assignedDeskId: "sp_sf_2_014", swapDesk: true }),
+      personInput({ email: "max@example.com", givenName: "Max", familyName: "Osei", managerIds: ["p_jane"], assignedDeskId: "sp_sf_2_014", swapDesk: true }),
       "p_max",
     );
     const desk = async (id: string) => (await t.db.query.person.findFirst({ where: eq(s.person.id, id) }))?.assignedDeskId;
@@ -171,7 +170,7 @@ describe("savePerson", () => {
 
   it("lets a person keep the seat they already have", async () => {
     await expect(
-      savePerson(t.db, ACTOR, personInput({ email: "bob@example.com", givenName: "Bob", familyName: "Lindqvist", managerId: "p_max", assignedDeskId: "sp_sf_2_014" }), "p_bob"),
+      savePerson(t.db, ACTOR, personInput({ email: "bob@example.com", givenName: "Bob", familyName: "Lindqvist", managerIds: ["p_max"], assignedDeskId: "sp_sf_2_014" }), "p_bob"),
     ).resolves.toEqual({ id: "p_bob" });
   });
 
@@ -205,7 +204,7 @@ describe("savePerson", () => {
     const form = await getPersonForEdit(t.db, "p_bob");
     expect(form).toMatchObject({
       email: "bob@example.com",
-      managerId: "p_max",
+      managerIds: ["p_max"],
       assignedDeskId: "sp_sf_2_014",
       teamIds: expect.arrayContaining(["t_payroll", "t_hr"]),
       primaryTeamId: "t_payroll",
@@ -233,27 +232,27 @@ describe("savePerson", () => {
 
   it("gives a new HR member with no manager the lead of HR", async () => {
     const { id } = await savePerson(t.db, ACTOR, personInput({ teamIds: ["t_hr"], primaryTeamId: "t_hr" }));
-    expect((await getPersonForEdit(t.db, id))?.managerId).toBe("p_jane");
+    expect((await getPersonForEdit(t.db, id))?.managerIds).toEqual(["p_jane"]);
     // Payroll has no lead of its own, so its members default to HR's.
     const payroll = await savePerson(
       t.db,
       ACTOR,
       personInput({ email: "pay@example.com", teamIds: ["t_payroll"], primaryTeamId: "t_payroll" }),
     );
-    expect((await getPersonForEdit(t.db, payroll.id))?.managerId).toBe("p_jane");
+    expect((await getPersonForEdit(t.db, payroll.id))?.managerIds).toEqual(["p_jane"]);
   });
 
   it("doesn't make the lead their own manager, or replace a chosen one", async () => {
     const jane = (await getPersonForEdit(t.db, "p_jane"))!;
-    await savePerson(t.db, ACTOR, { ...jane, managerId: null }, "p_jane");
-    expect((await getPersonForEdit(t.db, "p_jane"))?.managerId).toBeNull();
+    await savePerson(t.db, ACTOR, { ...jane, managerIds: [] }, "p_jane");
+    expect((await getPersonForEdit(t.db, "p_jane"))?.managerIds).toEqual([]);
 
     const { id } = await savePerson(
       t.db,
       ACTOR,
-      personInput({ teamIds: ["t_hr"], primaryTeamId: "t_hr", managerId: "p_max" }),
+      personInput({ teamIds: ["t_hr"], primaryTeamId: "t_hr", managerIds: ["p_max"] }),
     );
-    expect((await getPersonForEdit(t.db, id))?.managerId).toBe("p_max");
+    expect((await getPersonForEdit(t.db, id))?.managerIds).toEqual(["p_max"]);
   });
 
   it("stores the given and family names, and the database builds the full name", async () => {
@@ -304,6 +303,26 @@ describe("savePerson", () => {
     const sam = await t.db.query.person.findFirst({ where: eq(s.person.id, "p_sam") });
     expect(sam?.active).toBe(false);
     expect((await listAudit(t.db, { entity: "person" }))[0]).toMatchObject({ action: "update", entityId: "p_sam" });
+  });
+});
+
+describe("several managers (N1)", () => {
+  it("saves several managers in order, and the directory shows them all", async () => {
+    const priya = (await getPersonForEdit(t.db, "p_priya"))!;
+    await savePerson(t.db, ACTOR, { ...priya, managerIds: ["p_max", "p_jane"] }, "p_priya");
+    expect((await getPersonForEdit(t.db, "p_priya"))?.managerIds).toEqual(["p_max", "p_jane"]);
+    const people = await listPeopleForAdmin(t.db);
+    expect(people.find((p) => p.id === "p_priya")?.managerNames).toEqual(["Max Osei", "Jane Park"]);
+  });
+
+  it("refuses a loop through any manager", async () => {
+    // Priya reports to Max. Max can't take Jane and Priya as managers.
+    const max = (await getPersonForEdit(t.db, "p_max"))!;
+    await expectValidation(
+      savePerson(t.db, ACTOR, { ...max, managerIds: ["p_jane", "p_priya"] }, "p_max"),
+      /^Priya Raman reports \(directly or not\) to this person/,
+      "managerIds",
+    );
   });
 });
 
@@ -386,9 +405,9 @@ describe("bulkUpdatePeople", () => {
     // Bob reports to Max, so Max can't report to Bob. Priya would have been fine.
     await expectValidation(
       bulkUpdatePeople(t.db, ACTOR, ["p_priya", "p_max"], { managerId: "p_bob" }),
-      /^Max Osei: That manager reports .* Nothing was changed\.$/,
+      /^Max Osei: Bob Lindqvist reports .* Nothing was changed\.$/,
     );
-    expect((await getPersonForEdit(t.db, "p_priya"))?.managerId).toBe("p_max");
+    expect((await getPersonForEdit(t.db, "p_priya"))?.managerIds).toEqual(["p_max"]);
     expect(await listAudit(t.db)).toEqual([]);
   });
 

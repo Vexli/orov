@@ -48,7 +48,10 @@ export function OrgView({ people, teams }: Props) {
   const team = teams.find((t) => t.id === params.team) ?? null;
   const teamPeople = useMemo(
     () =>
-      params.team ? teamHighlightIds("reporting", params.team, params.sub, teams, people).size : 0,
+      // People, not nodes: someone with several managers has more than one node (N1).
+      params.team
+        ? [...teamHighlightIds("reporting", params.team, params.sub, teams, people)].filter((id) => !id.includes(">")).length
+        : 0,
     [params.team, params.sub, teams, people],
   );
 

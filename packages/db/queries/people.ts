@@ -1,4 +1,4 @@
-import { and, eq, inArray, ne, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, ne, sql, type SQL } from "drizzle-orm";
 import {
   applyBulkPatch,
   type BulkPatch,
@@ -19,22 +19,22 @@ import { recordAudit } from "./audit";
 import { syncInheritedMemberships } from "./memberships";
 import { ValidationError } from "./errors";
 
-// True if walking up the manager chain from `personId` returns to `personId`.
+// True if walking up from `personId` through any of their managers (N1) returns to them.
 // UNION rather than UNION ALL stops the walk even if the existing data already contains a cycle.
 export async function hasManagerCycle(db: Executor, personId: string): Promise<boolean> {
   const result = await db.execute(sql`
     WITH RECURSIVE chain(id) AS (
-      SELECT manager_id FROM person WHERE id = ${personId}
+      SELECT manager_id FROM person_manager WHERE person_id = ${personId}
       UNION
-      SELECT p.manager_id FROM person p JOIN chain c ON p.id = c.id WHERE c.id IS NOT NULL
+      SELECT pm.manager_id FROM person_manager pm JOIN chain c ON pm.person_id = c.id
     )
     SELECT 1 AS found FROM chain WHERE id = ${personId}
   `);
   return result.rows.length > 0;
 }
 
-// Checks before a write: would making `newManagerId` the manager of `personId` close a loop?
-// Walks up from the proposed manager and sees whether it reaches the person.
+// Checks before a write: would making `newManagerId` a manager of `personId` close a loop?
+// Walks up from the proposed manager, through all of everyone's managers, looking for the person.
 export async function managerWouldLoop(
   db: Executor,
   personId: string,
@@ -45,15 +45,28 @@ export async function managerWouldLoop(
     WITH RECURSIVE chain(id) AS (
       SELECT ${newManagerId}::text
       UNION
-      SELECT p.manager_id FROM person p JOIN chain c ON p.id = c.id WHERE c.id IS NOT NULL
+      SELECT pm.manager_id FROM person_manager pm JOIN chain c ON pm.person_id = c.id
     )
     SELECT 1 AS found FROM chain WHERE id = ${personId}
   `);
   return result.rows.length > 0;
 }
 
+// Replaces someone's managers, in the given order.
+export async function writeManagers(tx: Executor, personId: string, managerIds: readonly string[]) {
+  await tx.delete(s.personManager).where(eq(s.personManager.personId, personId));
+  if (managerIds.length > 0) {
+    await tx
+      .insert(s.personManager)
+      .values(managerIds.map((managerId, position) => ({ personId, managerId, position })));
+  }
+}
+
 const personWith = {
-  manager: { columns: { email: true } },
+  managers: {
+    orderBy: [asc(s.personManager.position)] as SQL[],
+    with: { manager: { columns: { email: true } } },
+  },
   assignedDesk: { columns: { name: true } },
   office: { columns: { slug: true } },
   teamMembers: { with: { team: { columns: { slug: true } } } },
@@ -79,7 +92,7 @@ function toPersonRecord(row: PersonRow): PersonRecord {
     startDate: row.startDate,
     endDate: row.endDate,
     active: row.active,
-    managerEmail: row.manager?.email ?? null,
+    managerEmails: row.managers.map((m) => m.manager.email),
     deskCode: row.assignedDesk?.name ?? null,
     officeSlug: row.office?.slug ?? null,
     // Explicit memberships only: inherited ones follow from these, so the spreadsheet holds what
@@ -127,7 +140,10 @@ export async function loadPersonRecord(db: Executor, id: string): Promise<Person
 export async function listPeopleForAdmin(db: Executor) {
   const rows = await db.query.person.findMany({
     with: {
-      manager: { columns: { id: true, name: true } },
+      managers: {
+        orderBy: (pm, { asc }) => [asc(pm.position)],
+        with: { manager: { columns: { id: true, name: true } } },
+      },
       assignedDesk: { columns: { id: true, name: true } },
       office: { columns: { name: true } },
       teamMembers: { with: { team: { columns: { slug: true, name: true } } } },
@@ -141,8 +157,8 @@ export async function listPeopleForAdmin(db: Executor) {
     phone: row.phone,
     active: row.active,
     endDate: row.endDate,
-    managerId: row.manager?.id ?? null,
-    managerName: row.manager?.name ?? null,
+    managerIds: row.managers.map((m) => m.manager.id),
+    managerNames: row.managers.map((m) => m.manager.name),
     deskId: row.assignedDesk?.id ?? null,
     deskName: row.assignedDesk?.name ?? null,
     officeName: row.office?.name ?? null,
@@ -162,7 +178,7 @@ export async function listPeopleForAdmin(db: Executor) {
 export async function getPersonForEdit(db: Executor, id: string): Promise<PersonForm | null> {
   const row = await db.query.person.findFirst({
     where: eq(s.person.id, id),
-    with: { teamMembers: true, identities: true },
+    with: { teamMembers: true, identities: true, managers: { orderBy: (pm, { asc }) => [asc(pm.position)] } },
   });
   if (!row) return null;
   return {
@@ -177,7 +193,7 @@ export async function getPersonForEdit(db: Executor, id: string): Promise<Person
     startDate: row.startDate,
     endDate: row.endDate,
     active: row.active,
-    managerId: row.managerId,
+    managerIds: row.managers.map((m) => m.managerId),
     assignedDeskId: row.assignedDeskId,
     officeId: row.officeId,
     teamIds: row.teamMembers.filter((m) => m.source === "explicit").map((m) => m.teamId),
@@ -214,18 +230,21 @@ async function savePersonIn(
   if (emailTaken) throw new ValidationError("Another person already uses this email.", "email");
 
   // No manager chosen: the primary team's lead (#11), unless that would close a loop.
-  let managerId = input.managerId;
-  if (managerId === null && input.primaryTeamId !== null) {
+  let managerIds = input.managerIds;
+  if (managerIds.length === 0 && input.primaryTeamId !== null) {
     const teams = await tx.select({ id: s.team.id, parentTeamId: s.team.parentTeamId, leadId: s.team.leadId }).from(s.team);
     const lead = inheritedManager(id ?? "", input.primaryTeamId, new Map(teams.map((t) => [t.id, t])));
-    if (lead && !(id && (await managerWouldLoop(tx, id, lead)))) managerId = lead;
+    if (lead && !(id && (await managerWouldLoop(tx, id, lead)))) managerIds = [lead];
   }
 
-  if (managerId) {
-    const manager = await tx.query.person.findFirst({ where: eq(s.person.id, managerId), columns: { id: true } });
-    if (!manager) throw new ValidationError("Choose an existing manager.", "managerId");
+  for (const managerId of managerIds) {
+    const manager = await tx.query.person.findFirst({ where: eq(s.person.id, managerId), columns: { id: true, name: true } });
+    if (!manager) throw new ValidationError("Choose an existing manager.", "managerIds");
     if (id && (await managerWouldLoop(tx, id, managerId))) {
-      throw new ValidationError("That manager reports (directly or not) to this person, which would create a loop.", "managerId");
+      throw new ValidationError(
+        `${manager.name} reports (directly or not) to this person, which would create a loop.`,
+        "managerIds",
+      );
     }
   }
 
@@ -266,7 +285,6 @@ async function savePersonIn(
     startDate: input.startDate,
     endDate: input.endDate,
     active: input.active,
-    managerId,
     assignedDeskId: input.assignedDeskId,
     officeId,
     updatedAt: new Date(),
@@ -306,6 +324,7 @@ async function savePersonIn(
   }
 
   await writeProfileIdentities(tx, personId, input.identities);
+  await writeManagers(tx, personId, managerIds);
   await syncInheritedMemberships(tx);
 
   const after = await loadPersonRecord(tx, personId);

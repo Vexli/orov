@@ -55,7 +55,8 @@ export const personFormSchema = z
     startDate: isoDate("Start date"),
     endDate: isoDate("Last day"),
     active: z.boolean(),
-    managerId: z.string().nullable(),
+    // Everyone this person reports to, equally (N1). None means the primary team's lead (#11).
+    managerIds: z.array(z.string()).transform((ids) => [...new Set(ids)]),
     assignedDeskId: z.string().nullable(),
     // The office of someone without a desk (N9); ignored with a desk.
     officeId: z.string().nullable(),

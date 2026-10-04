@@ -14,7 +14,7 @@ const bob: PersonForm = {
   startDate: null,
   endDate: null,
   active: true,
-  managerId: "p_max",
+  managerIds: ["p_max"],
   assignedDeskId: "sp_1",
   officeId: null,
   teamIds: ["t_payroll", "t_hr"],
@@ -40,8 +40,8 @@ describe("applyBulkPatch", () => {
   });
 
   it("sets or clears the manager", () => {
-    expect(applyBulkPatch(bob, { managerId: "p_jane" }).managerId).toBe("p_jane");
-    expect(applyBulkPatch(bob, { managerId: null }).managerId).toBeNull();
+    expect(applyBulkPatch(bob, { managerId: "p_jane" }).managerIds).toEqual(["p_jane"]);
+    expect(applyBulkPatch(bob, { managerId: null }).managerIds).toEqual([]);
   });
 });
 

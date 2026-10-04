@@ -42,7 +42,7 @@ function person(
     homeRegionFlag: null,
     homeRegionFlagOnly: false,
     homeTimezone: null,
-    manager: null,
+    managers: [],
     desk: null,
     teams: [],
     ...overrides,

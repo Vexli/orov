@@ -14,7 +14,7 @@ export interface AdminPersonRow {
   name: string;
   email: string;
   title: string | null;
-  managerName: string | null;
+  managerNames: string[];
   deskName: string | null;
   active: boolean;
   teams: { id: string; inherited?: boolean }[];
@@ -49,7 +49,7 @@ export function filterAdminPeople<R extends AdminPersonRow>(
     if (filters.desk === "with" && !p.deskName) return false;
     if (filters.desk === "without" && p.deskName) return false;
     if (scope && !explicitTeams(p).some((t) => scope.has(t.id))) return false;
-    return matchesQuery([p.name, p.email, p.title, p.managerName, p.deskName], filters.q);
+    return matchesQuery([p.name, p.email, p.title, ...p.managerNames, p.deskName], filters.q);
   });
 }
 
