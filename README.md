@@ -64,7 +64,9 @@ the phase-by-phase delivery plan with progress notes.
   displayed (optionally with the country's flag) and how dates are written (ISO, day/month/year or month/day/year, in the user's own
   time zone)
 - A semantic theme layer: components are styled only through theme slots, never raw colors
-- Admin pages for offices and floors. Uploading a floor drawing (SVG) sanitizes it, shows what it
+- Admin pages for offices and floors. Each office chooses what its floors are called (Floor,
+  Building, Wing, …), and the map and admin pages use that word. Uploading a floor drawing (SVG)
+  sanitizes it, shows what it
   adds, moves and removes before anything is saved, and keeps every version for rollback. How to
   draw one is in [`docs/map-authoring.md`](docs/map-authoring.md)
 - Meeting rooms on the map show whether they're free, busy, booked soon, or out of date, with a

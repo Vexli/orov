@@ -55,6 +55,7 @@ const locations: MapLocation[] = [
     name: "San Francisco",
     regionLabel: "",
     regionFlag: null,
+    floorLabels: { singular: "Floor", plural: "Floors" },
     floors: [floor("2"), floor("3"), floor("4")],
   },
 ];

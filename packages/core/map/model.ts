@@ -1,4 +1,5 @@
 import type { SpaceKind } from "../svg/parse";
+import type { TierLabels } from "../spaces/tier";
 import type { RoomDisplayState } from "./room-status";
 
 // Shapes the floor map works with. Plain data, so the server loads them once and the browser
@@ -21,6 +22,8 @@ export interface MapLocation {
   // The office's region in the viewer's display style (plan.md §7.1).
   regionLabel: string;
   regionFlag: string | null;
+  // What this office calls its floors (#16).
+  floorLabels: TierLabels;
   floors: MapFloorLink[];
 }
 

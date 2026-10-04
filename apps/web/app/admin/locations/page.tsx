@@ -1,6 +1,13 @@
 import Link from "next/link";
 import { getDb } from "@officeorg/db/client";
 import { listLocationsWithFloors } from "@officeorg/db/queries/floors";
+import { tierLabel } from "@officeorg/core";
+
+// What an office calls its floors (#16).
+const tierOf = (l: { floorLabelSingular: string; floorLabelPlural: string }) => ({
+  singular: l.floorLabelSingular,
+  plural: l.floorLabelPlural,
+});
 
 export default async function LocationsAdminPage() {
   const locations = await listLocationsWithFloors(getDb());
@@ -44,17 +51,17 @@ export default async function LocationsAdminPage() {
                   Edit office
                 </Link>
                 <Link href={`/admin/locations/${location.id}/floors/new`} className="underline">
-                  Add floor
+                  Add {tierLabel(tierOf(location), "lower")}
                 </Link>
               </span>
             </div>
             {location.floors.length === 0 ? (
-              <p className="mt-3 text-sm text-muted-fg">No floors yet.</p>
+              <p className="mt-3 text-sm text-muted-fg">No {tierLabel(tierOf(location), "lowerPlural")} yet.</p>
             ) : (
               <table className="mt-3 w-full text-left text-sm">
                 <thead className="border-b border-border text-xs uppercase text-muted-fg">
                   <tr>
-                    <th className="py-2 pr-3 font-medium">Floor</th>
+                    <th className="py-2 pr-3 font-medium">{tierLabel(tierOf(location), "singular")}</th>
                     <th className="py-2 pr-3 text-right font-medium">Level</th>
                     <th className="py-2 pr-3 text-right font-medium">Desks</th>
                     <th className="py-2 pr-3 font-medium">Drawing</th>

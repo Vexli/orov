@@ -154,7 +154,7 @@ The schema builds on the model in `report.md` and adds cache, audit, and integra
 
 ```
 location      (id, slug UNIQUE, name, timezone, region (ISO 3166 code), externalBuildingId?,
-               sortOrder)
+               sortOrder, floorLabelSingular, floorLabelPlural)   -- default Floor/Floors (#16)
 floor         (id, locationId, slug, name, level int, svgAssetId, sortOrder)
                 UNIQUE(locationId, slug)
 svg_asset     (id, floorId, version int, sanitizedSvg text, sha256, uploadedBy, uploadedAt)

@@ -12,6 +12,7 @@ import type {
 } from "@officeorg/core";
 import { ROOM_STATE_LABEL, type RoomDisplayState } from "@officeorg/core/map/room-status";
 import { mapStateCss } from "@officeorg/core/map/state-css";
+import { DEFAULT_TIER_LABELS, tierLabel } from "@officeorg/core/spaces/tier";
 import { teamSeats, type TeamSeats } from "@officeorg/core/map/team-seats";
 import { displayName, personInitials } from "@officeorg/core/directory/filter";
 import { PersonCard } from "@/components/directory/person-card";
@@ -97,6 +98,8 @@ export function MapView({ map, people, teams }: Props) {
   const teamPeople = useMemo(() => new Set(team?.seats.map((s) => s.personId)), [team]);
 
   const focusArea = floor?.areas.find((a) => a.slug === params.area) ?? null;
+  // What this office calls its floors (#16).
+  const tier = map.locations.find((l) => l.slug === floor?.locationSlug)?.floorLabels ?? DEFAULT_TIER_LABELS;
 
   const peopleById = useMemo(() => new Map(people.map((p) => [p.id, p])), [people]);
   const seatsHere = useMemo(
@@ -219,7 +222,7 @@ export function MapView({ map, people, teams }: Props) {
 
   return (
     <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
-      <section aria-label="Floor map" className="min-w-0" aria-busy={navigating}>
+      <section aria-label={`${tier.singular} map`} className="min-w-0" aria-busy={navigating}>
         <h1 className="text-xl font-heading">
           {floor.locationName}, {floor.name}
           {focusArea ? `, ${focusArea.name}` : ""}
@@ -276,7 +279,7 @@ export function MapView({ map, people, teams }: Props) {
               avatars={avatars}
               roomCues={roomCues}
               labels={labels}
-              label={`Floor plan of ${floor.locationName}, ${floor.name}`}
+              label={`${tier.singular} plan of ${floor.locationName}, ${floor.name}`}
               onSelect={select}
               focusAreaId={focusArea?.svgElementId ?? null}
             />
@@ -410,7 +413,11 @@ function MapNavigation({
           ))}
         </select>
       ) : null}
-      <div role="group" aria-label="Floors" className="flex flex-wrap gap-1">
+      <div
+        role="group"
+        aria-label={(location?.floorLabels ?? DEFAULT_TIER_LABELS).plural}
+        className="flex flex-wrap gap-1"
+      >
         {floors.map((f) => (
           <button
             key={f.slug}
@@ -431,7 +438,7 @@ function MapNavigation({
             onClick={() => onArea(null)}
             className={pill(areaSlug === null)}
           >
-            Whole floor
+            {tierLabel(location?.floorLabels ?? DEFAULT_TIER_LABELS, "whole")}
           </button>
           {areas.map((a) => (
             <button
@@ -473,7 +480,7 @@ function OfficeOverview({
       <table className="mt-4 w-full text-left text-sm">
         <thead className="border-b border-border text-xs uppercase text-muted-fg">
           <tr>
-            <th className="py-1.5 pr-2 font-medium">Floor</th>
+            <th className="py-1.5 pr-2 font-medium">{location.floorLabels.singular}</th>
             <th className="py-1.5 pr-2 text-right font-medium">People</th>
             <th className="py-1.5 pr-2 text-right font-medium">Desks</th>
             <th className="py-1.5 text-right font-medium">Rooms</th>

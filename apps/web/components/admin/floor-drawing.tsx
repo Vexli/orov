@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import type { FloorDiff } from "@officeorg/core";
+import type { TierLabels } from "@officeorg/core/spaces/tier";
 import {
   applyUploadAction,
   previewRollbackAction,
@@ -21,6 +22,8 @@ interface Version {
 
 interface Props {
   floorId: string;
+  // What the office calls its floors (#16).
+  tier: TierLabels;
   currentAssetId: string | null;
   versions: Version[];
 }
@@ -32,7 +35,7 @@ type Pending =
 
 // Upload a drawing or roll back to an earlier one. Both show the diff first, and nothing is
 // written until the admin applies it (plan.md §6, U11).
-export function FloorDrawingPanel({ floorId, currentAssetId, versions }: Props) {
+export function FloorDrawingPanel({ floorId, tier, currentAssetId, versions }: Props) {
   const router = useRouter();
   const [pending, setPending] = useState<Pending | null>(null);
   const [confirmDeskless, setConfirmDeskless] = useState(false);
@@ -119,7 +122,7 @@ export function FloorDrawingPanel({ floorId, currentAssetId, versions }: Props) 
           key={fileKey}
           type="file"
           accept=".svg,image/svg+xml"
-          aria-label="Floor drawing (SVG)"
+          aria-label={`${tier.singular} drawing (SVG)`}
           disabled={busy}
           onChange={(e) => chooseFile(e.target.files?.[0])}
           className="mt-3 block text-sm"

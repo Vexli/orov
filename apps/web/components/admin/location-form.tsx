@@ -10,6 +10,7 @@ import {
   type SpaceSaveState,
 } from "@/app/admin/locations/actions";
 import { TimeZoneList } from "./time-zone-list";
+import { TIER_PRESETS, tierLabel, type TierLabels } from "@officeorg/core/spaces/tier";
 
 const inputClass = "mt-1 w-full rounded-md border border-border bg-transparent px-3 py-2 text-sm";
 
@@ -99,7 +100,7 @@ export function LocationFormEditor({ id, initial, slugLocked }: LocationProps) {
         />
         <span id="location-slug-hint" className="text-xs font-normal text-muted-fg">
           {slugLocked
-            ? "Fixed, because desk codes on this office's floors start with it."
+            ? `Fixed, because desk codes on this office's ${tierLabel({ singular: f.values.floorLabelSingular, plural: f.values.floorLabelPlural }, "lowerPlural")} start with it.`
             : "Short and lowercase, such as sf. Desk codes start with it (SF-2-014)."}
         </span>
         {f.fieldError("slug")}
@@ -132,6 +133,57 @@ export function LocationFormEditor({ id, initial, slugLocked }: LocationProps) {
           {f.fieldError("region")}
         </label>
       </div>
+      <fieldset>
+        <legend className="text-sm font-medium">What this office calls its floors</legend>
+        <p className="mt-1 text-xs text-muted-fg">
+          For a campus of buildings, say, or the wings of a single-storey office. The map and admin pages
+          use these words for this office.
+        </p>
+        <div className="mt-2 grid gap-5 sm:grid-cols-3">
+          <label className="block text-sm font-medium">
+            Preset
+            <select
+              className={inputClass}
+              value={
+                TIER_PRESETS.findIndex(
+                  (p) => p.singular === f.values.floorLabelSingular && p.plural === f.values.floorLabelPlural,
+                ) + ""
+              }
+              onChange={(e) => {
+                const preset = TIER_PRESETS[Number(e.target.value)];
+                if (!preset) return;
+                f.set("floorLabelSingular", preset.singular);
+                f.set("floorLabelPlural", preset.plural);
+              }}
+            >
+              {TIER_PRESETS.map((p, i) => (
+                <option key={p.singular} value={i}>
+                  {p.singular}
+                </option>
+              ))}
+              <option value="-1">Your own</option>
+            </select>
+          </label>
+          <label className="block text-sm font-medium">
+            One
+            <input
+              className={inputClass}
+              value={f.values.floorLabelSingular}
+              onChange={(e) => f.set("floorLabelSingular", e.target.value)}
+            />
+            {f.fieldError("floorLabelSingular")}
+          </label>
+          <label className="block text-sm font-medium">
+            More than one
+            <input
+              className={inputClass}
+              value={f.values.floorLabelPlural}
+              onChange={(e) => f.set("floorLabelPlural", e.target.value)}
+            />
+            {f.fieldError("floorLabelPlural")}
+          </label>
+        </div>
+      </fieldset>
       <label className="block max-w-40 text-sm font-medium">
         Sort order
         <input
@@ -149,13 +201,15 @@ export function LocationFormEditor({ id, initial, slugLocked }: LocationProps) {
 
 interface FloorProps {
   locationId: string;
+  // What the office calls its floors (#16).
+  tier: TierLabels;
   id?: string;
   initial: FloorForm;
   // Desk ids in the drawing carry the floor slug, so it can't change once a drawing exists.
   slugLocked: boolean;
 }
 
-export function FloorFormEditor({ locationId, id, initial, slugLocked }: FloorProps) {
+export function FloorFormEditor({ locationId, tier, id, initial, slugLocked }: FloorProps) {
   const f = useForm(
     initial,
     (v) => saveFloorAction(locationId, v, id),
@@ -185,7 +239,7 @@ export function FloorFormEditor({ locationId, id, initial, slugLocked }: FloorPr
         <span id="floor-slug-hint" className="text-xs font-normal text-muted-fg">
           {slugLocked
             ? "Fixed, because the desk ids in the drawing use it."
-            : "Usually the floor number. Desk ids in the drawing must use it: desk-<slug>-<n>."}
+            : `Usually the ${tierLabel(tier, "lower")} number. Desk ids in the drawing must use it: desk-<slug>-<n>.`}
         </span>
         {f.fieldError("slug")}
       </label>
@@ -211,7 +265,10 @@ export function FloorFormEditor({ locationId, id, initial, slugLocked }: FloorPr
           {f.fieldError("sortOrder")}
         </label>
       </div>
-      <Actions pending={f.pending} label={id ? "Save floor" : "Create floor"} />
+      <Actions
+        pending={f.pending}
+        label={id ? `Save ${tierLabel(tier, "lower")}` : `Create ${tierLabel(tier, "lower")}`}
+      />
     </form>
   );
 }
