@@ -49,7 +49,7 @@ the phase-by-phase delivery plan with progress notes.
 - Links to a person's other accounts (GitHub, GitLab, LinkedIn, a website) on their card, set in
   the admin form or the people CSV. An account can belong to only one person
 - CSV import with a dry-run diff before anything is written, CSV export, and an audit log of
-  every admin change
+  every admin change, filterable by entity, date and admin, and exportable as CSV
 - ISO 3166 region codes (`US`, `US-CA`, `CA-ON`), and a per-user setting for how regions are
   displayed
 - A semantic theme layer: components are styled only through theme slots, never raw colors
