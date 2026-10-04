@@ -1,6 +1,7 @@
 "use client";
 
 import { memo, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { labelLayout, type LabelKind } from "@officeorg/core/map/labels";
 import { ROOM_STATE_LABEL, type RoomDisplayState } from "@officeorg/core/map/room-status";
 import {
   TransformComponent,
@@ -25,6 +26,14 @@ export interface Avatar {
   dimmed: boolean;
 }
 
+// A room's, point of interest's or area's name, drawn by the app from the database (#26).
+export interface MapLabel {
+  svgElementId: string;
+  name: string;
+  kind: LabelKind;
+  dimmed: boolean;
+}
+
 export interface RoomCue {
   svgElementId: string;
   name: string;
@@ -41,6 +50,7 @@ interface Props {
   avatars: Avatar[];
   // A room's status as a shape as well as a fill color, so it never depends on hue (plan.md §6).
   roomCues?: RoomCue[];
+  labels?: MapLabel[];
   label: string;
   onSelect: (svgElementId: string) => void;
   // The svg id of the area to zoom to (U6). Everything outside it is dimmed.
@@ -56,14 +66,14 @@ export const Drawing = memo(
   (a, b) => a.svg === b.svg,
 );
 
-// Desk and room boxes in drawing units, measured once per asset version after the first paint.
+// Desk, room, point of interest and area boxes in drawing units, measured once per asset version after the first paint.
 const boxCache = new Map<string, Map<string, Box>>();
 
 function measure(root: SVGSVGElement): Map<string, Box> {
   const boxes = new Map<string, Box>();
   const rootInverse = root.getScreenCTM()?.inverse();
   if (!rootInverse) return boxes;
-  for (const el of root.querySelectorAll<SVGGraphicsElement>('[id^="desk-"], [id^="room-"]')) {
+  for (const el of root.querySelectorAll<SVGGraphicsElement>(MEASURED)) {
     const ctm = el.getScreenCTM();
     if (!ctm) continue;
     // getBBox is in the element's own units. Mapping its corners through the screen matrices
@@ -89,6 +99,7 @@ function measure(root: SVGSVGElement): Map<string, Box> {
   return boxes;
 }
 
+const MEASURED = '[id^="desk-"], [id^="room-"], [id^="poi-"], [id^="area-"]';
 const CLICKABLE = '[id^="desk-"], [id^="room-"]';
 const NOT_DRAWN = new Set(["defs", "style", "title", "desc", "metadata"]);
 // A pointer that moves further than this between down and up was a pan, not a click.
@@ -100,6 +111,7 @@ export function FloorMap({
   stateCss,
   avatars,
   roomCues = [],
+  labels = [],
   label,
   onSelect,
   focusAreaId,
@@ -196,6 +208,11 @@ export function FloorMap({
                 aria-hidden="true"
                 className="pointer-events-none absolute inset-0 h-full w-full"
               >
+                {/* Names first, so avatars and status cues sit on top. */}
+                {labels.map((l) => {
+                  const box = current.boxes.get(l.svgElementId);
+                  return box ? <NameLabel key={l.svgElementId} label={l} box={box} /> : null;
+                })}
                 {avatars.map((a) => {
                   const box = current.boxes.get(a.svgElementId);
                   if (!box) return null;
@@ -248,6 +265,32 @@ export function FloorMap({
         <ZoomControls />
       </TransformWrapper>
     </div>
+  );
+}
+
+// Drawn in the text colour with a halo in the card colour, so a name stays readable on a selected
+// or status-tinted room, in light and dark themes alike.
+function NameLabel({ label, box }: { label: MapLabel; box: Box }) {
+  const layout = labelLayout(box, label.name, label.kind);
+  if (!layout) return null;
+  return (
+    <text
+      data-label={label.svgElementId}
+      x={layout.x}
+      y={layout.y}
+      textAnchor={layout.anchor}
+      dominantBaseline={label.kind === "room" ? "central" : "auto"}
+      fontSize={layout.fontSize}
+      fontWeight={label.kind === "area" ? 600 : 500}
+      className={`${label.kind === "area" ? "fill-muted-fg" : "fill-fg"} stroke-card`}
+      strokeWidth={layout.fontSize * 0.22}
+      strokeLinejoin="round"
+      paintOrder="stroke"
+      style={label.dimmed ? { opacity: "var(--map-dim-opacity)" } : undefined}
+    >
+      {layout.truncated ? <title>{label.name}</title> : null}
+      {layout.text}
+    </text>
   );
 }
 

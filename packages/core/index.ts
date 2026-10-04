@@ -30,3 +30,4 @@ export * from "./time/zones";
 export * from "./people/phone";
 export * from "./people/names";
 export * from "./dates/format";
+export * from "./map/labels";
