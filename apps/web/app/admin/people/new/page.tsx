@@ -32,6 +32,7 @@ export default async function NewPersonPage() {
             assignedDeskId: null,
             teamIds: [],
             primaryTeamId: null,
+            identities: {},
           }}
           managers={people.map((p) => ({ id: p.id, name: p.name }))}
           desks={desks}

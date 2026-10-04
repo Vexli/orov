@@ -1,3 +1,5 @@
+import type { Identities } from "../people/identities";
+
 // Shapes the directory works with. They're plain data, so the same filter runs on the server,
 // in tests, and in the browser.
 
@@ -30,4 +32,6 @@ export interface DirectoryPerson {
     locationRegion: string;
   } | null;
   teams: { id: string; name: string; slug: string; isPrimary: boolean }[];
+  // Profile accounts by provider id. Links are built with identityLinks, never from the value.
+  identities: Identities;
 }

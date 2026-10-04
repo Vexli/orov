@@ -15,7 +15,7 @@ import {
 import type { Database, Executor } from "../client";
 import * as s from "../schema";
 import { recordAudit } from "./audit";
-import { hasManagerCycle, loadPersonRecords } from "./people";
+import { hasManagerCycle, loadPersonRecords, writeProfileIdentities } from "./people";
 import { hasTeamCycle, loadTeamRecords } from "./teams";
 
 export class ImportRejectedError extends Error {
@@ -83,7 +83,8 @@ export async function planPeopleCsv(db: Executor, text: string): Promise<PlanRes
 // whatever the dry run saw. Writes happen in three passes:
 //   1. Upsert every changed person with no manager and no desk. This clears the desk of anyone
 //      who is moving, so two people can swap desks without hitting the unique index.
-//   2. Set managers, desks and team memberships, now that every referenced person exists.
+//      It also clears their profile accounts, so two people can swap one the same way.
+//   2. Set managers, desks, team memberships and accounts, now that every referenced person exists.
 //   3. Check each changed person for a manager cycle.
 export async function applyPeopleCsv(
   db: Database,
@@ -121,9 +122,14 @@ export async function applyPeopleCsv(
     );
 
     for (const row of changed) {
+      await writeProfileIdentities(tx, idByEmail.get(row.record!.email)!, {});
+    }
+
+    for (const row of changed) {
       const rec = row.record!;
       const personId = idByEmail.get(rec.email)!;
 
+      await writeProfileIdentities(tx, personId, rec.identities);
       await tx.delete(s.teamMember).where(eq(s.teamMember.personId, personId));
       if (rec.teamSlugs.length > 0) {
         const teamIds = await tx

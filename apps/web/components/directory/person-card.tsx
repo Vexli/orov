@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { DirectoryPerson } from "@officeorg/core/directory/model";
 import { displayName, initials } from "@officeorg/core/directory/filter";
+import { identityLinks } from "@officeorg/core/people/identities";
 import { LocationLabel } from "./location-label";
 
 interface Props {
@@ -13,6 +14,7 @@ interface Props {
 // Presence and chat buttons arrive in Phases 4 and 5.
 export function PersonCard({ person, onSelectPerson, onClose }: Props) {
   const name = displayName(person);
+  const links = identityLinks(person.identities);
   return (
     <aside aria-label={`${name} details`} className="rounded-lg border border-border p-5">
       <div className="flex items-start gap-4">
@@ -94,6 +96,25 @@ export function PersonCard({ person, onSelectPerson, onClose }: Props) {
           )}
         </Field>
         <Field label="Home timezone">{person.homeTimezone ?? "—"}</Field>
+        {links.length > 0 ? (
+          <Field label="Accounts">
+            <ul className="flex flex-wrap gap-x-4 gap-y-1">
+              {links.map((link) => (
+                <li key={link.provider}>
+                  <a
+                    href={link.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label={`${link.label}: ${link.value} (opens in a new tab)`}
+                    className="underline underline-offset-4"
+                  >
+                    {link.label}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </Field>
+        ) : null}
       </dl>
     </aside>
   );

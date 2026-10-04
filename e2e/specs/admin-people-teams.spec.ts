@@ -52,6 +52,31 @@ test.describe("admin people and teams", () => {
     await expect(page).toHaveURL(/\/admin\/people\/new$/);
   });
 
+  test("an admin sets profile accounts, and the person card links to them", async ({ page, context }) => {
+    await signInAs(context, "jane@example.com");
+    await page.goto("/admin/people/p_max");
+
+    // Bob already has this GitHub account, so it's refused next to the field.
+    await page.getByLabel("GitHub").fill("https://github.com/bob-lindqvist");
+    await page.getByRole("button", { name: "Save person" }).click();
+    await expect(page.getByText("Bob Lindqvist already has this GitHub account.")).toBeVisible();
+
+    await page.getByLabel("GitHub").fill("@MaxOsei");
+    await page.getByLabel("LinkedIn").fill("https://www.linkedin.com/in/max-osei/");
+    await page.getByRole("button", { name: "Save person" }).click();
+    await expect(page).toHaveURL(/\/admin\/people$/);
+
+    await page.goto("/directory?person=p_max");
+    const card = page.getByRole("complementary", { name: "Max Osei details" });
+    const github = card.getByRole("link", { name: "GitHub: maxosei (opens in a new tab)" });
+    await expect(github).toHaveAttribute("href", "https://github.com/maxosei");
+    await expect(github).toHaveAttribute("rel", "noopener noreferrer");
+    await expect(card.getByRole("link", { name: /^LinkedIn: max-osei/ })).toHaveAttribute(
+      "href",
+      "https://www.linkedin.com/in/max-osei",
+    );
+  });
+
   test("pickers hide managers that would create a loop, and name who holds each desk", async ({
     page,
     context,

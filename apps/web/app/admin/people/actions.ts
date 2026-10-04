@@ -15,7 +15,8 @@ export async function savePersonAction(input: unknown, id?: string): Promise<Sav
   const parsed = personFormSchema.safeParse(input);
   if (!parsed.success) {
     const issue = parsed.error.issues[0];
-    return { ok: false, error: issue?.message ?? "Check the form", field: String(issue?.path[0] ?? "") };
+    // Nested fields are named by their path, e.g. "identities.github".
+    return { ok: false, error: issue?.message ?? "Check the form", field: issue?.path.join(".") ?? "" };
   }
   try {
     const saved = await savePerson(getDb(), user.email, parsed.data, id);

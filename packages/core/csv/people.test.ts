@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { parsePeopleCsv, peopleToCsv } from "./people";
+import { PROFILE_PROVIDER_IDS } from "../people/identities";
+import { PEOPLE_CSV_HEADERS, parsePeopleCsv, peopleToCsv } from "./people";
 
 const HEADER = "email,name,preferred_name,title,home_region,home_timezone,phone,start_date,active,manager_email,desk,teams,primary_team";
 
@@ -24,6 +25,7 @@ describe("parsePeopleCsv", () => {
       deskCode: "SF-2-014",
       teamSlugs: ["hr", "people ops"],
       primaryTeamSlug: "hr",
+      identities: {},
     });
   });
 
@@ -82,6 +84,26 @@ describe("parsePeopleCsv", () => {
   });
 });
 
+describe("identity columns", () => {
+  it("has one column per profile provider, in registry order", () => {
+    expect(PEOPLE_CSV_HEADERS.slice(-PROFILE_PROVIDER_IDS.length)).toEqual(PROFILE_PROVIDER_IDS);
+  });
+
+  it("normalizes handles and profile URLs", () => {
+    const csv = `${HEADER},github,linkedin\nbob@x.com,Bob,,,US,,,,,,,,,https://github.com/BobL/,linkedin.com/in/bob-l\n`;
+    const { rows, issues } = parsePeopleCsv(csv);
+    expect(issues).toEqual([]);
+    expect(rows[0]?.record.identities).toEqual({ github: "bobl", linkedin: "bob-l" });
+  });
+
+  it("rejects a value the provider doesn't accept", () => {
+    const csv = `${HEADER},github\nbob@x.com,Bob,,,US,,,,,,,,,https://gitlab.com/bob\n`;
+    const { rows, issues } = parsePeopleCsv(csv);
+    expect(rows).toEqual([]);
+    expect(issues[0]?.message).toMatch(/^github: GitHub is not valid/);
+  });
+});
+
 describe("peopleToCsv", () => {
   it("round-trips through parsePeopleCsv", () => {
     const original = [
@@ -99,10 +121,11 @@ describe("peopleToCsv", () => {
         deskCode: "SF-2-001",
         teamSlugs: ["hr", "payroll"],
         primaryTeamSlug: "payroll",
+        identities: { github: "bobl", website: "https://bob.example.com/" },
       },
     ];
     const csv = peopleToCsv(original);
-    expect(csv.split("\n")[0]).toBe(HEADER);
+    expect(csv.split("\n")[0]).toBe(`${HEADER},github,gitlab,linkedin,website`);
     const { rows, issues } = parsePeopleCsv(csv);
     expect(issues).toEqual([]);
     expect(rows.map((r) => r.record)).toEqual(original);

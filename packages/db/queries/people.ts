@@ -1,5 +1,11 @@
 import { and, eq, inArray, ne, sql } from "drizzle-orm";
-import type { PersonForm, PersonRecord } from "@officeorg/core";
+import {
+  identityProvider,
+  PROFILE_PROVIDER_IDS,
+  type Identities,
+  type PersonForm,
+  type PersonRecord,
+} from "@officeorg/core";
 import type { Database, Executor } from "../client";
 import * as s from "../schema";
 import { recordAudit } from "./audit";
@@ -42,6 +48,7 @@ const personWith = {
   manager: { columns: { email: true } },
   assignedDesk: { columns: { name: true } },
   teamMembers: { with: { team: { columns: { slug: true } } } },
+  identities: { columns: { provider: true, value: true } },
 } as const;
 
 type PersonRow = NonNullable<Awaited<ReturnType<typeof findPersonRow>>>;
@@ -65,7 +72,27 @@ function toPersonRecord(row: PersonRow): PersonRecord {
     deskCode: row.assignedDesk?.name ?? null,
     teamSlugs: row.teamMembers.map((m) => m.team.slug).sort(),
     primaryTeamSlug: row.teamMembers.find((m) => m.isPrimary)?.team.slug ?? null,
+    identities: profileIdentities(row.identities),
   };
+}
+
+// The profile accounts among a person's identity rows. Messaging ids aren't spreadsheet data.
+export function profileIdentities(rows: { provider: string; value: string }[]): Identities {
+  const identities: Identities = {};
+  for (const { provider, value } of rows) {
+    if (PROFILE_PROVIDER_IDS.includes(provider)) identities[provider] = value;
+  }
+  return identities;
+}
+
+// Replaces a person's profile accounts. Callers check for accounts held by someone else first;
+// the unique index is the backstop.
+export async function writeProfileIdentities(tx: Executor, personId: string, identities: Identities) {
+  await tx
+    .delete(s.personIdentity)
+    .where(and(eq(s.personIdentity.personId, personId), inArray(s.personIdentity.provider, PROFILE_PROVIDER_IDS)));
+  const rows = Object.entries(identities).map(([provider, value]) => ({ personId, provider, value }));
+  if (rows.length > 0) await tx.insert(s.personIdentity).values(rows);
 }
 
 // Loads everyone in the spreadsheet vocabulary: references by email, slug and desk code.
@@ -112,7 +139,7 @@ export async function listPeopleForAdmin(db: Executor) {
 export async function getPersonForEdit(db: Executor, id: string): Promise<PersonForm | null> {
   const row = await db.query.person.findFirst({
     where: eq(s.person.id, id),
-    with: { teamMembers: true },
+    with: { teamMembers: true, identities: true },
   });
   if (!row) return null;
   return {
@@ -129,6 +156,7 @@ export async function getPersonForEdit(db: Executor, id: string): Promise<Person
     assignedDeskId: row.assignedDeskId,
     teamIds: row.teamMembers.map((m) => m.teamId),
     primaryTeamId: row.teamMembers.find((m) => m.isPrimary)?.teamId ?? null,
+    identities: profileIdentities(row.identities),
   };
 }
 
@@ -165,6 +193,24 @@ export async function savePerson(
       const found = await tx.query.team.findMany({ where: inArray(s.team.id, input.teamIds), columns: { id: true } });
       if (found.length !== new Set(input.teamIds).size) {
         throw new ValidationError("One of the selected teams no longer exists.", "teamIds");
+      }
+    }
+
+    for (const [provider, value] of Object.entries(input.identities)) {
+      const holder = await tx
+        .select({ name: s.person.name })
+        .from(s.personIdentity)
+        .innerJoin(s.person, eq(s.person.id, s.personIdentity.personId))
+        .where(
+          and(
+            eq(s.personIdentity.provider, provider),
+            eq(s.personIdentity.value, value),
+            id ? ne(s.personIdentity.personId, id) : undefined,
+          ),
+        );
+      if (holder[0]) {
+        const label = identityProvider(provider)?.label ?? provider;
+        throw new ValidationError(`${holder[0].name} already has this ${label} account.`, `identities.${provider}`);
       }
     }
 
@@ -215,6 +261,8 @@ export async function savePerson(
         })),
       );
     }
+
+    await writeProfileIdentities(tx, personId, input.identities);
 
     const after = await loadPersonRecord(tx, personId);
     await recordAudit(tx, actorEmail, {

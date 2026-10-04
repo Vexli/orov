@@ -8,6 +8,7 @@ import {
 } from "@officeorg/core";
 import type { Executor } from "../client";
 import * as s from "../schema";
+import { profileIdentities } from "./people";
 
 export interface DirectoryData {
   people: DirectoryPerson[];
@@ -30,6 +31,7 @@ export async function loadDirectory(
         with: { floor: { with: { location: true } } },
       },
       teamMembers: { with: { team: { columns: { id: true, name: true, slug: true } } } },
+      identities: { columns: { provider: true, value: true } },
     },
     orderBy: (p, { asc }) => [asc(p.name)],
   });
@@ -67,6 +69,7 @@ export async function loadDirectory(
     teams: row.teamMembers
       .map((m) => ({ id: m.team.id, name: m.team.name, slug: m.team.slug, isPrimary: m.isPrimary }))
       .sort((a, b) => Number(b.isPrimary) - Number(a.isPrimary) || a.name.localeCompare(b.name)),
+    identities: profileIdentities(row.identities),
   }));
 
   return { people, teams, locations };

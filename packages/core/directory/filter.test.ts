@@ -28,6 +28,7 @@ function person(
   overrides: Partial<DirectoryPerson> & { id: string; name: string },
 ): DirectoryPerson {
   return {
+    identities: {},
     preferredName: null,
     email: `${overrides.id}@example.com`,
     title: null,

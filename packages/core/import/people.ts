@@ -1,5 +1,5 @@
 import type { PersonRecord } from "../records";
-import { diffRecords, PERSON_FIELDS } from "../records";
+import { diffPersonRecords } from "../records";
 import { reachesAncestor } from "../teams/tree";
 import type { CsvIssue } from "../csv/parse";
 import type { ValidPersonRow } from "../csv/people";
@@ -31,7 +31,8 @@ export function planPeopleImport(
     planned.push({ line: issue.line, key: `line ${issue.line}`, action: "error", changes: [], message: issue.message });
   }
 
-  for (const row of rows) {
+  for (const original of rows) {
+    const row = withKeptIdentities(original, snapshot);
     const email = row.record.email;
     const prior = desired.get(email);
     if (prior) {
@@ -63,9 +64,23 @@ export function planPeopleImport(
     if (!desired.has(email) && person.deskCode) pushTo(deskClaims, person.deskCode, email);
   }
 
+  // Accounts after this import, keyed "provider value", claimed the same way as desks.
+  const identityClaims = new Map<string, string[]>();
+  for (const [email, row] of desired) {
+    for (const [provider, value] of Object.entries(row.record.identities)) {
+      pushTo(identityClaims, identityKey(provider, value), email);
+    }
+  }
+  for (const [email, person] of snapshot.people) {
+    if (desired.has(email)) continue;
+    for (const [provider, value] of Object.entries(person.identities)) {
+      pushTo(identityClaims, identityKey(provider, value), email);
+    }
+  }
+
   for (const [email, row] of desired) {
     const rec = row.record;
-    const problem = validateReferences(row, snapshot, desired, finalManager, deskClaims);
+    const problem = validateReferences(row, snapshot, desired, finalManager, deskClaims, identityClaims);
     if (problem) errors.set(email, problem);
     if (errors.has(email)) {
       planned.push({ line: row.line, key: email, action: "error", changes: [], message: errors.get(email), record: rec });
@@ -74,11 +89,11 @@ export function planPeopleImport(
 
     const existing = snapshot.people.get(email);
     if (!existing) {
-      const changes = diffRecords(emptyPerson(email), rec, PERSON_FIELDS);
+      const changes = diffPersonRecords(emptyPerson(email), rec);
       planned.push({ line: row.line, key: email, action: "create", changes, record: rec });
       continue;
     }
-    const changes = diffRecords(existing, rec, PERSON_FIELDS);
+    const changes = diffPersonRecords(existing, rec);
     planned.push({
       line: row.line,
       key: email,
@@ -97,6 +112,7 @@ function validateReferences(
   desired: Map<string, ValidPersonRow>,
   finalManager: (email: string) => string | null,
   deskClaims: Map<string, string[]>,
+  identityClaims: Map<string, string[]>,
 ): string | null {
   const rec = row.record;
 
@@ -122,6 +138,11 @@ function validateReferences(
     if (claimants.length > 0) return `desk "${rec.deskCode}" is also assigned to ${claimants[0]}`;
   }
 
+  for (const [provider, value] of Object.entries(rec.identities)) {
+    const others = (identityClaims.get(identityKey(provider, value)) ?? []).filter((e) => e !== rec.email);
+    if (others.length > 0) return `${provider} "${value}" also belongs to ${others[0]}`;
+  }
+
   return null;
 }
 
@@ -140,7 +161,23 @@ function emptyPerson(email: string): PersonRecord {
     deskCode: null,
     teamSlugs: [],
     primaryTeamSlug: null,
+    identities: {},
   };
+}
+
+// Fills in the person's current accounts for the identity columns the file doesn't have.
+function withKeptIdentities(row: ValidPersonRow, snapshot: PeopleSnapshot): ValidPersonRow {
+  const current = snapshot.people.get(row.record.email)?.identities;
+  if (!row.keepIdentities || !current) return row;
+  const identities = { ...row.record.identities };
+  for (const provider of row.keepIdentities) {
+    if (current[provider]) identities[provider] = current[provider];
+  }
+  return { ...row, record: { ...row.record, identities } };
+}
+
+function identityKey(provider: string, value: string) {
+  return `${provider} ${value}`;
 }
 
 function pushTo(map: Map<string, string[]>, key: string, value: string) {
