@@ -651,7 +651,10 @@ The improvement backlog raised after Phases 1–3. Each item keeps its number fr
     - **Completed:** 2026-10-04
     - **Branch:** merged from `feature/directory-desk-link`
     - **Notes:** `LocationLabel` takes `linkDesk`; only the directory's Location column sets it, because the card has its own desk link. The link is `/map?person=…` with `aria-label="Show <desk> on the map"`, the same as the card's. "Remote" stays a plain badge. Tests: 1 Playwright (Sam's desk on Floor 3, so the map switches floors).
-- [ ] #24 Team highlight lights up members in the team tree
+- [x] #24 Team highlight lights up members in the team tree
+    - **Completed:** 2026-10-04
+    - **Branch:** merged from `feature/org-team-member-highlight`
+    - **Notes:** `teamHighlightIds("team", …)` adds `memberNodeId(team, person)` for each membership of an in-scope team. Bob's node under HR stays unlit when only Payroll is highlighted. Member nodes use the same `--map-highlight` ring as team nodes; a lighter style wasn't needed. The `chart.fit` framing on more nodes looked fine. Tests: 1 unit added and 1 updated, 2 Playwright updated and 1 added.
 - [ ] #25 Include sub-teams by default
 - [ ] #9 Filter the admin lists
 - [ ] #17 Export the audit log
