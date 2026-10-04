@@ -175,6 +175,8 @@ describe("initials", () => {
     ["priya", "P"],
     ["Ana María de la Cruz", "AM"],
     ["  ", ""],
+    ["E\u0301mile Zola", "E\u0301Z"],
+    ["𝒜lex Ørsted", "𝒜Ø"],
   ])("%j → %j", (name, expected) => {
     expect(initials(name)).toBe(expected);
   });
