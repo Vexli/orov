@@ -196,6 +196,12 @@ export function PersonFormEditor({ id, initial, managers, desks, floors, teams }
           <input className={inputClass} type="date" value={values.startDate ?? ""} onChange={(e) => set("startDate", e.target.value || null)} />
           {fieldError("startDate")}
         </label>
+        <label className="block text-sm font-medium">
+          Last day
+          <input className={inputClass} type="date" value={values.endDate ?? ""} onChange={(e) => set("endDate", e.target.value || null)} />
+          <span className="mt-1 block text-xs font-normal text-muted-fg">Seen by admins only.</span>
+          {fieldError("endDate")}
+        </label>
         <label className="flex items-center gap-2 text-sm font-medium">
           <input type="checkbox" checked={values.active} onChange={(e) => set("active", e.target.checked)} />
           Active

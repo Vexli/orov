@@ -49,6 +49,7 @@ describe("forms", () => {
     phone: null,
     homeRegion: "US",
     startDate: null,
+    endDate: null,
     active: true,
     managerId: null,
     assignedDeskId: null,

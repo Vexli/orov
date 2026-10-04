@@ -242,6 +242,7 @@ function personValues(rec: PersonRecord) {
     homeRegion: rec.homeRegion,
     homeTimezone: rec.homeTimezone,
     startDate: rec.startDate,
+    endDate: rec.endDate,
     active: rec.active,
   };
 }

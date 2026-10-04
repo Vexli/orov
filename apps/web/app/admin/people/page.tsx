@@ -1,11 +1,13 @@
 import Link from "next/link";
-import { displayPhone } from "@officeorg/core";
+import { displayPhone, formatDate } from "@officeorg/core";
+import { requireAdmin } from "@/lib/session";
 import { getDb } from "@officeorg/db/client";
 import { listPeopleForAdmin } from "@officeorg/db/queries/people";
 import { listTeamsForAdmin } from "@officeorg/db/queries/teams";
 import { PeopleTable } from "@/components/admin/people-table";
 
 export default async function PeopleAdminPage() {
+  const user = await requireAdmin();
   const db = getDb();
   const [people, teams] = await Promise.all([listPeopleForAdmin(db), listTeamsForAdmin(db)]);
   // Numbers stored before phones were validated, and that don't parse on their own. Saving the
@@ -53,7 +55,11 @@ export default async function PeopleAdminPage() {
       ) : null}
 
       <PeopleTable
-        people={people}
+        people={people.map((p) => ({
+          ...p,
+          // A calendar date, so it's formatted in UTC: no zone can move it to another day.
+          endDateLabel: p.endDate ? formatDate(new Date(`${p.endDate}T00:00:00Z`), user.dateFormat) : null,
+        }))}
         teams={teams.map((t) => ({ id: t.id, name: t.name, parentTeamId: t.parentTeamId }))}
       />
     </div>

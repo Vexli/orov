@@ -48,7 +48,7 @@ export function planPeopleImport(
       if (!skippedLine.has(original.record.email)) skippedLine.set(original.record.email, original.line);
       continue;
     }
-    const row = withDeskTimeZone(withKeptIdentities(original, snapshot), snapshot);
+    const row = withDeskTimeZone(withKeptValues(original, snapshot), snapshot);
     const email = row.record.email;
     const prior = desired.get(email);
     if (prior) {
@@ -202,6 +202,7 @@ function emptyPerson(email: string): PersonRecord {
     homeRegion: "",
     homeTimezone: null,
     startDate: null,
+    endDate: null,
     active: true,
     managerEmail: null,
     deskCode: null,
@@ -219,15 +220,17 @@ function withDeskTimeZone(row: ValidPersonRow, snapshot: PeopleSnapshot): ValidP
   return zone ? { ...row, record: { ...row.record, homeTimezone: zone } } : row;
 }
 
-// Fills in the person's current accounts for the identity columns the file doesn't have.
-function withKeptIdentities(row: ValidPersonRow, snapshot: PeopleSnapshot): ValidPersonRow {
-  const current = snapshot.people.get(row.record.email)?.identities;
-  if (!row.keepIdentities || !current) return row;
-  const identities = { ...row.record.identities };
-  for (const provider of row.keepIdentities) {
-    if (current[provider]) identities[provider] = current[provider];
+// Fills in the person's current values for the later columns the file doesn't have: accounts
+// (#12) and the end date (N6).
+function withKeptValues(row: ValidPersonRow, snapshot: PeopleSnapshot): ValidPersonRow {
+  const current = snapshot.people.get(row.record.email);
+  if (!row.absentColumns || !current) return row;
+  const record = { ...row.record, identities: { ...row.record.identities } };
+  for (const column of row.absentColumns) {
+    if (column === "end_date") record.endDate = current.endDate;
+    else if (current.identities[column]) record.identities[column] = current.identities[column];
   }
-  return { ...row, record: { ...row.record, identities } };
+  return { ...row, record };
 }
 
 function identityKey(provider: string, value: string) {

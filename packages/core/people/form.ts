@@ -13,12 +13,13 @@ const optionalText = z
   .nullable()
   .transform((v) => (v === null || v === "" ? null : v));
 
-const isoDate = z
-  .string()
-  .trim()
-  .nullable()
-  .transform((v) => (v === null || v === "" ? null : v))
-  .pipe(z.union([z.null(), z.iso.date("Start date must be YYYY-MM-DD")]));
+const isoDate = (label: string) =>
+  z
+    .string()
+    .trim()
+    .nullable()
+    .transform((v) => (v === null || v === "" ? null : v))
+    .pipe(z.union([z.null(), z.iso.date(`${label} must be YYYY-MM-DD`)]));
 
 // Profile accounts by provider id. A blank value clears that account. Issues carry the provider in
 // their path (["identities", "github"]), so the form can show the error under the right input.
@@ -51,7 +52,8 @@ export const personFormSchema = z
     phone: optionalText,
     homeRegion: regionCodeSchema("Home region"),
     homeTimezone: optionalTimeZoneSchema(),
-    startDate: isoDate,
+    startDate: isoDate("Start date"),
+    endDate: isoDate("Last day"),
     active: z.boolean(),
     managerId: z.string().nullable(),
     assignedDeskId: z.string().nullable(),
@@ -60,6 +62,10 @@ export const personFormSchema = z
     teamIds: z.array(z.string()),
     primaryTeamId: z.string().nullable(),
     identities: identitiesInputSchema,
+  })
+  .refine((v) => v.startDate === null || v.endDate === null || v.endDate >= v.startDate, {
+    message: "The last day can't be before the start date",
+    path: ["endDate"],
   })
   .refine((v) => v.primaryTeamId === null || v.teamIds.includes(v.primaryTeamId), {
     message: "The primary team must be one of the selected teams",

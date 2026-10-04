@@ -11,6 +11,8 @@ import { sortByName } from "@officeorg/core/people/names";
 
 export interface PeopleTableRow extends AdminPersonRow {
   id: string;
+  // The last working day in the admin's date format (N6), or null.
+  endDateLabel: string | null;
   teams: { id: string; name: string; isPrimary: boolean; inherited: boolean }[];
 }
 
@@ -186,6 +188,9 @@ export function PeopleTable({ people, teams }: Props) {
                 <td className="py-2 pr-3 font-mono text-xs">{p.deskName ?? "—"}</td>
                 <td className="py-2 pr-3">
                   {p.active ? "Active" : <span className="text-muted-fg">Inactive</span>}
+                  {p.endDateLabel ? (
+                    <span className="block text-xs text-muted-fg">Last day {p.endDateLabel}</span>
+                  ) : null}
                 </td>
                 <td className="py-2 text-right">
                   <Link href={`/admin/people/${p.id}`} className="underline">

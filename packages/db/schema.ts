@@ -236,6 +236,8 @@ export const person = pgTable(
     managerId: text("manager_id").references((): AnyPgColumn => person.id),
     assignedDeskId: text("assigned_desk_id").references(() => space.id),
     startDate: date("start_date"),
+    // The last working day (N6). Admin-only.
+    endDate: date("end_date"),
     active: boolean("active").notNull().default(true),
     ...timestamps,
   },
