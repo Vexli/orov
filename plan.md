@@ -712,7 +712,10 @@ The improvement backlog raised after Phases 1–3. Each item keeps its number fr
 
 **F. Settings, E. Map, D. Admin**
 
-- [ ] #27 Date format setting (ISO, DMY, MDY)
+- [x] #27 Date format setting (ISO, DMY, MDY)
+    - **Completed:** 2026-10-04
+    - **Branch:** merged from `feature/date-format`
+    - **Notes:** Migration `0008` (`date_format` enum, `app_user.date_format` default `iso`; its own migration rather than shared with #28, so each feature commits alone). `core/dates/format.ts`: `DATE_FORMATS`, labels, `formatDate`, `formatDateTime(d, fmt, zone, { zone })` from `formatToParts` (fixed `en-US` parts, not the locale's layout), and `startOfDay(date, zone, addDays)` (DST-safe). `CurrentUser` gained `dateFormat` and `timeZone` (home time zone via `findHomeTimeZone`, else the `tz` cookie written by `components/time-zone-cookie.tsx` in the root layout, else UTC). `setRegionDisplay` → `setUserSettings(email, partial)`. Applied to the audit log (and its date filters: `AuditFilters.timeZone`), floor versions and theme versions; the latter two moved from client `toLocaleString()` to server-formatted labels. Exports stay ISO UTC. §7.1 updated. Tests: 20 unit, 2 DB, 1 Playwright.
 - [ ] #28 Country flag option for region display
 - [ ] #26 App draws room and POI names on the map
 - [ ] #16 Admin-named "floor" tier
