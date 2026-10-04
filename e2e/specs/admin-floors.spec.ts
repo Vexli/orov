@@ -267,7 +267,7 @@ test.describe("archiving and deleting (#22)", () => {
     await page.goto("/admin/floors/fl_sf_3");
     const section = page.getByRole("region", { name: "Archive or delete" });
     await expect(section.getByRole("button", { name: "Delete floor" })).toHaveCount(0);
-    await section.getByRole("button", { name: "Archive floor" }).click();
+    await section.getByRole("button", { name: "Archive floor", exact: true }).click();
     await expect(section.getByRole("alert")).toContainText("Sam Ortiz has a desk here");
     await section.getByRole("button", { name: "Archive and leave them without a desk" }).click();
     await expect(section).toContainText("is archived");
@@ -281,7 +281,7 @@ test.describe("archiving and deleting (#22)", () => {
 
     await page.goto("/admin/floors/fl_sf_3");
     await section.getByRole("button", { name: "Unarchive floor" }).click();
-    await expect(section.getByRole("button", { name: "Archive floor" })).toBeVisible();
+    await expect(section.getByRole("button", { name: "Archive floor", exact: true })).toBeVisible();
     await page.goto("/map?loc=sf");
     await expect(page.getByRole("group", { name: "Floors" }).getByRole("button")).toHaveText(["Floor 2", "Floor 3"]);
   });
