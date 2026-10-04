@@ -85,6 +85,20 @@ test.describe("region display setting", () => {
 test.describe("country flags", () => {
   test.beforeEach(resetE2eDatabase);
 
+  test("a user can show flags alone, with the country name kept for screen readers", async ({ page, context }) => {
+    await signInAs(context, "bob@example.com");
+    await page.goto("/settings");
+    await page.getByRole("radio", { name: /Flag only/ }).check();
+    await page.getByRole("button", { name: "Save settings" }).click();
+    await expect(page.getByRole("status")).toContainText("Settings saved");
+
+    await page.goto("/directory?person=p_jane");
+    const location = page.getByRole("complementary", { name: "Jane Park details" }).locator("[title=Canada]");
+    await expect(location).toHaveText("🇨🇦Canada");
+    await expect(location.locator('[aria-hidden="true"]')).toHaveText("🇨🇦");
+    await expect(location.locator(".sr-only")).toHaveText("Canada");
+  });
+
   test("a user can put the country's flag in front of every region label, just for themself", async ({
     page,
     context,

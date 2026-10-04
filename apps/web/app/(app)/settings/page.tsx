@@ -61,7 +61,9 @@ export default async function SettingsPage({ searchParams }: Props) {
                 <span>
                   <span className="block font-medium">{REGION_DISPLAY_LABELS[display]}</span>
                   <span className="block text-xs text-muted-fg">
-                    {EXAMPLES.map((code) => formatRegion(code, display)).join(" · ")}
+                    {display === "flag"
+                      ? EXAMPLES.map((code) => `${flagEmoji(code)} (${formatRegion(code, "country")})`).join(" · ")
+                      : EXAMPLES.map((code) => formatRegion(code, display)).join(" · ")}
                   </span>
                 </span>
               </label>

@@ -61,11 +61,13 @@ describe("formatRegion", () => {
         country: "United States",
         region: "California",
         country_region: "California, United States",
+        // The flag-only mode's text: the country, for screen readers.
+        flag: "United States",
       },
     ],
     [
       "CA-ON",
-      { code: "CA-ON", country: "Canada", region: "Ontario", country_region: "Ontario, Canada" },
+      { code: "CA-ON", country: "Canada", region: "Ontario", country_region: "Ontario, Canada", flag: "Canada" },
     ],
     [
       "GB-SCT",
@@ -74,10 +76,11 @@ describe("formatRegion", () => {
         country: "United Kingdom",
         region: "Scotland",
         country_region: "Scotland, United Kingdom",
+        flag: "United Kingdom",
       },
     ],
     // A country-only code falls back to the country name instead of showing nothing.
-    ["IN", { code: "IN", country: "India", region: "India", country_region: "India" }],
+    ["IN", { code: "IN", country: "India", region: "India", country_region: "India", flag: "India" }],
   ];
 
   for (const [code, expected] of table) {
@@ -130,8 +133,19 @@ describe("regionLabel", () => {
     expect(regionLabel("CA-ON", { display: "country_region", flag: true })).toEqual({
       label: "Ontario, Canada",
       flag: "🇨🇦",
+      flagOnly: false,
     });
-    expect(regionLabel("CA-ON", { display: "code", flag: true })).toEqual({ label: "CA-ON", flag: "🇨🇦" });
+    expect(regionLabel("CA-ON", { display: "code", flag: true })).toEqual({ label: "CA-ON", flag: "🇨🇦", flagOnly: false });
     expect(regionLabel("CA-ON", { display: "country_region", flag: false }).flag).toBeNull();
+  });
+
+  it("shows the flag alone in flag-only mode, keeping the country name for screen readers", () => {
+    expect(regionLabel("CA-ON", { display: "flag", flag: false })).toEqual({
+      label: "Canada",
+      flag: "🇨🇦",
+      flagOnly: true,
+    });
+    // A code without a country falls back to the code.
+    expect(regionLabel("XX", { display: "flag", flag: false })).toEqual({ label: "XX", flag: null, flagOnly: false });
   });
 });

@@ -18,6 +18,7 @@ import { displayName, personInitials } from "@officeorg/core/directory/filter";
 import { PersonCard } from "@/components/directory/person-card";
 import { mapParsers } from "@/lib/url-state";
 import { FloorList, KIND_LABEL } from "./floor-list";
+import { RegionText } from "../directory/location-label";
 import { FloorMap, type Avatar, type MapLabel, type RoomCue } from "./floor-map";
 
 interface Props {
@@ -467,8 +468,7 @@ function OfficeOverview({
     <aside aria-label={`${location.name} overview`} className="rounded-lg border border-border p-5">
       <h2 className="text-lg font-heading">{location.name}</h2>
       <p className="text-sm text-muted-fg">
-        {location.regionFlag ? <span aria-hidden="true">{location.regionFlag} </span> : null}
-        {location.regionLabel}
+        <RegionText flag={location.regionFlag} flagOnly={location.regionFlagOnly} label={location.regionLabel} />
       </p>
       <table className="mt-4 w-full text-left text-sm">
         <thead className="border-b border-border text-xs uppercase text-muted-fg">

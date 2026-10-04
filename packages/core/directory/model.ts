@@ -27,6 +27,8 @@ export interface DirectoryPerson {
   homeRegionLabel: string;
   // The country's flag, when the viewer turned flags on (#28). Shown hidden from screen readers.
   homeRegionFlag: string | null;
+  // The viewer chose flags alone (N7): show the flag, with the label for screen readers only.
+  homeRegionFlagOnly: boolean;
   homeTimezone: string | null;
   // Formatted on the server, like homeRegionLabel, so the browser never loads the phone metadata.
   phone: PhoneDisplay | null;

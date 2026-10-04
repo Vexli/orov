@@ -59,6 +59,7 @@ describe("loadMap", () => {
         name: "San Francisco",
         regionLabel: "US-CA",
         regionFlag: "🇺🇸",
+        regionFlagOnly: false,
         floorLabels: { singular: "Floor", plural: "Floors" },
         floors: [
           { slug: "2", name: "Floor 2", level: 2, hasDrawing: true, deskCount: 13, roomCount: 3 },
