@@ -1,13 +1,28 @@
 import { z } from "zod";
 
-// IANA time zones, for offices and people. Values are stored in the form Intl reports
-// ("America/New_York" for "america/new_york"), so the same zone is never stored two ways.
+// IANA time zones, for offices and people. A zone is stored as the admin named it, with its
+// capitalization fixed ("america/new_york" → "America/New_York"), so the same zone isn't stored
+// two ways by accident.
+//
+// Only the case is changed, never the name. Intl's resolvedOptions().timeZone also swaps an alias
+// for ICU's preferred id, and ICU prefers the old names: Node turns "Asia/Kolkata" into
+// "Asia/Calcutta" and "Europe/Kyiv" into "Europe/Kiev". Storing that would rewrite correct data.
 
 // The stored form of a zone, or null if it isn't one. Intl also accepts UTC offsets ("+05:30"),
 // which aren't IANA zones and have no daylight-saving rules, so those are refused.
 export function canonicalTimeZone(value: string): string | null {
   const zone = value.trim();
   if (!/^[A-Za-z]/.test(zone)) return null;
+  const resolved = resolve(zone);
+  if (resolved === null) return null;
+  // Intl's spelling, when it names the same zone (only the case differs).
+  if (resolved.toLowerCase() === zone.toLowerCase()) return resolved;
+  // An alias. Keep it, title-cased if that still names the same zone, else exactly as given.
+  const titled = zone.replace(/(^|[/_-])([a-z])/g, (_, sep: string, c: string) => sep + c.toUpperCase());
+  return zone === zone.toLowerCase() && resolve(titled) === resolved ? titled : zone;
+}
+
+function resolve(zone: string): string | null {
   try {
     return new Intl.DateTimeFormat("en", { timeZone: zone }).resolvedOptions().timeZone;
   } catch {

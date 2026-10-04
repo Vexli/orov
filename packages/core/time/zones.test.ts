@@ -8,7 +8,12 @@ describe("canonicalTimeZone", () => {
     ["america/new_york", "America/New_York"],
     ["  Europe/London ", "Europe/London"],
     ["utc", "UTC"],
-    ["Etc/UTC", "UTC"],
+    // Aliases are kept. Node's ICU would turn these into Asia/Calcutta, Europe/Kiev and UTC.
+    ["Asia/Kolkata", "Asia/Kolkata"],
+    ["asia/kolkata", "Asia/Kolkata"],
+    ["Europe/Kyiv", "Europe/Kyiv"],
+    ["Etc/UTC", "Etc/UTC"],
+    ["US/Pacific", "US/Pacific"],
   ])("stores %j as %j", (input, zone) => {
     expect(canonicalTimeZone(input)).toBe(zone);
   });
