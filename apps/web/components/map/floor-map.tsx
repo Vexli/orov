@@ -1,7 +1,7 @@
 "use client";
 
 import { memo, useEffect, useLayoutEffect, useRef, useState } from "react";
-import { labelLayout, type LabelKind } from "@officeorg/core/map/labels";
+import { labelLayout } from "@officeorg/core/map/labels";
 import { ROOM_STATE_LABEL, type RoomDisplayState } from "@officeorg/core/map/room-status";
 import {
   TransformComponent,
@@ -26,11 +26,10 @@ export interface Avatar {
   dimmed: boolean;
 }
 
-// A room's, point of interest's or area's name, drawn by the app from the database (#26).
+// A room's or point of interest's name, drawn by the app from the database (#26).
 export interface MapLabel {
   svgElementId: string;
   name: string;
-  kind: LabelKind;
   dimmed: boolean;
 }
 
@@ -66,7 +65,7 @@ export const Drawing = memo(
   (a, b) => a.svg === b.svg,
 );
 
-// Desk, room, point of interest and area boxes in drawing units, measured once per asset version after the first paint.
+// Desk, room and point of interest boxes in drawing units, measured once per asset version after the first paint.
 const boxCache = new Map<string, Map<string, Box>>();
 
 function measure(root: SVGSVGElement): Map<string, Box> {
@@ -99,7 +98,7 @@ function measure(root: SVGSVGElement): Map<string, Box> {
   return boxes;
 }
 
-const MEASURED = '[id^="desk-"], [id^="room-"], [id^="poi-"], [id^="area-"]';
+const MEASURED = '[id^="desk-"], [id^="room-"], [id^="poi-"]';
 const CLICKABLE = '[id^="desk-"], [id^="room-"]';
 const NOT_DRAWN = new Set(["defs", "style", "title", "desc", "metadata"]);
 // A pointer that moves further than this between down and up was a pan, not a click.
@@ -271,18 +270,18 @@ export function FloorMap({
 // Drawn in the text colour with a halo in the card colour, so a name stays readable on a selected
 // or status-tinted room, in light and dark themes alike.
 function NameLabel({ label, box }: { label: MapLabel; box: Box }) {
-  const layout = labelLayout(box, label.name, label.kind);
+  const layout = labelLayout(box, label.name);
   if (!layout) return null;
   return (
     <text
       data-label={label.svgElementId}
       x={layout.x}
       y={layout.y}
-      textAnchor={layout.anchor}
-      dominantBaseline={label.kind === "room" ? "central" : "auto"}
+      textAnchor="middle"
+      dominantBaseline="central"
       fontSize={layout.fontSize}
-      fontWeight={label.kind === "area" ? 600 : 500}
-      className={`${label.kind === "area" ? "fill-muted-fg" : "fill-fg"} stroke-card`}
+      fontWeight={500}
+      className="fill-fg stroke-card"
       strokeWidth={layout.fontSize * 0.22}
       strokeLinejoin="round"
       paintOrder="stroke"

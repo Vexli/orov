@@ -23,9 +23,10 @@ Give an element an id with one of these prefixes and OfficeOrg treats it as part
 Anything without one of these prefixes is **decoration**: walls, furniture, plants, signs.
 
 **Don't write room, point-of-interest or area names into the drawing.** OfficeOrg draws each
-room's, phone booth's, kitchen's, elevator's, restroom's and area's name itself, from its name in
-the app, so a renamed room needs no new drawing and the names follow the theme. A name drawn in
-the SVG as well would show twice. Other text is fine as decoration, such as a "Reception" sign.
+room's, phone booth's, kitchen's, elevator's and restroom's name itself, from its name in the app,
+so a renamed room needs no new drawing and the names follow the theme. A name drawn in the SVG as
+well would show twice. Areas aren't named on the map at all; people choose them with the buttons
+above it. Other text is fine as decoration, such as a "Reception" sign.
 
 | Prefix             | What it is                          | Example           | Becomes                      |
 | ------------------ | ----------------------------------- | ----------------- | ---------------------------- |
@@ -58,8 +59,9 @@ Rules:
   here" adds a desk (numbered after the floor's highest), draws a rectangular room (its id comes
   from the name you give it) or removes a desk or room. Each change is shown like an upload
   before it's saved as a new version. For walls or anything else, edit the drawing itself. The map shows
-  the name centred in the room's shape (an area's in its top-left corner), shrunk to fit, and
-  cut short with "…" if the shape is too small.
+  a room's or point of interest's name centred in its shape, shrunk to fit, and cut short with
+  "…" if the shape is too small. Areas aren't labelled on the drawing; people pick them with the
+  buttons above the map.
 
 The prefix can go on any shape (`rect`, `path`, `polygon`, `circle`) or on a group `<g>`. For a
 desk drawn as several shapes (a desk and a chair), group them and put the id on the group.
