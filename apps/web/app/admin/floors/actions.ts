@@ -1,12 +1,13 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { areaEditSchema, spaceEditSchema, type FloorDiff } from "@officeorg/core";
+import { areaEditSchema, drawingEditSchema, spaceEditSchema, type FloorDiff } from "@officeorg/core";
 import { getDb } from "@officeorg/db/client";
 import { ValidationError } from "@officeorg/db/queries/errors";
 import {
   applyFloorUpload,
   previewFloorRollback,
+  previewDrawingEdit,
   previewFloorUpload,
   rollbackFloor,
   saveArea,
@@ -121,4 +122,22 @@ export async function saveAreaAction(floorId: string, id: string, input: unknown
   revalidatePath(`/admin/floors/${text(floorId)}`);
   revalidatePath("/map");
   return result;
+}
+
+export type EditState =
+  | { ok: true; svg: string; svgElementId: string; diff: FloorDiff; identical: boolean; sanitizedSvg: string }
+  | { ok: false; error: string };
+
+// One edit made on the drawing in the browser (#21), applied to `base` (the drawing being edited,
+// or null for the current version) and previewed like an upload. Applying is applyUploadAction
+// with the returned drawing.
+export async function editDrawingAction(floorId: string, base: string | null, edit: unknown): Promise<EditState> {
+  await requireAdmin();
+  const parsed = drawingEditSchema.safeParse(edit);
+  if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? "That edit isn't possible" };
+  const baseSvg = base === null ? null : text(base);
+  return attempt(async () => ({
+    ok: true as const,
+    ...(await previewDrawingEdit(getDb(), text(floorId), baseSvg, parsed.data)),
+  }));
 }

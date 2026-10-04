@@ -196,3 +196,63 @@ test.describe("renaming rooms (#21)", () => {
     await expect(page.getByText("Name is required")).toBeVisible();
   });
 });
+
+test.describe("editing a drawing in the browser (#21)", () => {
+  test.beforeEach(async ({ context }) => {
+    await resetE2eDatabase();
+    await signInAs(context, "jane@example.com");
+  });
+
+  // A point in drawing units (SF Floor 2 is 1200 × 800) as a position on the editor.
+  // The mouse doesn't scroll, so the drawing is brought to the top of the viewport first.
+  async function at(page: Page, x: number, y: number) {
+    const drawing = page.locator("[data-drawing-editor] svg");
+    await drawing.evaluate((el) => el.scrollIntoView({ block: "start" }));
+    const box = (await drawing.boundingBox())!;
+    return { x: box.x + (x / 1200) * box.width, y: box.y + (y / 800) * box.height };
+  }
+
+  test("an admin places a desk and draws a room, and they arrive as a new version", async ({ page }) => {
+    await page.goto("/admin/floors/fl_sf_2");
+    const editor = page.getByRole("region", { name: "Edit the drawing here" });
+
+    // An empty spot at the bottom of the North Wing.
+    const desk = await at(page, 450, 400);
+    await page.mouse.click(desk.x, desk.y);
+    await expect(page.getByRole("status")).toContainText("Added desk-2-017");
+
+    await editor.getByLabel("Draw a room").check();
+    await editor.getByLabel("Room name").fill("Fjord");
+    const from = await at(page, 300, 690);
+    const to = await at(page, 400, 760);
+    await page.mouse.move(from.x, from.y);
+    await page.mouse.down();
+    await page.mouse.move(to.x, to.y);
+    await page.mouse.up();
+    await expect(page.getByRole("status")).toContainText("Added room-fjord");
+
+    const changes = page.getByRole("region", { name: "Changes from your edits" });
+    await expect(changes).toContainText("Added (2)");
+    await expect(changes).toContainText("SF-2-017");
+    await expect(changes).toContainText("Fjord");
+    await page.getByRole("button", { name: "Apply drawing" }).click();
+    await expect(page.getByRole("status")).toHaveText("Saved as version 2.");
+
+    await page.goto("/admin/people/p_priya");
+    await expect(page.getByLabel("Desk").locator("option", { hasText: "SF-2-017" })).toHaveCount(1);
+    await page.goto("/map?loc=sf&floor=2");
+    await expect(page.locator('[data-floor-map] [data-label="room-fjord"]')).toHaveText("Fjord");
+  });
+
+  test("removing an occupied desk asks first, as an upload would", async ({ page }) => {
+    await page.goto("/admin/floors/fl_sf_2");
+    const editor = page.getByRole("region", { name: "Edit the drawing here" });
+    await editor.getByLabel("Remove").check();
+    await editor.locator("#desk-2-014").click();
+    await expect(page.getByRole("status")).toContainText("Removed desk-2-014");
+    await expect(page.getByRole("button", { name: "Apply drawing" })).toBeDisabled();
+    await page.getByRole("checkbox", { name: /will have no desk/ }).check();
+    await page.getByRole("button", { name: "Apply drawing" }).click();
+    await expect(page.getByRole("status")).toHaveText("Saved as version 2.");
+  });
+});

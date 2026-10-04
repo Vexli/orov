@@ -8,9 +8,12 @@ import {
   applyUploadAction,
   previewRollbackAction,
   previewUploadAction,
+  editDrawingAction,
   rollbackAction,
   type PreviewState,
 } from "@/app/admin/floors/actions";
+import type { DrawingEditInput } from "@officeorg/core/svg/edit-input";
+import { DrawingEditor } from "./drawing-editor";
 
 interface Version {
   id: string;
@@ -26,16 +29,25 @@ interface Props {
   tier: TierLabels;
   currentAssetId: string | null;
   versions: Version[];
+  // The current version's sanitized drawing, to edit in the browser (#21).
+  currentSvg: string | null;
 }
 
 // What the admin is about to apply: a new file, or an earlier version.
 type Pending =
-  | { kind: "upload"; fileName: string; svg: string; preview: Extract<PreviewState, { ok: true }> }
+  | {
+      kind: "upload";
+      fileName: string;
+      svg: string;
+      preview: Extract<PreviewState, { ok: true }>;
+      // Made with the editor rather than uploaded; later edits build on it.
+      edited?: boolean;
+    }
   | { kind: "rollback"; version: Version; preview: Extract<PreviewState, { ok: true }> };
 
 // Upload a drawing or roll back to an earlier one. Both show the diff first, and nothing is
 // written until the admin applies it (plan.md §6, U11).
-export function FloorDrawingPanel({ floorId, tier, currentAssetId, versions }: Props) {
+export function FloorDrawingPanel({ floorId, tier, currentAssetId, versions, currentSvg }: Props) {
   const router = useRouter();
   const [pending, setPending] = useState<Pending | null>(null);
   const [confirmDeskless, setConfirmDeskless] = useState(false);
@@ -62,6 +74,25 @@ export function FloorDrawingPanel({ floorId, tier, currentAssetId, versions }: P
       }
       setConfirmDeskless(false);
       setPending({ kind: "upload", fileName: file.name, svg, preview });
+    });
+  }
+
+  // One edit at a time, each on top of the edits not yet applied.
+  const editBase = pending?.kind === "upload" && pending.edited ? pending.svg : null;
+  function editDrawing(edit: DrawingEditInput) {
+    setMessage(null);
+    startTransition(async () => {
+      const result = await editDrawingAction(floorId, editBase, edit);
+      if (!result.ok) {
+        setMessage({ tone: "error", text: result.error });
+        return;
+      }
+      setConfirmDeskless(false);
+      setPending({ kind: "upload", fileName: "your edits", svg: result.svg, preview: result, edited: true });
+      setMessage({
+        tone: "info",
+        text: `${edit.kind === "remove" ? "Removed" : "Added"} ${result.svgElementId}. Keep editing, or review the changes below and apply them.`,
+      });
     });
   }
 
@@ -128,6 +159,25 @@ export function FloorDrawingPanel({ floorId, tier, currentAssetId, versions }: P
           className="mt-3 block text-sm"
         />
       </section>
+
+      {currentSvg ? (
+        <section aria-labelledby="edit-heading" className="rounded-lg border border-border p-5">
+          <h2 id="edit-heading" className="font-heading">
+            Edit the drawing here
+          </h2>
+          <p className="mt-1 text-sm text-muted-fg">
+            Add desks and rooms, or remove them, without going back to the drawing tool. Your edits become a new
+            version once you apply them, like an upload.
+          </p>
+          <div className="mt-3">
+            <DrawingEditor
+              svg={editBase ?? currentSvg}
+              busy={busy}
+              onEdit={editDrawing}
+            />
+          </div>
+        </section>
+      ) : null}
 
       {message ? (
         <p

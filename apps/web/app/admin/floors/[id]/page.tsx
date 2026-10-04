@@ -32,6 +32,7 @@ export default async function FloorAdminPage({ params }: { params: Promise<{ id:
         floorId={floor.id}
         tier={tier}
         currentAssetId={floor.svgAssetId}
+        currentSvg={floor.currentSvg}
         versions={floor.versions.map((v) => ({
           id: v.id,
           version: v.version,
