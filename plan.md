@@ -644,7 +644,10 @@ The improvement backlog raised after Phases 1–3. Each item keeps its number fr
     - **Branch:** merged from `feature/admin-inactive-strike`
     - **Notes:** The name in `/admin/people` gets `line-through text-muted-fg` plus a visually hidden " (inactive)". Inactive people are not sorted last; #9's status filter (default: active) hides them instead. Tests: 1 Playwright.
 - [ ] #14 Click anywhere in a directory row to select it
-- [ ] #15 Desk code in the directory links to the map
+- [x] #15 Desk code in the directory links to the map
+    - **Completed:** 2026-10-04
+    - **Branch:** merged from `feature/directory-desk-link`
+    - **Notes:** `LocationLabel` takes `linkDesk`; only the directory's Location column sets it, because the card has its own desk link. The link is `/map?person=…` with `aria-label="Show <desk> on the map"`, the same as the card's. "Remote" stays a plain badge. Tests: 1 Playwright (Sam's desk on Floor 3, so the map switches floors).
 - [ ] #24 Team highlight lights up members in the team tree
 - [ ] #25 Include sub-teams by default
 - [ ] #9 Filter the admin lists
