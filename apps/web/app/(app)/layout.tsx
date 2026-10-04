@@ -12,8 +12,10 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   const [user, brand] = await Promise.all([requireUser(), getBrand()]);
   return (
     <div className="min-h-screen">
-      <header className="border-b border-border">
-        <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-x-6 gap-y-2 px-4 py-3">
+      {/* The main menu stays at the top (N3). On wide screens it's one 3.5rem row, so a view's
+          own bar (ViewBar) can stick right under it. */}
+      <header className="sticky top-0 z-30 border-b border-border bg-bg">
+        <div className="flex flex-wrap items-center gap-x-6 gap-y-2 px-4 py-3 lg:h-14 lg:flex-nowrap lg:py-0">
           <Link href="/directory">
             <BrandMark brand={brand} />
           </Link>
@@ -40,7 +42,9 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
           </div>
         </div>
       </header>
-      <main className="mx-auto max-w-7xl px-4 py-6">{children}</main>
+      {/* Views use the whole width (N2); pages that read better narrow, such as Settings, set
+          their own width. */}
+      <main className="px-4 py-6">{children}</main>
     </div>
   );
 }

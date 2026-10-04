@@ -161,6 +161,6 @@ test.describe("U9: selection across views", () => {
 
     await tab(page, "Org chart").click();
     await expect(page.locator("[data-org-chart] [data-selected]")).toHaveCount(0);
-    await expect(page.getByText("Select someone to see their card.")).toBeVisible();
+    await expect(page.getByRole("complementary", { name: /details$/ })).toHaveCount(0);
   });
 });

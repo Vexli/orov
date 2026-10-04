@@ -19,6 +19,7 @@ import { PersonCard } from "@/components/directory/person-card";
 import { mapParsers } from "@/lib/url-state";
 import { FloorList, KIND_LABEL } from "./floor-list";
 import { RegionText } from "../directory/location-label";
+import { ViewBar } from "../view-bar";
 import { FloorMap, type Avatar, type MapLabel, type RoomCue } from "./floor-map";
 import { sortByName } from "@officeorg/core/people/names";
 
@@ -216,12 +217,9 @@ export function MapView({ map, people, teams }: Props) {
   }
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
-      <section aria-label={`${tier.singular} map`} className="min-w-0" aria-busy={navigating}>
-        <h1 className="text-xl font-heading">
-          {floor.locationName}, {floor.name}
-          {focusArea ? `, ${focusArea.name}` : ""}
-        </h1>
+    <>
+      {/* The map's own controls, in the bar under the main menu (N4). */}
+      <ViewBar label="Map filters">
         <MapNavigation
           locations={map.locations}
           locationSlug={floor.locationSlug}
@@ -240,7 +238,7 @@ export function MapView({ map, people, teams }: Props) {
           onChange={(teamId, sub) => setParams({ team: teamId, sub: teamId ? sub : null })}
           onFloor={goTo}
         />
-        <div role="group" aria-label="Display" className="mt-3 flex gap-1">
+        <div role="group" aria-label="Display" className="flex gap-1">
           {(["map", "list"] as const).map((v) => (
             <button
               key={v}
@@ -253,6 +251,13 @@ export function MapView({ map, people, teams }: Props) {
             </button>
           ))}
         </div>
+      </ViewBar>
+    <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
+      <section aria-label={`${tier.singular} map`} className="min-w-0" aria-busy={navigating}>
+        <h1 className="text-xl font-heading">
+          {floor.locationName}, {floor.name}
+          {focusArea ? `, ${focusArea.name}` : ""}
+        </h1>
         <div className={`mt-4 transition-opacity ${navigating ? "opacity-60" : ""}`}>
           {params.view === "list" ? (
             <FloorList
@@ -316,6 +321,7 @@ export function MapView({ map, people, teams }: Props) {
         )}
       </div>
     </div>
+    </>
   );
 }
 
@@ -393,7 +399,7 @@ function MapNavigation({
   const location = locations.find((l) => l.slug === locationSlug);
   const floors = location?.floors.filter((f) => f.hasDrawing) ?? [];
   return (
-    <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-2">
+    <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
       {locations.length > 1 ? (
         <select
           aria-label="Office"
@@ -534,7 +540,7 @@ function TeamHighlight({
 }) {
   const name = teams.find((t) => t.id === teamId)?.name;
   return (
-    <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
+    <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
       <select
         aria-label="Highlight team"
         value={teamId ?? ""}

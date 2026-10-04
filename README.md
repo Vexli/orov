@@ -28,6 +28,9 @@ the phase-by-phase delivery plan with progress notes.
   Cognito or any OpenID Connect issuer), limited to one company email domain, with `viewer` and
   `admin` roles
 - Directory with search, team and location filters, a person card, and selection kept in the URL.
+  The directory, map and org chart use the full width of the window, with the main menu staying
+  at the top, the map's and org chart's controls in a bar just below it, and the selected
+  person's card floating at the right.
   People have a given name and a family name, and lists sort by family name
 - Floor map: the floor drawing with an avatar at each occupied desk and each room's name, zoom
   and pan, and a card for the person, desk or room you click. Switch offices and floors, open an
