@@ -734,7 +734,10 @@ The improvement backlog raised after Phases 1–3. Each item keeps its number fr
     - **Completed:** 2026-10-04
     - **Branch:** merged from `feature/bulk-edit-people`
     - **Notes:** `core/people/bulk.ts`: `bulkPatchSchema` (`active`, `managerId` (null = default lead, #11), `addTeamIds`, `removeTeamIds`, `primaryTeamId`), `applyBulkPatch(form, patch)` (joins a new primary team; drops a removed primary; never swaps desks), `bulkUpdateInputSchema`. `savePerson` was split into a wrapper and `savePersonIn(tx, …)`; `bulkUpdatePeople(db, actor, ids, patch)` runs it per person in one transaction (all or nothing; errors prefixed with the person's name and "Nothing was changed."). UI: row checkboxes plus "Select everyone shown" (indeterminate when partial), selection limited to rows the filters show, `components/admin/bulk-action-bar.tsx` with a native `<dialog>` that lists the people before applying. Phone numbers stored before #13 aren't normalized by a bulk change (savePerson trusts its input; the action-level schema isn't re-run). Tests: 5 unit, 3 DB, 2 Playwright; 2 row locators moved to email, as row names now start with the checkbox label.
-- [ ] #20 Everyone can edit their own profile
+- [x] #20 Everyone can edit their own profile
+    - **Completed:** 2026-10-04
+    - **Branch:** merged from `feature/self-profile`
+    - **Notes:** `/profile` ("My profile" in the top bar), `selfProfileSchema` in `core/people/form.ts` (`preferredName`, `phone`, `homeTimezone`, `identities`; zod drops anything else), `findOwnProfile(db, email)` and `saveOwnProfile(db, email, input)` in `queries/people.ts` (phone normalized against the person's own `homeRegion`; blank time zone defaulted from the desk as in #19; `checkIdentitiesFree` is now shared with `savePersonIn`; returns what was stored so the form shows the normalized phone). Audit `actorEmail` is the person. **Open question settled with the note's recommendation:** no photo self-edit (no free URLs; wait for uploads or #3). §10 Authorization and §13 Q2 updated. Tests: 1 unit, 3 DB, 2 Playwright.
 - [ ] #21 Rename and create rooms and desks in the browser
 - [ ] #22 Archive (or delete) rooms, floors and offices
 - [ ] #29 Encrypted JSON export and import of the organization
