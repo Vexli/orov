@@ -127,3 +127,37 @@ test.describe("floor drawings (U11)", () => {
     await expect(page).toHaveURL(/\/forbidden/);
   });
 });
+
+test.describe("an office's own name for its floors (#16)", () => {
+  test.beforeEach(async ({ context }) => {
+    await resetE2eDatabase();
+    await signInAs(context, "jane@example.com");
+  });
+
+  test("calling them buildings changes the admin pages and the map", async ({ page }) => {
+    await page.goto("/admin/locations/loc_sf");
+    await page.getByLabel("Preset").selectOption({ label: "Building" });
+    await expect(page.getByLabel("One", { exact: true })).toHaveValue("Building");
+    await expect(page.getByLabel("More than one")).toHaveValue("Buildings");
+    await page.getByRole("button", { name: "Save office" }).click();
+    await expect(page).toHaveURL(/\/admin\/locations$/);
+    await expect(page.getByRole("link", { name: "Add building" })).toBeVisible();
+    await expect(page.getByRole("columnheader", { name: "Building" })).toBeVisible();
+
+    await page.goto("/map?loc=sf&floor=2");
+    await expect(page.getByRole("region", { name: "Building map" })).toBeVisible();
+    await expect(page.getByRole("group", { name: "Buildings" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Whole building" })).toBeVisible();
+    await expect(
+      page.getByRole("complementary", { name: "San Francisco overview" }).getByRole("columnheader", { name: "Building" }),
+    ).toBeVisible();
+  });
+
+  test("a new office calls them floors unless told otherwise", async ({ page }) => {
+    await page.goto("/admin/locations/new");
+    await expect(page.getByLabel("Preset")).toHaveValue("0");
+    await expect(page.getByLabel("One", { exact: true })).toHaveValue("Floor");
+    await page.getByLabel("One", { exact: true }).fill("Campus");
+    await expect(page.getByLabel("Preset")).toHaveValue("-1");
+  });
+});

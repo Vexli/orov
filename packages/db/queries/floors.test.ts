@@ -225,6 +225,8 @@ describe("offices and floors", () => {
     timezone: "America/New_York",
     region: "US-NY",
     sortOrder: 2,
+    floorLabelSingular: "Floor",
+    floorLabelPlural: "Floors",
   };
   const floor = { slug: "4", name: "Floor 4", level: 4, sortOrder: 4 };
 
@@ -257,7 +259,7 @@ describe("offices and floors", () => {
       saveLocation(
         t.db,
         ACTOR,
-        { slug: "sfo", name: sf!.name, timezone: sf!.timezone, region: sf!.region, sortOrder: 1 },
+        { ...office, slug: "sfo", name: sf!.name, timezone: sf!.timezone, region: sf!.region, sortOrder: 1 },
         "loc_sf",
       ),
     ).rejects.toThrow(/desk codes use it/);

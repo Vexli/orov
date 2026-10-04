@@ -71,6 +71,13 @@
       "when": 1791109787058,
       "tag": "0009_region_flag_setting",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1791110560701,
+      "tag": "0010_floor_tier_labels",
+      "breakpoints": true
     }
   ]
 }

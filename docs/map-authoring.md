@@ -1,5 +1,8 @@
 # Drawing floor maps
 
+"Floor" in this guide means whatever an office calls that level: an office can name it Building,
+Wing, Level or anything else in its settings, and the drawing rules are the same.
+
 This guide is for whoever draws the floor plans, in Figma, Illustrator, Inkscape or any tool that
 exports SVG. OfficeOrg reads the drawing's element **ids** to find desks, rooms and areas, so the
 ids are the only part of the file with rules. Everything else is up to you.

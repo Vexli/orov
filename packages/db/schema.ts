@@ -122,6 +122,9 @@ export const location = pgTable(
     // The building's id in the room or calendar provider (Google buildingId, Microsoft Graph place).
     externalBuildingId: text("external_building_id"),
     sortOrder: integer("sort_order").notNull().default(0),
+    // What this office calls its floors, e.g. Building/Buildings on a campus (#16).
+    floorLabelSingular: text("floor_label_singular").notNull().default("Floor"),
+    floorLabelPlural: text("floor_label_plural").notNull().default("Floors"),
   },
   (t) => [check("location_region_iso3166", regionShape(t.region))],
 );

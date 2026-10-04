@@ -4,7 +4,7 @@ import { FloorDrawingPanel } from "@/components/admin/floor-drawing";
 import { FloorFormEditor } from "@/components/admin/location-form";
 import { getDb } from "@officeorg/db/client";
 import { getFloorForAdmin } from "@officeorg/db/queries/floors";
-import { formatDateTime } from "@officeorg/core";
+import { formatDateTime, tierLabel } from "@officeorg/core";
 import { requireAdmin } from "@/lib/session";
 
 export default async function FloorAdminPage({ params }: { params: Promise<{ id: string }> }) {
@@ -12,6 +12,8 @@ export default async function FloorAdminPage({ params }: { params: Promise<{ id:
   const { id } = await params;
   const floor = await getFloorForAdmin(getDb(), id);
   if (!floor) notFound();
+  // What this office calls its floors (#16).
+  const tier = { singular: floor.location.floorLabelSingular, plural: floor.location.floorLabelPlural };
 
   return (
     <div className="space-y-8">
@@ -26,6 +28,7 @@ export default async function FloorAdminPage({ params }: { params: Promise<{ id:
 
       <FloorDrawingPanel
         floorId={floor.id}
+        tier={tier}
         currentAssetId={floor.svgAssetId}
         versions={floor.versions.map((v) => ({
           id: v.id,
@@ -37,11 +40,12 @@ export default async function FloorAdminPage({ params }: { params: Promise<{ id:
 
       <section aria-labelledby="details-heading">
         <h2 id="details-heading" className="font-heading">
-          Floor details
+          {tierLabel(tier, "singular")} details
         </h2>
         <div className="mt-4">
           <FloorFormEditor
             locationId={floor.locationId}
+            tier={tier}
             id={floor.id}
             initial={{
               slug: floor.slug,

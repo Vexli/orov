@@ -20,6 +20,8 @@ export default async function EditLocationPage({ params }: { params: Promise<{ i
             timezone: location.timezone,
             region: location.region,
             sortOrder: location.sortOrder,
+            floorLabelSingular: location.floorLabelSingular,
+            floorLabelPlural: location.floorLabelPlural,
           }}
           slugLocked={location.floors.length > 0}
         />

@@ -51,6 +51,7 @@ export async function loadMap(
       name: l.name,
       regionLabel: region.label,
       regionFlag: region.flag,
+      floorLabels: { singular: l.floorLabelSingular, plural: l.floorLabelPlural },
       floors: l.floors.map((f) => ({
         slug: f.slug,
         name: f.name,
