@@ -182,12 +182,30 @@ describe("teamHighlightIds", () => {
     ]);
   });
 
-  it("lights up the team nodes in the team tree", () => {
-    expect([...teamHighlightIds("team", "t_hr", false, teams, people)]).toEqual(["t_hr"]);
+  it("lights up the team nodes and their members in the team tree", () => {
+    expect([...teamHighlightIds("team", "t_hr", false, teams, people)].sort()).toEqual([
+      "t_hr",
+      "t_hr:p_bob",
+      "t_hr:p_jane",
+      "t_hr:p_max",
+    ]);
     expect([...teamHighlightIds("team", "t_hr", true, teams, people)].sort()).toEqual([
       "t_hr",
+      "t_hr:p_bob",
+      "t_hr:p_jane",
+      "t_hr:p_max",
       "t_payroll",
+      "t_payroll:p_bob",
       "t_recruiting",
+      "t_recruiting:p_priya",
+    ]);
+  });
+
+  it("doesn't light a member's node under a team outside the scope", () => {
+    // Payroll only: Bob's Payroll node lights up, his HR node doesn't.
+    expect([...teamHighlightIds("team", "t_payroll", false, teams, people)].sort()).toEqual([
+      "t_payroll",
+      "t_payroll:p_bob",
     ]);
   });
 });
