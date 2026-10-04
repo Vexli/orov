@@ -30,3 +30,9 @@ export function compareByFamilyName(a: PersonName, b: PersonName): number {
     collator.compare(a.givenName, b.givenName)
   );
 }
+
+// Dropdowns of people or teams read alphabetically by what they show (N5), "Jane Park" under J,
+// with the same collation as the lists.
+export function sortByName<T extends { name: string }>(items: readonly T[]): T[] {
+  return [...items].sort((a, b) => collator.compare(a.name, b.name));
+}

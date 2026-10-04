@@ -19,6 +19,7 @@ import { directoryParsers } from "@/lib/url-state";
 import { LocationLabel } from "./location-label";
 import { TeamChip } from "../team-chip";
 import { PersonCard } from "./person-card";
+import { sortByName } from "@officeorg/core/people/names";
 
 interface Props {
   people: DirectoryPerson[];
@@ -135,7 +136,7 @@ export function DirectoryView({ people, teams, locations }: Props) {
             className="rounded-md border border-border bg-transparent px-3 py-2 text-sm"
           >
             <option value="">All teams</option>
-            {teams.map((t) => (
+            {sortByName(teams).map((t) => (
               <option key={t.id} value={t.id}>
                 {t.name}
               </option>

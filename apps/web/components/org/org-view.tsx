@@ -16,6 +16,7 @@ import { PersonCard } from "@/components/directory/person-card";
 import { orgParsers } from "@/lib/url-state";
 import { OrgChart } from "./org-chart";
 import { OrgOutline } from "./org-outline";
+import { sortByName } from "@officeorg/core/people/names";
 
 interface Props {
   people: DirectoryPerson[];
@@ -100,7 +101,7 @@ export function OrgView({ people, teams }: Props) {
             className="rounded-md border border-border bg-transparent px-3 py-1.5 text-sm"
           >
             <option value="">Highlight a team…</option>
-            {teams.map((t) => (
+            {sortByName(teams).map((t) => (
               <option key={t.id} value={t.id}>
                 {t.name}
               </option>

@@ -134,6 +134,22 @@ test.describe("admin people and teams", () => {
     await expect(page.getByRole("row", { name: /Priya Raman/ })).toContainText("HR (through a sub-team)");
   });
 
+  test("people and teams are listed alphabetically in dropdowns", async ({ page, context }) => {
+    await signInAs(context, "jane@example.com");
+    await page.goto("/admin/people/new");
+    // The people list sorts by family name; a dropdown reads by the name it shows.
+    await expect(page.getByLabel("Manager").locator("option")).toHaveText([
+      "No manager",
+      "Bob Lindqvist",
+      "Jane Park",
+      "Max Osei",
+      "Priya Raman",
+      "Sam Ortiz",
+    ]);
+    await page.goto("/admin/people");
+    await expect(page.getByLabel("Filter by team").locator("option")).toHaveText(["All teams", "HR", "Payroll", "Recruiting"]);
+  });
+
   test("a duplicate email is refused next to the field", async ({ page, context }) => {
     await signInAs(context, "jane@example.com");
     await page.goto("/admin/people/new");

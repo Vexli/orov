@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { compareByFamilyName, fullName, splitFullName } from "./names";
+import { compareByFamilyName, fullName, sortByName, splitFullName } from "./names";
 
 describe("splitFullName", () => {
   it.each([
@@ -34,5 +34,12 @@ describe("compareByFamilyName", () => {
       "Anna Lindqvist",
       "Bob Lindqvist",
     ]);
+  });
+});
+
+describe("sortByName", () => {
+  it("sorts by the shown name, ignoring case and accents like the lists", () => {
+    const names = ["max Osei", "Ángela", "Bob Lindqvist", "anna"].map((name) => ({ name }));
+    expect(sortByName(names).map((n) => n.name)).toEqual(["Ángela", "anna", "Bob Lindqvist", "max Osei"]);
   });
 });

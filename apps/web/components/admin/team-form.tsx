@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import type { TeamForm } from "@officeorg/core";
 import { deleteTeamAction, saveTeamAction, type TeamSaveState } from "@/app/admin/teams/actions";
+import { sortByName } from "@officeorg/core/people/names";
 
 interface Props {
   id?: string;
@@ -81,7 +82,7 @@ export function TeamFormEditor({ id, initial, parents, leads }: Props) {
         Parent team
         <select className={inputClass} value={values.parentTeamId ?? ""} onChange={(e) => set("parentTeamId", e.target.value || null)}>
           <option value="">None (top level)</option>
-          {parents.map((p) => (
+          {sortByName(parents).map((p) => (
             <option key={p.id} value={p.id}>
               {p.name}
             </option>
@@ -93,7 +94,7 @@ export function TeamFormEditor({ id, initial, parents, leads }: Props) {
         Lead
         <select className={inputClass} value={values.leadId ?? ""} onChange={(e) => set("leadId", e.target.value || null)}>
           <option value="">No lead</option>
-          {leads.map((p) => (
+          {sortByName(leads).map((p) => (
             <option key={p.id} value={p.id}>
               {p.name}
             </option>
