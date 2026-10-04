@@ -762,8 +762,11 @@ The improvement backlog raised after Phases 1–3. Each item keeps its number fr
 
 Built after #21 step 2, #22 and #29, at the project owner's direction; #30 still goes last. Numbered N1–N10 to keep them apart from the original items.
 
-- [ ] N1 Allow dual managers
+- [x] N1 Allow dual managers
+    - **Completed:** 2026-10-04
+    - **Branch:** merged from `feature/multiple-managers`
     - **Decided (2026-10-04):** **equal** managers, **any number**. In the reporting chart a person appears under each of their managers (as the team tree shows multi-team people), with their own reports under the first only, so whole subtrees aren't duplicated; selecting them highlights every node. The people CSV's `manager_email` takes several emails separated by `;`. Storage moves to a `person_manager(personId, managerId, position)` table; cycle checks walk every edge; #11's default applies when there are none.
+    - **Notes:** Migration `0015` is hand-written (snapshot via `generateDrizzleJson`, schema compared against a push): it drops the old index first, since Postgres shares one namespace between tables and indexes and the index on `person.manager_id` was named `person_manager`, then backfills. `PersonRecord.managerEmails`, `PersonForm.managerIds`, `DirectoryPerson.managers`, admin rows' `managerIds`/`managerNames`. Core: `reachesAncestorAny` (multi-parent cycle walk) in the import planner; `reportNodeId`/`standsFor` in `core/org/tree.ts` (extra nodes `<managerId>>personId` are leaves under each other manager). DB: `hasManagerCycle` and `managerWouldLoop` walk `person_manager`; `writeManagers`; the loop error names the blocking manager. Bulk edit's "Set manager" makes that the only manager. Backup gained a `personManagers` section. The manager arrays compare as sets in diffs, so reordering alone isn't a change. Tests: 5 unit, 4 DB, 1 Playwright; many fixtures updated.
 - [x] N2 Directory and org chart use the full page width, with the person card floating over the content
     - **Completed:** 2026-10-04
     - **Branch:** merged from `feature/full-width-layout` (with N3 and N4)
