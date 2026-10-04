@@ -2,6 +2,13 @@
 
 import { useState, useTransition } from "react";
 import type { FieldChange, ImportPlan, PersonRecord, TeamRecord } from "@officeorg/core";
+import {
+  CSV_ENCODING_LABELS,
+  CSV_ENCODINGS,
+  decodeCsv,
+  type CsvEncoding,
+  type DecodedCsv,
+} from "@officeorg/core/csv/decode";
 import type { ApplyState, PreviewState } from "@/app/admin/import/actions";
 
 type Kind = "people" | "teams";
@@ -14,10 +21,13 @@ interface Props {
   apply: (text: string) => Promise<ApplyState>;
 }
 
-// Upload, dry run, then apply. The file text is kept in state so Apply sends exactly what was
-// previewed. The server re-plans on apply, so a stale preview can't write anything.
+// Upload, dry run, then apply. The file is decoded here, in whatever encoding it was saved in,
+// and the text is kept in state so Apply sends exactly what was previewed. The server re-plans
+// on apply, so a stale preview can't write anything.
 export function CsvImportPanel({ kind, title, description, preview, apply }: Props) {
-  const [text, setText] = useState<string | null>(null);
+  const [bytes, setBytes] = useState<Uint8Array | null>(null);
+  const [decoded, setDecoded] = useState<DecodedCsv | null>(null);
+  const text = decoded?.text ?? null;
   const [fileName, setFileName] = useState<string | null>(null);
   const [state, setState] = useState<PreviewState | null>(null);
   const [applied, setApplied] = useState<ApplyState | null>(null);
@@ -27,10 +37,18 @@ export function CsvImportPanel({ kind, title, description, preview, apply }: Pro
     setApplied(null);
     setState(null);
     if (!file) return;
-    const body = await file.text();
-    setText(body);
+    const fileBytes = new Uint8Array(await file.arrayBuffer());
+    setBytes(fileBytes);
     setFileName(file.name);
-    startTransition(async () => setState(await preview(body)));
+    readAs(fileBytes);
+  }
+
+  // Decodes (detecting the encoding unless one is given) and previews the result.
+  function readAs(fileBytes: Uint8Array, encoding?: CsvEncoding) {
+    const result = decodeCsv(fileBytes, encoding);
+    setDecoded(result);
+    setApplied(null);
+    startTransition(async () => setState(await preview(result.text)));
   }
 
   function onApply() {
@@ -39,7 +57,8 @@ export function CsvImportPanel({ kind, title, description, preview, apply }: Pro
       const result = await apply(text);
       setApplied(result);
       if (result.ok) {
-        setText(null);
+        setBytes(null);
+        setDecoded(null);
         setFileName(null);
         setState(null);
       }
@@ -67,6 +86,29 @@ export function CsvImportPanel({ kind, title, description, preview, apply }: Pro
         {fileName ? <span className="text-sm text-muted-fg">{fileName}</span> : null}
         {pending ? <span className="text-sm text-muted-fg">Working…</span> : null}
       </div>
+
+      {bytes && decoded ? (
+        <div className="mt-3 flex flex-wrap items-center gap-3 text-sm">
+          <span role="status" aria-label={`${kind} file encoding`}>
+            Read as {CSV_ENCODING_LABELS[decoded.encoding]}.
+            {decoded.guessed ? " The file didn't say which encoding it uses, so check the names below." : ""}
+          </span>
+          <label className="flex items-center gap-2">
+            Read as
+            <select
+              value={decoded.encoding}
+              onChange={(e) => readAs(bytes, e.target.value as CsvEncoding)}
+              className="rounded-md border border-border bg-transparent px-2 py-1 text-sm"
+            >
+              {CSV_ENCODINGS.map((e) => (
+                <option key={e} value={e}>
+                  {CSV_ENCODING_LABELS[e]}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+      ) : null}
 
       {state && !state.ok ? (
         <p role="alert" className="mt-4 rounded-md bg-destructive/10 p-3 text-sm text-destructive">
@@ -140,7 +182,9 @@ function PlanSummary({ plan }: { plan: ImportPlan<PersonRecord> | ImportPlan<Tea
                 <td className="py-2">
                   {row.action === "error" ? (
                     <span className="text-destructive">{row.message}</span>
-                  ) : row.action === "update" ? (
+                  ) : row.action === "update" || row.action === "create" ? (
+                    // For a new row these are its filled-in fields, so names can be checked
+                    // (for example after a guessed encoding) before applying.
                     <ChangeList changes={row.changes} />
                   ) : null}
                 </td>
