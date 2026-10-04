@@ -103,7 +103,8 @@ export function personNodeId(
 }
 
 // The nodes a highlighted team lights up, with the same scope as the directory's team filter:
-// its members in the reporting tree, or the team itself (and its sub-teams) in the team tree.
+// its members in the reporting tree. In the team tree, the team itself (and its sub-teams) and
+// the member nodes under them; a person's membership of a team outside the scope stays unlit.
 export function teamHighlightIds(
   kind: OrgTreeKind,
   teamId: string,
@@ -112,7 +113,13 @@ export function teamHighlightIds(
   people: DirectoryPerson[],
 ): Set<string> {
   const scope = teamScope(teamId, includeSubteams, teams);
-  if (kind === "team") return new Set([...scope].filter((id) => teams.some((t) => t.id === id)));
+  if (kind === "team") {
+    const lit = new Set([...scope].filter((id) => teams.some((t) => t.id === id)));
+    for (const p of people) {
+      for (const t of p.teams) if (lit.has(t.id)) lit.add(memberNodeId(t.id, p.id));
+    }
+    return lit;
+  }
   return new Set(people.filter((p) => p.teams.some((t) => scope.has(t.id))).map((p) => p.id));
 }
 

@@ -165,13 +165,14 @@ test.describe("org chart focus and highlight", () => {
     await expect(lit).toHaveCount(5);
   });
 
-  test("in the team tree, a team and its sub-teams light up, and clicking a team highlights it", async ({
+  test("in the team tree, a team, its sub-teams and their members light up, and clicking a team highlights it", async ({
     page,
   }) => {
     await page.goto("/org?tree=team&team=t_hr&sub=true");
     const lit = page.locator("[data-org-chart] [data-highlighted]");
-    await expect(lit).toHaveCount(3);
-    for (const id of ["t_hr", "t_payroll", "t_recruiting"]) {
+    // 3 teams, plus HR's Jane, Max and Bob, Payroll's Bob, and Recruiting's Priya and Sam.
+    await expect(lit).toHaveCount(9);
+    for (const id of ["t_hr", "t_payroll", "t_recruiting", "t_hr:p_jane", "t_payroll:p_bob", "t_recruiting:p_sam"]) {
       await expect(node(page, id)).toHaveAttribute("data-highlighted", "");
     }
 
@@ -180,7 +181,10 @@ test.describe("org chart focus and highlight", () => {
     await expect(page.getByRole("status", { name: "Highlighted team" })).toHaveText(
       "Payroll and sub-teams: 1 person",
     );
-    await expect(lit).toHaveCount(1);
+    // Payroll and Bob's membership of it. His node under HR is outside the scope.
+    await expect(lit).toHaveCount(2);
+    await expect(node(page, "t_payroll:p_bob")).toHaveAttribute("data-highlighted", "");
+    await expect(node(page, "t_hr:p_bob")).not.toHaveAttribute("data-highlighted", "");
   });
 
   test("in the team tree, a person is centered on their primary team", async ({ page }) => {
@@ -195,5 +199,12 @@ test.describe("org chart focus and highlight", () => {
     const outline = page.getByRole("navigation", { name: "Reporting lines chart" });
     await expect(outline.getByRole("button", { name: /Bob Lindqvist/ })).toContainText("In team");
     await expect(outline.getByRole("button", { name: /Max Osei/ })).not.toContainText("In team");
+  });
+
+  test("the team outline marks the highlighted team's member rows too", async ({ page }) => {
+    await page.goto("/org?view=list&tree=team&team=t_recruiting");
+    const outline = page.getByRole("navigation", { name: /chart/ });
+    await expect(outline.getByRole("button", { name: /Priya Raman/ })).toContainText("In team");
+    await expect(outline.getByRole("button", { name: /^Max Osei/ })).not.toContainText("In team");
   });
 });
