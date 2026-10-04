@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { expect, test, type Page } from "@playwright/test";
-import { resetE2eDatabase } from "../support/database";
+import { resetE2eDatabase, withE2eDb } from "../support/database";
 import { signInAs } from "../support/session";
 
 const FLOOR_2 = readFileSync(
@@ -298,5 +298,37 @@ test.describe("archiving and deleting (#22)", () => {
     await page.getByRole("region", { name: "Archive or delete" }).getByRole("button", { name: "Delete office" }).click();
     await expect(page).toHaveURL(/\/admin\/locations$/);
     await expect(page.getByRole("region", { name: "Lisbon" })).toHaveCount(0);
+  });
+});
+
+test.describe("seating planner (N10)", () => {
+  test.beforeEach(async ({ context }) => {
+    await resetE2eDatabase();
+    await signInAs(context, "jane@example.com");
+  });
+
+  test("an admin regroups a scattered team, keeping locked people in place", async ({ page }) => {
+    // Bob (Payroll, under HR) has been put on Floor 3, away from the rest of HR on Floor 2.
+    await withE2eDb((db) =>
+      db.$client.query("UPDATE person SET assigned_desk_id = 'sp_sf_3_005' WHERE id = 'p_bob'"),
+    );
+    await page.goto("/admin/locations");
+    await page.getByRole("region", { name: "San Francisco" }).getByRole("link", { name: "Plan seating" }).click();
+    await page.getByLabel("Keep Jane Park in place").check();
+    await page.getByLabel("Keep Max Osei in place").check();
+    await page.getByRole("button", { name: "Plan seating" }).click();
+
+    const plan = page.getByRole("region", { name: /moves?$/ });
+    const bob = plan.getByRole("row", { name: /Bob Lindqvist/ });
+    await expect(bob).toContainText("SF-3-005");
+    await expect(bob).toContainText("Floor 2");
+    await expect(plan.getByRole("row", { name: /Jane Park|Max Osei/ })).toHaveCount(0);
+
+    await page.getByRole("button", { name: "Apply these moves" }).click();
+    await expect(page.getByRole("status")).toContainText(/^Done: \d+ (person|people) moved\.$/);
+    await page.goto("/directory?person=p_bob");
+    await expect(page.getByRole("complementary", { name: "Bob Lindqvist details" })).toContainText(
+      "San Francisco, Floor 2",
+    );
   });
 });

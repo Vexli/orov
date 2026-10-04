@@ -62,6 +62,9 @@ export default async function LocationsAdminPage({
                 <Link href={`/admin/locations/${location.id}`} className="underline">
                   Edit office
                 </Link>
+                <Link href={`/admin/locations/${location.id}/seating`} className="underline">
+                  Plan seating
+                </Link>
                 <Link href={`/admin/locations/${location.id}/floors/new`} className="underline">
                   Add {tierLabel(tierOf(location), "lower")}
                 </Link>

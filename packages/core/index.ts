@@ -34,3 +34,4 @@ export * from "./map/labels";
 export * from "./spaces/tier";
 export * from "./people/bulk";
 export * from "./svg/edit-input";
+export * from "./seating/plan";
