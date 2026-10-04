@@ -42,6 +42,23 @@ test.describe("admin people and teams", () => {
     await expect(row).toContainText("Recruiting");
   });
 
+  test("a new person's blank time zone comes from their desk's office", async ({ page, context }) => {
+    await signInAs(context, "jane@example.com");
+    await page.goto("/admin/people/new");
+    await page.getByLabel("Full name").fill("Ama Ito");
+    await page.getByLabel("Email").fill("ama@example.com");
+    await chooseOption(page, page.getByLabel("Desk"), /SF-2-016/);
+    await expect(page.getByLabel("Home timezone")).toHaveAttribute(
+      "placeholder",
+      "America/Los_Angeles (from San Francisco)",
+    );
+    await page.getByRole("button", { name: "Create person" }).click();
+    await expect(page).toHaveURL(/\/admin\/people$/);
+
+    await page.getByRole("row", { name: /Ama Ito/ }).getByRole("link", { name: "Edit" }).click();
+    await expect(page.getByLabel("Home timezone")).toHaveValue("America/Los_Angeles");
+  });
+
   test("a duplicate email is refused next to the field", async ({ page, context }) => {
     await signInAs(context, "jane@example.com");
     await page.goto("/admin/people/new");

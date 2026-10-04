@@ -33,6 +33,9 @@ export function PersonFormEditor({ id, initial, managers, desks, floors, teams }
   const [error, setError] = useState<{ message: string; field?: string } | null>(null);
   const [pending, startTransition] = useTransition();
 
+  // The zone a blank home time zone gets on save (#19): the chosen desk's office's.
+  const deskZone = desks.find((d) => d.id === values.assignedDeskId) ?? null;
+
   function set<K extends keyof PersonForm>(key: K, value: PersonForm[K]) {
     setValues((v) => ({ ...v, [key]: value }));
   }
@@ -112,18 +115,28 @@ export function PersonFormEditor({ id, initial, managers, desks, floors, teams }
             </span>
             {fieldError("homeRegion")}
           </label>
-          <label className="block text-sm font-medium">
-            Home timezone
-            <input
-              className={inputClass}
-              placeholder="America/Toronto"
-              list="person-time-zones"
-              value={values.homeTimezone ?? ""}
-              onChange={(e) => set("homeTimezone", e.target.value || null)}
-            />
+          {/* The hint sits outside the label, so it describes the input without becoming part
+              of its name. */}
+          <div>
+            <label className="block text-sm font-medium">
+              Home timezone
+              <input
+                className={inputClass}
+                placeholder={deskZone ? `${deskZone.timezone} (from ${deskZone.locationName})` : "America/Toronto"}
+                aria-describedby="home-timezone-hint"
+                list="person-time-zones"
+                value={values.homeTimezone ?? ""}
+                onChange={(e) => set("homeTimezone", e.target.value || null)}
+              />
+            </label>
             <TimeZoneList id="person-time-zones" />
+            <span id="home-timezone-hint" className="mt-1 block text-xs text-muted-fg">
+              {deskZone
+                ? `Left blank, it's set to ${deskZone.timezone} from the desk's office.`
+                : "IANA time zone. Left blank, it's set from the desk's office."}
+            </span>
             {fieldError("homeTimezone")}
-          </label>
+          </div>
         </div>
         <label className="block text-sm font-medium">
           Start date

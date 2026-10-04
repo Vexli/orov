@@ -29,9 +29,9 @@ function snapshot(people: PersonRecord[] = [], extra: Partial<PeopleSnapshot> = 
     people: new Map(people.map((p) => [p.email, p])),
     teamSlugs: new Set(["hr", "eng"]),
     desks: new Map([
-      ["SF-2-014", { assignable: true, ownerEmail: null }],
-      ["SF-2-015", { assignable: true, ownerEmail: null }],
-      ["SF-ARCH-1", { assignable: false, ownerEmail: null }],
+      ["SF-2-014", { assignable: true, ownerEmail: null, timezone: "America/Los_Angeles" }],
+      ["SF-2-015", { assignable: true, ownerEmail: null, timezone: "America/Los_Angeles" }],
+      ["SF-ARCH-1", { assignable: false, ownerEmail: null, timezone: "America/Los_Angeles" }],
     ]),
     ...extra,
   };
@@ -172,6 +172,24 @@ describe("planPeopleImport", () => {
       const b = person({ email: "b@x.com", name: "B", identities: { github: "two" } });
       const plan = run2("a@x.com,A,,,US,,,,,,,,,two\nb@x.com,B,,,US,,,,,,,,,one\n", snapshot([a, b]));
       expect(plan.rows.map((r) => r.action)).toEqual(["update", "update"]);
+    });
+  });
+
+  describe("home time zone from the desk", () => {
+    it("fills a blank zone from the desk's office, and shows it in the dry run", () => {
+      const plan = run("new@x.com,New,,,US,,,,,,SF-2-014,,\n", snapshot());
+      expect(plan.rows[0]?.record?.homeTimezone).toBe("America/Los_Angeles");
+      expect(plan.rows[0]?.changes).toContainEqual({ field: "homeTimezone", before: null, after: "America/Los_Angeles" });
+    });
+
+    it("never overwrites an explicit zone", () => {
+      const plan = run("new@x.com,New,,,US,Europe/Kyiv,,,,,SF-2-014,,\n", snapshot());
+      expect(plan.rows[0]?.record?.homeTimezone).toBe("Europe/Kyiv");
+    });
+
+    it("leaves the zone blank without a desk", () => {
+      const plan = run("new@x.com,New,,,US,,,,,,,,\n", snapshot());
+      expect(plan.rows[0]?.record?.homeTimezone).toBeNull();
     });
   });
 });

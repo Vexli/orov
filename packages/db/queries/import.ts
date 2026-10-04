@@ -49,7 +49,7 @@ async function loadPeopleSnapshot(db: Executor): Promise<PeopleSnapshot> {
 
   const deskRows = await db.query.space.findMany({
     where: eq(s.space.kind, "desk"),
-    with: { floor: { columns: { archivedAt: true } } },
+    with: { floor: { columns: { archivedAt: true }, with: { location: { columns: { timezone: true } } } } },
   });
   const owners = await db
     .select({ email: s.person.email, deskId: s.person.assignedDeskId })
@@ -62,6 +62,7 @@ async function loadPeopleSnapshot(db: Executor): Promise<PeopleSnapshot> {
     desks.set(desk.name, {
       assignable: desk.archivedAt === null && desk.floor.archivedAt === null,
       ownerEmail: ownerByDeskId.get(desk.id) ?? null,
+      timezone: desk.floor.location.timezone,
     });
   }
 
