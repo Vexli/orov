@@ -626,7 +626,10 @@ The improvement backlog raised after Phases 1–3. Each item keeps its number fr
 
 **G. Vendor-neutral schema**
 
-- [ ] #12 Extra account identities (GitHub, LinkedIn, …)
+- [x] #12 Extra account identities (GitHub, LinkedIn, …)
+    - **Completed:** 2026-10-04
+    - **Branch:** merged from `feature/person-identities`
+    - **Notes:** Migration `0004` adds `person_identity` (§5). The registry is `packages/core/people/identities.ts`: profile providers `github`, `gitlab`, `linkedin`, `website`, each with `normalize` (accepts a handle, `@handle` or profile URL; handles are lowercased) and `url`. `identityLinks` builds every link the card shows. `PersonRecord.identities` holds profile accounts only, and `diffPersonRecords` reports one change per provider (`github: old → new`). The people CSV has `github`, `gitlab`, `linkedin`, `website` columns after `primary_team`, in registry order (a test keeps them in step). **Departs from the full-state rule:** a blank cell clears an account, but a file *without* the column keeps the person's current value (`ValidPersonRow.keepIdentities`), so a spreadsheet from before the columns existed doesn't wipe accounts. `parseCsv` now returns `headers` for that. Duplicates are refused in the form (naming the holder, field `identities.<provider>`) and in the import planner (claims work like desk claims, so two people can swap accounts in one file). `savePerson` and the import replace only profile rows, so #4's messaging ids survive. The card shows labelled text links ("GitHub"), not icons, because no icon library is installed. Bob has seeded GitHub and LinkedIn accounts. The person action now reports nested field paths (`identities.github`). Tests: 32 unit, 4 DB, 1 Playwright.
 - [ ] #4–6 Provider-agnostic messaging, calendar and room status: schema renames
     - **Note:** the interfaces in `packages/integrations` are built with Phases 4 and 5.
 
