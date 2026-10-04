@@ -614,6 +614,66 @@ The five spikes from §2 and `docs/spikes.md`.
 
 **Total: about 7.5–9 weeks for one engineer, or about 4.5–5.5 weeks for two.** Two engineers can split phases 2 and 3, and phases 4 and 5, in parallel. Phase 5.5 depends only on Phase 1's token layer, so it can run alongside any later phase.
 
+### Phase 7: Improvement
+
+The improvement backlog raised after Phases 1–3. Each item keeps its number from `note.md` (a local backlog file, gitignored), which holds the goal, approach, acceptance criteria and tests for every item; this list tracks status. Items are in the note's suggested order: the vendor-neutral schema first (cheap while Phases 4 and 5 are unbuilt), then quick UI wins, data quality, the people model, settings, map and admin, and the rename last. Feature branches merge into `phase/7-improvement`.
+
+**Phase status:** in progress, started 2026-10-04.
+
+**G. Vendor-neutral schema**
+
+- [ ] #12 Extra account identities (GitHub, LinkedIn, …)
+- [ ] #4–6 Provider-agnostic messaging, calendar and room status: schema renames
+    - **Note:** the interfaces in `packages/integrations` are built with Phases 4 and 5.
+
+**A. Quick UI wins**
+
+- [ ] #8 Strike through inactive people in the admin list
+- [ ] #14 Click anywhere in a directory row to select it
+- [ ] #15 Desk code in the directory links to the map
+- [ ] #24 Team highlight lights up members in the team tree
+- [ ] #25 Include sub-teams by default
+- [ ] #9 Filter the admin lists
+- [ ] #17 Export the audit log
+
+**B. Data quality**
+
+- [ ] #10 CSV import handles non-UTF-8 files
+- [ ] #18 Validate time zones
+- [ ] #19 Default time zone from the desk's office
+- [ ] #13 Phone number normalization
+- [ ] #1 Skip rows in a CSV import
+
+**C. People model**
+
+- [ ] #2 Given and family name as separate fields
+- [ ] #11 Default manager from the primary team's lead
+- [ ] #23 Auto-add parent-team memberships
+
+**F. Settings, E. Map, D. Admin**
+
+- [ ] #27 Date format setting (ISO, DMY, MDY)
+- [ ] #28 Country flag option for region display
+- [ ] #26 App draws room and POI names on the map
+- [ ] #16 Admin-named "floor" tier
+- [ ] #7 Bulk edit people
+- [ ] #20 Everyone can edit their own profile
+- [ ] #21 Rename and create rooms and desks in the browser
+- [ ] #22 Archive (or delete) rooms, floors and offices
+- [ ] #29 Encrypted JSON export and import of the organization
+
+**G. Integrations (with Phases 4 and 5)**
+
+- [ ] #4–6 Provider-agnostic interfaces in `packages/integrations`
+    - **Depends on:** Phases 4 and 5
+- [ ] #3 Sync photo and title from the messaging tool
+    - **Depends on:** #4 (interfaces), #2
+
+**H. Rebrand**
+
+- [ ] #30 Rename the project from OfficeOrg to OrOv
+    - **Depends on:** every other item; it touches nearly every file
+
 ---
 
 ## 13. Risks and open questions
