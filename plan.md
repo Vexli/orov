@@ -659,7 +659,10 @@ The improvement backlog raised after Phases 1–3. Each item keeps its number fr
     - **Completed:** 2026-10-04
     - **Branch:** merged from `feature/subteams-default`
     - **Notes:** `selectionParsers.sub` defaults to `true` and `EMPTY_FILTERS.includeSubteams` is `true`. Only `sub=false` appears in URLs (nuqs `clearOnDefault`); the palette copies the raw value, so `sub=false` carries into room links. Every `sub: null` reset now means "include". §7 updated. The branch also carries a fix to `map.spec.ts` U1, which #15 broke (the list row and the card both had a "Show SF-2-014 on the map" link). Tests: 1 unit rewritten; 5 Playwright specs rewritten and 1 added (`sub=false` carries across tabs).
-- [ ] #9 Filter the admin lists
+- [x] #9 Filter the admin lists
+    - **Completed:** 2026-10-04
+    - **Branch:** merged from `feature/admin-list-filters`
+    - **Notes:** `packages/core/admin/filter.ts`: `filterAdminPeople` (text, team with `teamScope`, `status` active/inactive/all, `desk` any/with/without) and `filterAdminTeams` (name/slug match plus ancestors; `matched` vs `visible`). `matchesQuery` was extracted from `filterDirectory`, and `teamScope` now takes any `{ id, parentTeamId }[]`. The pages are client tables (`components/admin/{people,teams}-table.tsx`) with nuqs params `adminPeopleParsers` (`q`, `team`, `sub`, `status`, `desk`) and `adminTeamsParsers` (`q`); defaults stay out of the URL. **Status defaults to `active`**, so #8's strike-through shows when "Inactive" or "Active and inactive" is chosen. Test note: nuqs writes the URL a moment after a change, so a spec that reloads must wait for the URL first. Tests: 8 unit, 2 Playwright, 1 updated.
 - [ ] #17 Export the audit log
 
 **B. Data quality**
