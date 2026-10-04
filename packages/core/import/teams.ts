@@ -80,5 +80,5 @@ export function planTeamsImport(
 }
 
 function emptyTeam(slug: string): TeamRecord {
-  return { slug, name: "", parentSlug: null, slackChannelId: null, color: null };
+  return { slug, name: "", parentSlug: null, chatChannelId: null, color: null };
 }

@@ -12,7 +12,7 @@ export default async function NewTeamPage() {
       <h1 className="text-xl font-heading">New team</h1>
       <div className="mt-6">
         <TeamFormEditor
-          initial={{ slug: "", name: "", parentTeamId: null, leadId: null, slackChannelId: null, color: null }}
+          initial={{ slug: "", name: "", parentTeamId: null, leadId: null, chatChannelId: null, color: null }}
           parents={teams.map((t) => ({ id: t.id, name: t.name }))}
           leads={people.filter((p) => p.active).map((p) => ({ id: p.id, name: p.name }))}
         />

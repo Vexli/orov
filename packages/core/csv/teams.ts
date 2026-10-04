@@ -3,7 +3,10 @@ import { z } from "zod";
 import type { TeamRecord } from "../records";
 import { parseCsv, type CsvIssue, type CsvRecord } from "./parse";
 
-export const TEAMS_CSV_HEADERS = ["slug", "name", "parent_slug", "slack_channel_id", "color"];
+export const TEAMS_CSV_HEADERS = ["slug", "name", "parent_slug", "chat_channel_id", "color"];
+
+// chat_channel_id was slack_channel_id before the messaging provider became configurable.
+const ALIASES = { slack_channel_id: "chat_channel_id" };
 
 const blankToNull = (value: string) => (value === "" ? null : value);
 
@@ -14,7 +17,7 @@ export const teamCsvRowSchema = z.object({
     .pipe(z.string().regex(/^[a-z0-9][a-z0-9-]*$/, "slug may contain only a-z, 0-9 and hyphens")),
   name: z.string().min(1, "name is required"),
   parent_slug: z.string().transform((v) => (v === "" ? null : v.toLowerCase())),
-  slack_channel_id: z.string().transform(blankToNull),
+  chat_channel_id: z.string().transform(blankToNull),
   color: z.string().transform(blankToNull),
 });
 
@@ -30,7 +33,7 @@ export interface TeamsCsvResult {
 }
 
 export function parseTeamsCsv(text: string): TeamsCsvResult {
-  const parsed = parseCsv(text, { columns: TEAMS_CSV_HEADERS, required: ["slug", "name"] });
+  const parsed = parseCsv(text, { columns: TEAMS_CSV_HEADERS, required: ["slug", "name"], aliases: ALIASES });
   if (parsed.fatal) return { rows: [], issues: [], fatal: parsed.fatal };
 
   const rows: ValidTeamRow[] = [];
@@ -57,7 +60,7 @@ export function validateTeamRow(
       slug: v.slug,
       name: v.name,
       parentSlug: v.parent_slug,
-      slackChannelId: v.slack_channel_id,
+      chatChannelId: v.chat_channel_id,
       color: v.color,
     },
   };
@@ -68,7 +71,7 @@ export function teamsToCsv(teams: TeamRecord[]): string {
     t.slug,
     t.name,
     t.parentSlug ?? "",
-    t.slackChannelId ?? "",
+    t.chatChannelId ?? "",
     t.color ?? "",
   ]);
   return stringify(data, { header: true, columns: TEAMS_CSV_HEADERS });

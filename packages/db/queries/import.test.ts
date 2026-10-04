@@ -161,7 +161,7 @@ describe("people import", () => {
 describe("teams import", () => {
   it("creates a child team, renames another, and records audit rows", async () => {
     const csv = [
-      "slug,name,parent_slug,slack_channel_id,color",
+      "slug,name,parent_slug,chat_channel_id,color",
       "hr-ops,HR Operations,hr,,",
       "recruiting,Talent,hr,,#22c55e",
       "",
@@ -187,7 +187,7 @@ describe("teams import", () => {
 
   it("rejects a parent cycle and writes nothing", async () => {
     // hr is the root. Making it a child of payroll closes a loop: payroll → hr → payroll.
-    const csv = ["slug,name,parent_slug,slack_channel_id,color", "hr,HR,payroll,,", ""].join("\n");
+    const csv = ["slug,name,parent_slug,chat_channel_id,color", "hr,HR,payroll,,", ""].join("\n");
     const dry = await planTeamsCsv(t.db, csv);
     expect(dry.ok && dry.plan.canApply).toBe(false);
     await expect(applyTeamsCsv(t.db, "admin@example.com", csv)).rejects.toThrow(ImportRejectedError);

@@ -213,7 +213,7 @@ export async function applyTeamsCsv(db: Database, actorEmail: string, text: stri
       const values = {
         slug: rec.slug,
         name: rec.name,
-        slackChannelId: rec.slackChannelId,
+        chatChannelId: rec.chatChannelId,
         color: rec.color,
       };
       await tx

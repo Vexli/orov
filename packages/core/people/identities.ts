@@ -90,6 +90,16 @@ export const IDENTITY_PROVIDERS: readonly IdentityProvider[] = [
     normalize: websiteUrl,
     url: (value) => websiteUrl(value),
   },
+  // Messaging ids are written by the provider's match job, not typed in, and shown read-only.
+  // A deep link needs the workspace id as well, so it is built by the messaging adapter.
+  {
+    id: "slack",
+    label: "Slack",
+    kind: "messaging",
+    inputHint: "Slack member id (U…)",
+    normalize: (raw) => (/^[UW][A-Z0-9]{2,}$/.test(raw.trim()) ? raw.trim() : null),
+    url: () => null,
+  },
 ];
 
 export const PROFILE_PROVIDERS = IDENTITY_PROVIDERS.filter((p) => p.kind === "profile");
