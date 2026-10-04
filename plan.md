@@ -670,7 +670,10 @@ The improvement backlog raised after Phases 1–3. Each item keeps its number fr
 
 **B. Data quality**
 
-- [ ] #10 CSV import handles non-UTF-8 files
+- [x] #10 CSV import handles non-UTF-8 files
+    - **Completed:** 2026-10-04
+    - **Branch:** merged from `feature/csv-encoding`
+    - **Notes:** `packages/core/csv/decode.ts` `decodeCsv(bytes, encoding?)`: UTF-16 by BOM (or by the zero bytes of BOM-less UTF-16, marked `guessed`), then strict UTF-8, else Windows-1252 (`guessed`). The panel reads `file.arrayBuffer()`, decodes in the browser, shows "Read as …" (a `status` named "<kind> file encoding") and a select to re-read the bytes as another encoding. **Beyond the note:** `parseCsv` detects the separator (comma, semicolon or tab) from the header row, because Excel's UTF-16 "Unicode Text" is tab-separated and its CSV uses semicolons in decimal-comma locales; and the dry run lists a *new* row's fields too, since it showed nothing for creates and there was no way to check names. Cells are NFC-normalized in `parseCsv`. Secondary hardening done: `initials()` takes whole graphemes (`Intl.Segmenter`); `docs/map-authoring.md` says why slugs stay ASCII. **Not done:** accent-insensitive search (`unaccent`), left until #2 rewrites `search.ts`; internationalized emails (low priority, only if an SSO provider sends them). Tests: 12 unit, 2 Playwright.
 - [ ] #18 Validate time zones
 - [ ] #19 Default time zone from the desk's office
 - [ ] #13 Phone number normalization
