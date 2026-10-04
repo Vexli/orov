@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { eq } from "drizzle-orm";
-import type { PersonForm, TeamForm } from "@officeorg/core";
+import { selfProfileSchema, type PersonForm, type TeamForm } from "@officeorg/core";
 import { seedDemoData } from "../seed";
 import * as s from "../schema";
 import { startTestDatabase, type TestDatabase } from "../test-utils";
@@ -8,7 +8,15 @@ import { listAudit } from "./audit";
 import { ValidationError } from "./errors";
 import { listDeskOptions, listPickerFloors } from "./spaces";
 import { deleteTeam, getTeamForEdit, listTeamsForAdmin, saveTeam } from "./teams";
-import { bulkUpdatePeople, getPersonForEdit, listPeopleForAdmin, savePerson, setPersonActive } from "./people";
+import {
+  bulkUpdatePeople,
+  findOwnProfile,
+  getPersonForEdit,
+  listPeopleForAdmin,
+  saveOwnProfile,
+  savePerson,
+  setPersonActive,
+} from "./people";
 
 let t: TestDatabase;
 
@@ -294,6 +302,59 @@ describe("savePerson", () => {
     const sam = await t.db.query.person.findFirst({ where: eq(s.person.id, "p_sam") });
     expect(sam?.active).toBe(false);
     expect((await listAudit(t.db, { entity: "person" }))[0]).toMatchObject({ action: "update", entityId: "p_sam" });
+  });
+});
+
+describe("saveOwnProfile", () => {
+  it("changes only the self-editable fields, and audits the person as the actor", async () => {
+    const before = (await getPersonForEdit(t.db, "p_bob"))!;
+    // Parsed as the server action does, which canonicalizes the time zone and the accounts.
+    const input = selfProfileSchema.parse({
+      preferredName: "Bobby",
+      phone: "(415) 555-0188",
+      homeTimezone: "america/denver",
+      identities: { github: "@Bobby" },
+    });
+    await saveOwnProfile(t.db, "bob@example.com", input);
+    const after = (await getPersonForEdit(t.db, "p_bob"))!;
+    expect(after).toEqual({
+      ...before,
+      preferredName: "Bobby",
+      phone: "+14155550188",
+      homeTimezone: "America/Denver",
+      identities: { github: "bobby" },
+    });
+    const [entry] = await listAudit(t.db, { entity: "person" });
+    expect(entry).toMatchObject({ actorEmail: "bob@example.com", entityId: "p_bob", action: "update" });
+  });
+
+  it("reads a phone number in the person's own home country", async () => {
+    // Jane is based in Ontario, so a local number is Canadian.
+    await saveOwnProfile(t.db, "jane@example.com", {
+      preferredName: null,
+      phone: "416-555-0123",
+      homeTimezone: "America/Toronto",
+      identities: {},
+    });
+    expect((await findOwnProfile(t.db, "jane@example.com"))?.form.phone).toBe("+14165550123");
+  });
+
+  it("refuses an account someone else has, and someone who isn't in the directory", async () => {
+    await expectValidation(
+      saveOwnProfile(t.db, "max@example.com", {
+        preferredName: null,
+        phone: null,
+        homeTimezone: null,
+        identities: { github: "bob-lindqvist" },
+      }),
+      /Bob Lindqvist already has this GitHub account/,
+      "identities.github",
+    );
+    await expectValidation(
+      saveOwnProfile(t.db, "stranger@example.com", { preferredName: null, phone: null, homeTimezone: null, identities: {} }),
+      /isn't linked to a person/,
+    );
+    expect(await findOwnProfile(t.db, "stranger@example.com")).toBeNull();
   });
 });
 

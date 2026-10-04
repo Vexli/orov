@@ -25,6 +25,9 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
                 Admin
               </Link>
             ) : null}
+            <Link href="/profile" className="underline underline-offset-4">
+              My profile
+            </Link>
             <Link href="/settings" className="underline underline-offset-4">
               Settings
             </Link>

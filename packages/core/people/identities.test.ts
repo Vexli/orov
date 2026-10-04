@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { identitiesInputSchema } from "./form";
+import { identitiesInputSchema, selfProfileSchema } from "./form";
 import { identityLinks, parseIdentity } from "./identities";
 
 describe("parseIdentity", () => {
@@ -68,5 +68,20 @@ describe("identitiesInputSchema", () => {
     const result = identitiesInputSchema.safeParse({ slack: "U123ABC" });
     expect(result.success).toBe(false);
     expect(result.error?.issues[0]?.path).toEqual(["slack"]);
+  });
+});
+
+describe("selfProfileSchema", () => {
+  it("drops fields a person can't change about themself, even if a request sends them", () => {
+    const parsed = selfProfileSchema.parse({
+      preferredName: "Bobby",
+      phone: null,
+      homeTimezone: null,
+      identities: {},
+      title: "CEO",
+      managerId: "p_bob",
+      active: false,
+    });
+    expect(Object.keys(parsed).sort()).toEqual(["homeTimezone", "identities", "phone", "preferredName"]);
   });
 });
