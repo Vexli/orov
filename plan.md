@@ -768,8 +768,10 @@ Built after #21 step 2, #22 and #29, at the project owner's direction; #30 still
     - **Completed:** 2026-10-04
     - **Branch:** merged from `feature/sorted-dropdowns`
     - **Notes:** `sortByName` in `core/people/names.ts` (the lists' `Intl.Collator("en")`) applied at render in the org, directory and map team filters, the admin people team filter, the person form's manager select, the team form's parent and lead selects, and the bulk bar's manager/team select. Dropdowns sort by the shown full name (given name first); lists keep sorting by family name (#2). The no-README-change check: the README doesn't describe dropdown order. Tests: 1 unit, 1 Playwright.
-- [ ] N6 Final date (admin view only)
-    - **Decided (2026-10-04):** a person's last working day: `person.endDate` beside `startDate`, in the admin form, admin list and people CSV; never sent to viewers.
+- [x] N6 Final date (admin view only)
+    - **Completed:** 2026-10-04
+    - **Branch:** merged from `feature/end-date`
+    - **Notes:** A person's last working day, as decided (2026-10-04). Migration `0013` (`person.end_date`). `PersonRecord`/`PersonForm.endDate` ("Last day"; refused before the start date in the form and the CSV). CSV `end_date` after `start_date`. #12's `keepIdentities` became `ValidPersonRow.absentColumns` with `KEPT_IF_ABSENT` (account columns and `end_date`), so an older spreadsheet doesn't clear it. Admin list shows "Last day …" under the status, formatted with `formatDate` in UTC (a calendar date shouldn't shift by zone). `DirectoryPerson` never carries it; the e2e test checks the viewer's page HTML, including the server-component payload. It doesn't deactivate anyone on the day; that would need the worker. Tests: 2 unit, 1 Playwright.
 - [x] N7 Flags as a standalone region display option
     - **Completed:** 2026-10-04
     - **Branch:** merged from `feature/flag-only-display`
