@@ -8,6 +8,7 @@ import { PROFILE_PROVIDERS } from "@officeorg/core/people/identities";
 import type { DeskOption, PickerFloor } from "@officeorg/db/queries/spaces";
 import { savePersonAction, type SaveState } from "@/app/admin/people/actions";
 import { SeatPicker } from "./seat-picker";
+import { TimeZoneList } from "./time-zone-list";
 
 export interface TeamChoice {
   id: string;
@@ -113,7 +114,15 @@ export function PersonFormEditor({ id, initial, managers, desks, floors, teams }
           </label>
           <label className="block text-sm font-medium">
             Home timezone
-            <input className={inputClass} placeholder="America/Toronto" value={values.homeTimezone ?? ""} onChange={(e) => set("homeTimezone", e.target.value || null)} />
+            <input
+              className={inputClass}
+              placeholder="America/Toronto"
+              list="person-time-zones"
+              value={values.homeTimezone ?? ""}
+              onChange={(e) => set("homeTimezone", e.target.value || null)}
+            />
+            <TimeZoneList id="person-time-zones" />
+            {fieldError("homeTimezone")}
           </label>
         </div>
         <label className="block text-sm font-medium">

@@ -9,6 +9,7 @@ import {
   saveLocationAction,
   type SpaceSaveState,
 } from "@/app/admin/locations/actions";
+import { TimeZoneList } from "./time-zone-list";
 
 const inputClass = "mt-1 w-full rounded-md border border-border bg-transparent px-3 py-2 text-sm";
 
@@ -109,9 +110,11 @@ export function LocationFormEditor({ id, initial, slugLocked }: LocationProps) {
           <input
             className={inputClass}
             placeholder="America/Los_Angeles"
+            list="office-time-zones"
             value={f.values.timezone}
             onChange={(e) => f.set("timezone", e.target.value)}
           />
+          <TimeZoneList id="office-time-zones" />
           {f.fieldError("timezone")}
         </label>
         <label className="block text-sm font-medium">

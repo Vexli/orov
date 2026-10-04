@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { regionCodeSchema } from "../regions/iso3166";
+import { timeZoneSchema } from "../time/zones";
 
 // Admin form schemas for offices and floors. The database layer checks uniqueness and the rules
 // that depend on existing rows, such as a slug that desk codes already use.
@@ -19,24 +20,12 @@ const slug = z
       ),
   );
 
-export function isTimeZone(value: string): boolean {
-  try {
-    new Intl.DateTimeFormat("en", { timeZone: value });
-    return true;
-  } catch {
-    return false;
-  }
-}
-
 const order = z.coerce.number().int("Use a whole number");
 
 export const locationFormSchema = z.object({
   slug,
   name: z.string().trim().min(1, "Name is required"),
-  timezone: z
-    .string()
-    .trim()
-    .refine(isTimeZone, "Use an IANA time zone, such as America/Los_Angeles"),
+  timezone: timeZoneSchema(),
   region: regionCodeSchema("Region"),
   sortOrder: order,
 });
