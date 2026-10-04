@@ -9,8 +9,16 @@ const tierOf = (l: { floorLabelSingular: string; floorLabelPlural: string }) => 
   plural: l.floorLabelPlural,
 });
 
-export default async function LocationsAdminPage() {
-  const locations = await listLocationsWithFloors(getDb());
+export default async function LocationsAdminPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ archived?: string }>;
+}) {
+  // Archived offices and floors (#22) are hidden unless asked for.
+  const showArchived = (await searchParams).archived === "1";
+  const locations = (await listLocationsWithFloors(getDb()))
+    .filter((l) => showArchived || l.archivedAt === null)
+    .map((l) => ({ ...l, floors: l.floors.filter((f) => showArchived || f.archivedAt === null) }));
 
   return (
     <div>
@@ -18,7 +26,10 @@ export default async function LocationsAdminPage() {
         <div>
           <h1 className="text-xl font-heading">Offices and floors</h1>
           <p className="mt-1 text-sm text-muted-fg">
-            Each floor has one drawing. Open a floor to upload a new one or roll back.
+            Each floor has one drawing. Open a floor to upload a new one or roll back.{" "}
+            <Link href={showArchived ? "/admin/locations" : "/admin/locations?archived=1"} className="underline">
+              {showArchived ? "Hide archived" : "Show archived"}
+            </Link>
           </p>
         </div>
         <Link
@@ -42,6 +53,7 @@ export default async function LocationsAdminPage() {
           >
             <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
               <h2 className="font-heading">{location.name}</h2>
+              {location.archivedAt ? <span className="text-xs text-muted-fg">(archived)</span> : null}
               <span className="font-mono text-xs text-muted-fg">{location.slug}</span>
               <span className="text-xs text-muted-fg">
                 {location.region} · {location.timezone}
@@ -75,6 +87,7 @@ export default async function LocationsAdminPage() {
                     <tr key={floor.id} className="border-b border-border last:border-0">
                       <td className="py-2 pr-3">
                         <span className="font-medium">{floor.name}</span>{" "}
+                        {floor.archivedAt ? <span className="text-xs text-muted-fg">(archived)</span> : null}{" "}
                         <span className="font-mono text-xs text-muted-fg">{floor.slug}</span>
                       </td>
                       <td className="py-2 pr-3 text-right tabular-nums">{floor.level}</td>

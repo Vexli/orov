@@ -1,4 +1,4 @@
-import { asc, eq } from "drizzle-orm";
+import { asc, eq, isNull } from "drizzle-orm";
 import {
   compareByFamilyName,
   DEFAULT_REGION_FORMAT,
@@ -47,6 +47,7 @@ export async function loadDirectory(
   const locations = await db
     .select({ slug: s.location.slug, name: s.location.name })
     .from(s.location)
+    .where(isNull(s.location.archivedAt))
     .orderBy(asc(s.location.sortOrder), asc(s.location.name));
 
   const people: DirectoryPerson[] = rows.map((row) => {

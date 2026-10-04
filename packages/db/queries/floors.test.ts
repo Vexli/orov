@@ -12,6 +12,9 @@ import {
   getFloorForAdmin,
   previewFloorRollback,
   previewFloorUpload,
+  deleteFloor,
+  deleteLocation,
+  DesklessConfirmationNeeded,
   listFloorSpacesForAdmin,
   previewDrawingEdit,
   rollbackFloor,
@@ -19,7 +22,12 @@ import {
   saveFloor,
   saveLocation,
   saveSpace,
+  setFloorArchived,
+  setLocationArchived,
 } from "./floors";
+import { loadMap } from "./map";
+import { search } from "./search";
+import { listPickerFloors } from "./spaces";
 
 let t: TestDatabase;
 
@@ -338,5 +346,58 @@ describe("editing the drawing in the browser", () => {
     expect(second.diff.spaces.added.map((a) => a.svgElementId)).toEqual(["room-fjord"]);
     // Bob sits at SF-2-014, so removing it needs the admin's confirmation, as with an upload.
     expect(second.diff.spaces.removedAssigned.map((r) => r.svgElementId)).toEqual(["desk-2-014"]);
+  });
+});
+
+describe("archiving and deleting", () => {
+  const office = {
+    slug: "ldn",
+    name: "London",
+    timezone: "Europe/London",
+    region: "GB",
+    sortOrder: 3,
+    floorLabelSingular: "Floor",
+    floorLabelPlural: "Floors",
+  };
+  const floor = { slug: "1", name: "Floor 1", level: 1, sortOrder: 1 };
+
+  it("archives a floor only once the admin accepts who loses a desk, and hides it everywhere", async () => {
+    await expect(setFloorArchived(t.db, ACTOR, "fl_sf_3", true)).rejects.toBeInstanceOf(DesklessConfirmationNeeded);
+    await expect(setFloorArchived(t.db, ACTOR, "fl_sf_3", true)).rejects.toThrow(/Sam Ortiz has a desk here/);
+
+    await setFloorArchived(t.db, ACTOR, "fl_sf_3", true, { confirmDeskless: true });
+    expect((await t.db.query.person.findFirst({ where: eq(s.person.id, "p_sam") }))?.assignedDeskId).toBeNull();
+    const map = await loadMap(t.db, { loc: "sf", floor: null });
+    expect(map.locations[0]?.floors.map((f) => f.slug)).toEqual(["2"]);
+    expect((await search(t.db, "workshop")).rooms).toEqual([]);
+    expect((await listPickerFloors(t.db)).map((f) => f.id)).toEqual(["fl_sf_2"]);
+
+    await setFloorArchived(t.db, ACTOR, "fl_sf_3", false);
+    expect((await search(t.db, "workshop")).rooms.map((r) => r.name)).toEqual(["Workshop"]);
+  });
+
+  it("archives an office with its floors, and brings back only those on unarchiving", async () => {
+    await setFloorArchived(t.db, ACTOR, "fl_sf_3", true, { confirmDeskless: true });
+    await setLocationArchived(t.db, ACTOR, "loc_sf", true, { confirmDeskless: true });
+    expect((await loadMap(t.db, { loc: null, floor: null })).locations).toEqual([]);
+
+    await setLocationArchived(t.db, ACTOR, "loc_sf", false);
+    const floors = await t.db.query.floor.findMany({ where: eq(s.floor.locationId, "loc_sf") });
+    // Floor 3 was archived on its own before, so it stays archived.
+    expect(floors.map((f) => [f.slug, f.archivedAt === null]).sort()).toEqual([
+      ["2", true],
+      ["3", false],
+    ]);
+  });
+
+  it("deletes an office that never had a drawing, but only archives one that did", async () => {
+    const { id } = await saveLocation(t.db, ACTOR, office);
+    await saveFloor(t.db, ACTOR, id, floor);
+    await deleteLocation(t.db, ACTOR, id);
+    expect(await t.db.query.location.findFirst({ where: eq(s.location.id, id) })).toBeUndefined();
+    expect((await listAudit(t.db, { entity: "location" }))[0]).toMatchObject({ action: "delete", entityId: id });
+
+    await expect(deleteLocation(t.db, ACTOR, "loc_sf")).rejects.toThrow(/Archive it instead/);
+    await expect(deleteFloor(t.db, ACTOR, "fl_sf_2")).rejects.toThrow(/Archive it instead/);
   });
 });

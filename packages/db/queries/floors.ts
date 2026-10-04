@@ -588,3 +588,123 @@ export async function saveArea(db: Database, actorEmail: string, id: string, inp
     await recordAudit(tx, actorEmail, { entity: "area", entityId: id, action: "update", before, after });
   });
 }
+
+// Archiving and deleting (#22). Archiving hides a floor or office from every view but keeps its
+// history; anyone with a desk there is made deskless, which the admin confirms first, as with an
+// upload. Only a floor or office that was never used (no drawing ever uploaded) can be deleted.
+
+export interface ArchiveOptions {
+  // The admin has seen who loses their desk and accepts it.
+  confirmDeskless: boolean;
+}
+
+export class DesklessConfirmationNeeded extends ValidationError {
+  constructor(readonly people: string[]) {
+    super(`${people.join(", ")} ${people.length === 1 ? "has a desk" : "have desks"} here and would have none. Confirm to continue.`);
+  }
+}
+
+async function freeDesksOn(tx: Executor, actorEmail: string, floorIds: string[], confirm: boolean) {
+  if (floorIds.length === 0) return;
+  const holders = await tx
+    .select({ id: s.person.id, name: s.person.name })
+    .from(s.person)
+    .innerJoin(s.space, eq(s.space.id, s.person.assignedDeskId))
+    .where(inArray(s.space.floorId, floorIds));
+  if (holders.length === 0) return;
+  if (!confirm) throw new DesklessConfirmationNeeded(holders.map((h) => h.name).sort());
+  for (const holder of holders) {
+    const before = await loadPersonRecord(tx, holder.id);
+    await tx.update(s.person).set({ assignedDeskId: null, updatedAt: new Date() }).where(eq(s.person.id, holder.id));
+    const after = await loadPersonRecord(tx, holder.id);
+    await recordAudit(tx, actorEmail, { entity: "person", entityId: holder.id, action: "update", before, after });
+  }
+}
+
+export async function setFloorArchived(
+  db: Database,
+  actorEmail: string,
+  floorId: string,
+  archived: boolean,
+  options: ArchiveOptions = { confirmDeskless: false },
+): Promise<void> {
+  await db.transaction(async (tx) => {
+    const before = await tx.query.floor.findFirst({ where: eq(s.floor.id, floorId) });
+    if (!before) throw new ValidationError("This floor no longer exists.");
+    const office = await getLocation(tx, before.locationId);
+    if (!archived && office?.archivedAt) {
+      throw new ValidationError(`${office.name} is archived. Unarchive the office first.`);
+    }
+    if (archived) await freeDesksOn(tx, actorEmail, [floorId], options.confirmDeskless);
+    const [after] = await tx
+      .update(s.floor)
+      .set({ archivedAt: archived ? new Date() : null })
+      .where(eq(s.floor.id, floorId))
+      .returning();
+    await recordAudit(tx, actorEmail, { entity: "floor", entityId: floorId, action: "update", before, after });
+  });
+}
+
+// Unarchiving an office brings back the floors archived with it, not ones archived earlier.
+export async function setLocationArchived(
+  db: Database,
+  actorEmail: string,
+  locationId: string,
+  archived: boolean,
+  options: ArchiveOptions = { confirmDeskless: false },
+): Promise<void> {
+  await db.transaction(async (tx) => {
+    const before = await getLocation(tx, locationId);
+    if (!before) throw new ValidationError("This office no longer exists.");
+    const floors = await tx.query.floor.findMany({ where: eq(s.floor.locationId, locationId) });
+    const now = new Date();
+    if (archived) {
+      const live = floors.filter((f) => f.archivedAt === null).map((f) => f.id);
+      await freeDesksOn(tx, actorEmail, live, options.confirmDeskless);
+      if (live.length > 0) await tx.update(s.floor).set({ archivedAt: now }).where(inArray(s.floor.id, live));
+    } else if (before.archivedAt) {
+      const withOffice = floors.filter((f) => f.archivedAt?.getTime() === before.archivedAt!.getTime());
+      if (withOffice.length > 0) {
+        await tx.update(s.floor).set({ archivedAt: null }).where(inArray(s.floor.id, withOffice.map((f) => f.id)));
+      }
+    }
+    const [after] = await tx
+      .update(s.location)
+      .set({ archivedAt: archived ? now : null })
+      .where(eq(s.location.id, locationId))
+      .returning();
+    await recordAudit(tx, actorEmail, { entity: "location", entityId: locationId, action: "update", before, after });
+  });
+}
+
+// A floor that never had a drawing has no rooms, desks or history, so nothing can point at it.
+async function refuseIfUsed(tx: Executor, floorIds: string[], what: string) {
+  if (floorIds.length === 0) return;
+  const asset = await tx.query.svgAsset.findFirst({ where: inArray(s.svgAsset.floorId, floorIds), columns: { id: true } });
+  if (asset) throw new ValidationError(`${what} has had a drawing, so its history is kept. Archive it instead.`);
+}
+
+export async function deleteFloor(db: Database, actorEmail: string, floorId: string): Promise<void> {
+  await db.transaction(async (tx) => {
+    const before = await tx.query.floor.findFirst({ where: eq(s.floor.id, floorId) });
+    if (!before) throw new ValidationError("This floor no longer exists.");
+    await refuseIfUsed(tx, [floorId], before.name);
+    await tx.delete(s.floor).where(eq(s.floor.id, floorId));
+    await recordAudit(tx, actorEmail, { entity: "floor", entityId: floorId, action: "delete", before, after: null });
+  });
+}
+
+export async function deleteLocation(db: Database, actorEmail: string, locationId: string): Promise<void> {
+  await db.transaction(async (tx) => {
+    const before = await getLocation(tx, locationId);
+    if (!before) throw new ValidationError("This office no longer exists.");
+    const floors = await tx.query.floor.findMany({ where: eq(s.floor.locationId, locationId) });
+    await refuseIfUsed(tx, floors.map((f) => f.id), before.name);
+    for (const floor of floors) {
+      await tx.delete(s.floor).where(eq(s.floor.id, floor.id));
+      await recordAudit(tx, actorEmail, { entity: "floor", entityId: floor.id, action: "delete", before: floor, after: null });
+    }
+    await tx.delete(s.location).where(eq(s.location.id, locationId));
+    await recordAudit(tx, actorEmail, { entity: "location", entityId: locationId, action: "delete", before, after: null });
+  });
+}

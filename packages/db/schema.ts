@@ -125,6 +125,8 @@ export const location = pgTable(
     // What this office calls its floors, e.g. Building/Buildings on a campus (#16).
     floorLabelSingular: text("floor_label_singular").notNull().default("Floor"),
     floorLabelPlural: text("floor_label_plural").notNull().default("Floors"),
+    // Archiving an office archives its floors too (#22).
+    archivedAt: timestamp("archived_at", { withTimezone: true }),
   },
   (t) => [check("location_region_iso3166", regionShape(t.region))],
 );

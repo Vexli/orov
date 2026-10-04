@@ -5,6 +5,7 @@ import { FloorFormEditor } from "@/components/admin/location-form";
 import { getDb } from "@officeorg/db/client";
 import { getFloorForAdmin, listFloorSpacesForAdmin } from "@officeorg/db/queries/floors";
 import { SpaceNames } from "@/components/admin/space-names";
+import { ArchiveControls } from "@/components/admin/archive-controls";
 import { formatDateTime, tierLabel } from "@officeorg/core";
 import { requireAdmin } from "@/lib/session";
 
@@ -67,6 +68,22 @@ export default async function FloorAdminPage({ params }: { params: Promise<{ id:
               sortOrder: floor.sortOrder,
             }}
             slugLocked={floor.svgAssetId !== null}
+          />
+        </div>
+      </section>
+
+      <section aria-labelledby="archive-heading">
+        <h2 id="archive-heading" className="font-heading">
+          Archive or delete
+        </h2>
+        <div className="mt-3">
+          <ArchiveControls
+            kind="floor"
+            id={floor.id}
+            name={`${floor.location.name}, ${floor.name}`}
+            archived={floor.archivedAt !== null}
+            deletable={floor.versions.length === 0}
+            afterDelete="/admin/locations"
           />
         </div>
       </section>

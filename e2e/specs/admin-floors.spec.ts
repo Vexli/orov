@@ -256,3 +256,47 @@ test.describe("editing a drawing in the browser (#21)", () => {
     await expect(page.getByRole("status")).toHaveText("Saved as version 2.");
   });
 });
+
+test.describe("archiving and deleting (#22)", () => {
+  test.beforeEach(async ({ context }) => {
+    await resetE2eDatabase();
+    await signInAs(context, "jane@example.com");
+  });
+
+  test("archiving a floor names who loses a desk, hides it, and unarchiving brings it back", async ({ page }) => {
+    await page.goto("/admin/floors/fl_sf_3");
+    const section = page.getByRole("region", { name: "Archive or delete" });
+    await expect(section.getByRole("button", { name: "Delete floor" })).toHaveCount(0);
+    await section.getByRole("button", { name: "Archive floor" }).click();
+    await expect(section.getByRole("alert")).toContainText("Sam Ortiz has a desk here");
+    await section.getByRole("button", { name: "Archive and leave them without a desk" }).click();
+    await expect(section).toContainText("is archived");
+
+    await page.goto("/map?loc=sf");
+    await expect(page.getByRole("group", { name: "Floors" }).getByRole("button")).toHaveText(["Floor 2"]);
+    await page.goto("/admin/locations");
+    await expect(page.getByRole("link", { name: "Open Floor 3" })).toHaveCount(0);
+    await page.getByRole("link", { name: "Show archived" }).click();
+    await expect(page.getByRole("link", { name: "Open Floor 3" })).toBeVisible();
+
+    await page.goto("/admin/floors/fl_sf_3");
+    await section.getByRole("button", { name: "Unarchive floor" }).click();
+    await expect(section.getByRole("button", { name: "Archive floor" })).toBeVisible();
+    await page.goto("/map?loc=sf");
+    await expect(page.getByRole("group", { name: "Floors" }).getByRole("button")).toHaveText(["Floor 2", "Floor 3"]);
+  });
+
+  test("an office that never had a drawing can be deleted", async ({ page }) => {
+    await page.goto("/admin/locations/new");
+    await page.getByLabel("Name").fill("Lisbon");
+    await page.getByLabel("Slug").fill("lis");
+    await page.getByLabel("Time zone").fill("Europe/Lisbon");
+    await page.getByLabel("Region").fill("PT");
+    await page.getByRole("button", { name: "Create office" }).click();
+    await expect(page).toHaveURL(/\/admin\/locations$/);
+    await page.getByRole("region", { name: "Lisbon" }).getByRole("link", { name: "Edit office" }).click();
+    await page.getByRole("region", { name: "Archive or delete" }).getByRole("button", { name: "Delete office" }).click();
+    await expect(page).toHaveURL(/\/admin\/locations$/);
+    await expect(page.getByRole("region", { name: "Lisbon" })).toHaveCount(0);
+  });
+});

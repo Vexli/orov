@@ -27,7 +27,9 @@ export async function loadMap(
   target: MapTarget,
   regionFormat: RegionFormat = DEFAULT_REGION_FORMAT,
 ): Promise<MapData> {
+  // Archived offices (#22) are left out, as their floors are.
   const locationRows = await db.query.location.findMany({
+    where: (l, { isNull }) => isNull(l.archivedAt),
     orderBy: (l, { asc }) => [asc(l.sortOrder), asc(l.name)],
     with: {
       floors: {
