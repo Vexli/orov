@@ -1,9 +1,18 @@
-import { formatRegion, REGION_DISPLAY_LABELS, REGION_DISPLAYS } from "@officeorg/core";
+import {
+  DATE_FORMAT_LABELS,
+  DATE_FORMATS,
+  formatDateTime,
+  formatRegion,
+  REGION_DISPLAY_LABELS,
+  REGION_DISPLAYS,
+} from "@officeorg/core";
 import { requireUser } from "@/lib/session";
 import { saveSettingsAction } from "./actions";
 
 // One subdivision and one country-only code, so each option shows its fallback too.
 const EXAMPLES = ["US-CA", "IN"];
+// An afternoon in a month with a two-digit day, so day/month order is visible in each example.
+const EXAMPLE_TIME = new Date("2026-10-24T14:30:00Z");
 
 interface Props {
   searchParams: Promise<{ saved?: string; error?: string }>;
@@ -25,7 +34,7 @@ export default async function SettingsPage({ searchParams }: Props) {
       ) : null}
       {error ? (
         <p role="alert" className="mt-4 rounded-md bg-destructive/10 p-3 text-sm text-destructive">
-          That option isn&apos;t available. Pick one from the list.
+          One of those options isn&apos;t available. Pick from the lists.
         </p>
       ) : null}
 
@@ -52,6 +61,34 @@ export default async function SettingsPage({ searchParams }: Props) {
                   <span className="block font-medium">{REGION_DISPLAY_LABELS[display]}</span>
                   <span className="block text-xs text-muted-fg">
                     {EXAMPLES.map((code) => formatRegion(code, display)).join(" · ")}
+                  </span>
+                </span>
+              </label>
+            ))}
+          </div>
+        </fieldset>
+        <fieldset className="mt-6">
+          <legend className="text-sm font-medium">Show dates as</legend>
+          <p className="mt-1 text-xs text-muted-fg">
+            Times are shown in {user.timeZone}. CSV files always use ISO 8601.
+          </p>
+          <div className="mt-3 space-y-2">
+            {DATE_FORMATS.map((format) => (
+              <label
+                key={format}
+                className="flex items-start gap-3 rounded-md border border-border px-3 py-2 text-sm"
+              >
+                <input
+                  type="radio"
+                  name="dateFormat"
+                  value={format}
+                  defaultChecked={user.dateFormat === format}
+                  className="mt-1"
+                />
+                <span>
+                  <span className="block font-medium">{DATE_FORMAT_LABELS[format]}</span>
+                  <span className="block text-xs text-muted-fg">
+                    {formatDateTime(EXAMPLE_TIME, format, "UTC")}
                   </span>
                 </span>
               </label>

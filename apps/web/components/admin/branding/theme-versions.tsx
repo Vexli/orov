@@ -9,7 +9,8 @@ interface Version {
   version: number;
   active: boolean;
   createdBy: string;
-  createdAt: Date;
+  // Formatted on the server in the viewer's date format and time zone (#27).
+  createdLabel: string;
 }
 
 // Every applied theme, with rollback and a return to the deploy-time default (plan.md §9.1).
@@ -83,7 +84,7 @@ export function ThemeVersions({ versions }: { versions: Version[] }) {
                     </span>
                   ) : null}
                 </td>
-                <td className="py-2 pr-3">{new Date(v.createdAt).toLocaleString()}</td>
+                <td className="py-2 pr-3">{v.createdLabel}</td>
                 <td className="py-2 pr-3">{v.createdBy}</td>
                 <td className="py-2 text-right">
                   {v.active ? null : (

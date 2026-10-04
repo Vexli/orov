@@ -81,3 +81,38 @@ test.describe("region display setting", () => {
     await expect(page.getByRole("heading", { name: "Settings" })).toBeVisible();
   });
 });
+
+// Each user also picks how dates appear (#27). Times are shown in their home time zone.
+test.describe("date format setting", () => {
+  test.beforeEach(resetE2eDatabase);
+
+  test("switching to day/month/year changes the audit log for that user only", async ({ page, context }) => {
+    await signInAs(context, "jane@example.com");
+    // Something in the log to look at.
+    await page.goto("/admin/people/p_bob");
+    await page.getByLabel("Title").fill("Senior Payroll Analyst");
+    await page.getByRole("button", { name: "Save person" }).click();
+    await expect(page).toHaveURL(/\/admin\/people$/);
+
+    const when = page.locator("tbody tr").first().locator("td").first();
+    await page.goto("/admin/audit");
+    // ISO is the default, in Jane's home time zone (Toronto), with the zone shown.
+    await expect(when).toHaveText(/^\d{4}-\d\d-\d\d \d\d:\d\d E[DS]T$/);
+
+    await page.goto("/settings");
+    await expect(page.getByRole("radio", { name: /Year-month-day/ })).toBeChecked();
+    await expect(page.getByText("Times are shown in America/Toronto.")).toBeVisible();
+    await page.getByRole("radio", { name: /Day\/month\/year/ }).check();
+    await page.getByRole("button", { name: "Save settings" }).click();
+    await expect(page.getByRole("status")).toContainText("Settings saved");
+
+    await page.goto("/admin/audit");
+    await expect(when).toHaveText(/^\d\d\/\d\d\/\d{4} \d\d:\d\d E[DS]T$/);
+
+    // Max's setting is still the default.
+    await context.clearCookies();
+    await signInAs(context, "max@example.com");
+    await page.goto("/settings");
+    await expect(page.getByRole("radio", { name: /Year-month-day/ })).toBeChecked();
+  });
+});

@@ -1,5 +1,5 @@
 import { and, desc, eq, gte, ilike, lt, type SQL } from "drizzle-orm";
-import { containsPattern } from "@officeorg/core";
+import { containsPattern, startOfDay } from "@officeorg/core";
 import type { Executor } from "../client";
 import { auditLog } from "../schema";
 
@@ -37,9 +37,10 @@ export async function recordAudit(db: Executor, actorEmail: string, entry: Audit
 
 export interface AuditFilters {
   entity?: AuditEntry["entity"];
-  // Inclusive UTC calendar dates, YYYY-MM-DD.
+  // Inclusive calendar dates, YYYY-MM-DD, in `timeZone` (UTC unless given).
   from?: string;
   to?: string;
+  timeZone?: string;
   // Part of the actor's email, ignoring case.
   actor?: string;
 }
@@ -52,8 +53,8 @@ export async function listAudit(
 ) {
   const where: SQL[] = [];
   if (options.entity) where.push(eq(auditLog.entity, options.entity));
-  if (options.from) where.push(gte(auditLog.at, utcDay(options.from, 0)));
-  if (options.to) where.push(lt(auditLog.at, utcDay(options.to, 1)));
+  if (options.from) where.push(gte(auditLog.at, startOfDay(options.from, options.timeZone)));
+  if (options.to) where.push(lt(auditLog.at, startOfDay(options.to, options.timeZone, 1)));
   if (options.actor) where.push(ilike(auditLog.actorEmail, containsPattern(options.actor)));
   if (options.beforeId !== undefined) where.push(lt(auditLog.id, options.beforeId));
   const query = db
@@ -63,10 +64,4 @@ export async function listAudit(
     .orderBy(desc(auditLog.id));
   const limit = options.limit === undefined ? 200 : options.limit;
   return limit === null ? query : query.limit(limit);
-}
-
-function utcDay(date: string, addDays: number): Date {
-  const day = new Date(`${date}T00:00:00Z`);
-  day.setUTCDate(day.getUTCDate() + addDays);
-  return day;
 }

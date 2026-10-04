@@ -12,12 +12,12 @@ export async function GET(request: Request) {
 
   const filters = parseAuditFilters(Object.fromEntries(new URL(request.url).searchParams));
   const db = getDb();
-  const rows = await listAudit(db, { ...filters, limit: null });
+  const rows = await listAudit(db, { ...filters, timeZone: user.timeZone, limit: null });
   await recordAudit(db, user.email, {
     entity: "audit_log",
     entityId: "export",
     action: "export",
-    after: { filters, rows: rows.length },
+    after: { filters: { ...filters, timeZone: user.timeZone }, rows: rows.length },
   });
 
   return new Response(auditToCsv(rows), {

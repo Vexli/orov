@@ -43,7 +43,9 @@ test.describe("audit log", () => {
     await expect(rows).toHaveCount(1);
     await expect(rows.first()).toContainText("export");
     await expect(rows.first()).toContainText("rows: null → 1");
-    await expect(rows.first()).toContainText('filters: null → {"actor":"jane","entity":"person"}');
+    await expect(rows.first()).toContainText(
+      'filters: null → {"actor":"jane","entity":"person","timeZone":"America/Toronto"}',
+    );
   });
 
   test("a viewer can't export the log", async ({ page, context }) => {

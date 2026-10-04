@@ -15,7 +15,8 @@ interface Version {
   id: string;
   version: number;
   uploadedBy: string;
-  uploadedAt: Date;
+  // Formatted on the server in the viewer's date format and time zone (#27).
+  uploadedLabel: string;
 }
 
 interface Props {
@@ -215,7 +216,7 @@ export function FloorDrawingPanel({ floorId, currentAssetId, versions }: Props) 
                       </span>
                     ) : null}
                   </td>
-                  <td className="py-2 pr-3">{new Date(v.uploadedAt).toLocaleString()}</td>
+                  <td className="py-2 pr-3">{v.uploadedLabel}</td>
                   <td className="py-2 pr-3">{v.uploadedBy}</td>
                   <td className="py-2 text-right">
                     {v.id === currentAssetId ? null : (
