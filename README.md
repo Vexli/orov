@@ -32,7 +32,7 @@ the phase-by-phase delivery plan with progress notes.
   the person, desk or room you click. Switch offices and floors, open an area such as the South
   Wing as a zoomed view, and see each floor's headcount, desks and rooms. The map follows a
   selected person to their floor, and highlights a team's seats (optionally with its sub-teams)
-  with a count per floor. A desk on a person card links to the map. A List toggle shows the same
+  with a count per floor. A desk code in the directory or on a person card links to the map. A List toggle shows the same
   desks and rooms as a table for keyboard and screen reader users
 - Org chart: the reporting tree (who reports to whom) and the team tree (teams, their sub-teams
   and members), with expand and collapse, zoom, and the person card for whoever you click. The

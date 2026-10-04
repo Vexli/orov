@@ -1,6 +1,11 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 import { resetE2eDatabase } from "../support/database";
 import { signInAs } from "../support/session";
+
+// The default theme's map selection color, as in map.spec.ts.
+const SELECTION = "rgb(245, 158, 11)";
+const fillOf = (page: Page, id: string) =>
+  page.locator(`[data-floor-map] #${id}`).evaluate((el) => getComputedStyle(el).fill);
 
 // Viewers (not admins) use the directory, so the suite signs in as Bob.
 test.describe("directory", () => {
@@ -77,5 +82,18 @@ test.describe("directory", () => {
     await page.getByRole("button", { name: "Clear filters" }).click();
     await expect(page.getByRole("status")).toContainText("Showing 5 of 5");
     await expect(page).not.toHaveURL(/q=|desk=/);
+  });
+
+  test("a desk code in the list opens the map on that floor with the desk highlighted", async ({ page }) => {
+    await page.goto("/directory");
+    const list = page.getByRole("region", { name: "People directory" });
+    // Priya is remote: her badge isn't a link.
+    await expect(page.getByRole("row", { name: /Priya Raman/ }).getByRole("link")).toHaveCount(0);
+
+    // Sam sits on Floor 3, so the map has to switch floors.
+    await list.getByRole("link", { name: "Show SF-3-001 on the map" }).click();
+    await expect(page).toHaveURL(/\/map\?.*person=p_sam/);
+    await expect(page).toHaveURL(/floor=3/);
+    await expect.poll(() => fillOf(page, "desk-3-001")).toBe(SELECTION);
   });
 });
