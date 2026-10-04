@@ -13,6 +13,8 @@ export interface PersonRecord {
   homeRegion: string;
   homeTimezone: string | null;
   startDate: string | null;
+  // The last working day (N6). Admin-only: never sent to the directory, map or org chart.
+  endDate: string | null;
   active: boolean;
   managerEmail: string | null;
   deskCode: string | null;
@@ -67,6 +69,7 @@ export const PERSON_FIELDS = [
   "homeRegion",
   "homeTimezone",
   "startDate",
+  "endDate",
   "active",
   "managerEmail",
   "deskCode",

@@ -12,6 +12,7 @@ const bob: PersonForm = {
   homeRegion: "US",
   homeTimezone: null,
   startDate: null,
+  endDate: null,
   active: true,
   managerId: "p_max",
   assignedDeskId: "sp_1",

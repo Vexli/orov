@@ -47,6 +47,7 @@ function personInput(overrides: Partial<PersonForm>): PersonForm {
     homeRegion: "US",
     homeTimezone: null,
     startDate: null,
+    endDate: null,
     active: true,
     managerId: null,
     assignedDeskId: null,

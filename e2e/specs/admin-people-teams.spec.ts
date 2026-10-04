@@ -1,7 +1,7 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
 import { getPersonForEdit, savePerson } from "@officeorg/db/queries/people";
 import { resetE2eDatabase, withE2eDb } from "../support/database";
-import { signInAs } from "../support/session";
+import { signInAs, switchUser } from "../support/session";
 
 // Picks an option by its visible text, which may be a regex, and resolves to its value.
 async function chooseOption(page: Page, select: Locator, text: RegExp) {
@@ -148,6 +148,27 @@ test.describe("admin people and teams", () => {
     ]);
     await page.goto("/admin/people");
     await expect(page.getByLabel("Filter by team").locator("option")).toHaveText(["All teams", "HR", "Payroll", "Recruiting"]);
+  });
+
+  test("an admin records a last day, which viewers never see", async ({ page, context }) => {
+    await signInAs(context, "jane@example.com");
+    await page.goto("/admin/people/p_bob");
+    await page.getByLabel("Last day").fill("2022-01-01");
+    await page.getByRole("button", { name: "Save person" }).click();
+    await expect(page.getByText("The last day can't be before the start date")).toBeVisible();
+
+    await page.getByLabel("Last day").fill("2026-12-31");
+    await page.getByRole("button", { name: "Save person" }).click();
+    await expect(page).toHaveURL(/\/admin\/people$/);
+    await expect(page.getByRole("row", { name: /bob@example\.com/ })).toContainText("Last day 2026-12-31");
+
+    await switchUser(page, context, "max@example.com");
+    for (const path of ["/directory?person=p_bob", "/org?person=p_bob", "/map?person=p_bob"]) {
+      await page.goto(path);
+      await expect(page.getByRole("complementary", { name: "Bob Lindqvist details" })).toBeVisible();
+      // Not in the page, nor in the data sent with it.
+      expect(await page.content()).not.toContain("2026-12-31");
+    }
   });
 
   test("a duplicate email is refused next to the field", async ({ page, context }) => {

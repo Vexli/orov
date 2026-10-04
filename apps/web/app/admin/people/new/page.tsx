@@ -28,6 +28,7 @@ export default async function NewPersonPage() {
             homeRegion: "US",
             homeTimezone: null,
             startDate: null,
+            endDate: null,
             active: true,
             managerId: null,
             assignedDeskId: null,

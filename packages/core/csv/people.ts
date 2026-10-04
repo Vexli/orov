@@ -18,6 +18,7 @@ export const PEOPLE_CSV_HEADERS = [
   "home_timezone",
   "phone",
   "start_date",
+  "end_date",
   "active",
   "manager_email",
   "desk",
@@ -69,6 +70,10 @@ export const personCsvRowSchema = z.object({
     .string()
     .pipe(z.union([z.literal(""), z.iso.date("start_date must be YYYY-MM-DD")]))
     .transform(blankToNull),
+  end_date: z
+    .string()
+    .pipe(z.union([z.literal(""), z.iso.date("end_date must be YYYY-MM-DD")]))
+    .transform(blankToNull),
   active: boolish,
   manager_email: z.string().transform((v) => (v === "" ? null : v.toLowerCase())).pipe(z.email("manager_email is not a valid address").nullable()),
   desk: z.string().transform(blankToNull),
@@ -83,11 +88,15 @@ export const personCsvRowSchema = z.object({
 export interface ValidPersonRow {
   line: number;
   record: PersonRecord;
-  // Identity providers whose column the file doesn't have. The import keeps the person's current
-  // account for these instead of clearing it, so a spreadsheet from before the column existed
-  // doesn't wipe accounts set in the app. A blank cell in a column that is there still clears.
-  keepIdentities?: string[];
+  // Columns added after the spreadsheet format settled (KEPT_IF_ABSENT) that the file doesn't
+  // have. The import keeps the person's current value for these instead of clearing it, so a
+  // spreadsheet from before a column existed doesn't wipe what was set in the app. A blank cell
+  // in a column that is there still clears it.
+  absentColumns?: string[];
 }
+
+// The account columns (#12) and end_date (N6).
+export const KEPT_IF_ABSENT = [...PROFILE_PROVIDER_IDS, "end_date"];
 
 export interface PeopleCsvResult {
   rows: ValidPersonRow[];
@@ -110,8 +119,8 @@ export function parsePeopleCsv(text: string): PeopleCsvResult {
     return { rows: [], issues: [], notices: [], fatal: "Missing required column(s): given_name" };
   }
 
-  const absent = PROFILE_PROVIDER_IDS.filter((p) => !parsed.headers?.includes(p));
-  const keep = absent.length > 0 ? { keepIdentities: absent } : {};
+  const absent = KEPT_IF_ABSENT.filter((column) => !headers.includes(column));
+  const keep = absent.length > 0 ? { absentColumns: absent } : {};
   const rows: ValidPersonRow[] = [];
   const issues: CsvIssue[] = [];
   for (const row of parsed.records) {
@@ -138,6 +147,9 @@ export function validatePersonRow(
   if (name.givenName === "") return { ok: false, message: legacyName ? "name is required" : "given_name is required" };
   const teamSlugs = v.teams;
   const primary = v.primary_team;
+  if (v.start_date !== null && v.end_date !== null && v.end_date < v.start_date) {
+    return { ok: false, message: "end_date can't be before start_date" };
+  }
   if (primary !== null && !teamSlugs.includes(primary)) {
     return { ok: false, message: `primary_team "${primary}" must also appear in teams` };
   }
@@ -161,6 +173,7 @@ export function validatePersonRow(
       homeRegion: v.home_region,
       homeTimezone: v.home_timezone,
       startDate: v.start_date,
+      endDate: v.end_date,
       active: v.active,
       managerEmail: v.manager_email,
       deskCode: v.desk,
@@ -182,6 +195,7 @@ export function peopleToCsv(people: PersonRecord[]): string {
     p.homeTimezone ?? "",
     p.phone ?? "",
     p.startDate ?? "",
+    p.endDate ?? "",
     p.active ? "true" : "false",
     p.managerEmail ?? "",
     p.deskCode ?? "",

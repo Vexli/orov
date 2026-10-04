@@ -16,6 +16,7 @@ function person(overrides: Partial<PersonRecord> & { email: string }): PersonRec
     homeRegion: "US",
     homeTimezone: null,
     startDate: null,
+    endDate: null,
     active: true,
     managerEmail: null,
     deskCode: null,
@@ -291,6 +292,25 @@ describe("planPeopleImport", () => {
         ["update", "ama@x.com"],
         ["create", null],
       ]);
+    });
+  });
+
+  describe("end date", () => {
+    const run3 = (header: string, body: string, snap: PeopleSnapshot) => {
+      const parsed = parsePeopleCsv(`${header}\n${body}`);
+      return planPeopleImport(parsed.rows, parsed.issues, snap);
+    };
+
+    it("keeps the stored last day when the file has no end_date column, and clears it from a blank cell", () => {
+      const leaving = person({ email: "bob@x.com", givenName: "Bob", endDate: "2026-12-31" });
+      expect(run("bob@x.com,Bob,,,US,,,,,,,,\n", snapshot([leaving])).rows[0]?.action).toBe("unchanged");
+      const cleared = run3("email,name,home_region,end_date", "bob@x.com,Bob,US,\n", snapshot([leaving]));
+      expect(cleared.rows[0]?.changes).toContainEqual({ field: "endDate", before: "2026-12-31", after: null });
+    });
+
+    it("refuses a last day before the start date", () => {
+      const plan = run3("email,name,home_region,start_date,end_date", "a@x.com,A,US,2026-05-01,2026-04-30\n", snapshot());
+      expect(plan.rows[0]?.message).toBe("end_date can't be before start_date");
     });
   });
 });
