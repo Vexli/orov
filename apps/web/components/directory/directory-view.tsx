@@ -75,7 +75,7 @@ const columns = [
   helper.accessor((p) => locationText(p), {
     id: "location",
     header: "Location",
-    cell: (info) => <LocationLabel person={info.row.original} />,
+    cell: (info) => <LocationLabel person={info.row.original} linkDesk />,
   }),
 ];
 
