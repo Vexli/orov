@@ -42,7 +42,8 @@ describe("forms", () => {
 
   const person = {
     email: "a@x.com",
-    name: "A",
+    givenName: "A",
+    familyName: null,
     preferredName: null,
     title: null,
     phone: null,

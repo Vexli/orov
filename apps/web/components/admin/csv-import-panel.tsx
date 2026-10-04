@@ -139,6 +139,14 @@ export function CsvImportPanel({ kind, title, description, preview, apply }: Pro
         </p>
       ) : null}
 
+      {state?.ok
+        ? state.notices.map((notice) => (
+            <p key={notice} role="note" className="mt-4 rounded-md border border-border bg-muted p-3 text-sm">
+              {notice}
+            </p>
+          ))
+        : null}
+
       {plan ? <PlanSummary plan={plan} kind={kind} skip={skip} onSkip={toggleSkip} /> : null}
 
       {plan ? (

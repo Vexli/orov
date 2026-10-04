@@ -8,7 +8,8 @@ const HEADER = "email,name,preferred_name,title,home_region,home_timezone,phone,
 
 function person(overrides: Partial<PersonRecord> & { email: string }): PersonRecord {
   return {
-    name: overrides.email.split("@")[0] ?? "x",
+    givenName: overrides.email.split("@")[0] ?? "x",
+    familyName: null,
     preferredName: null,
     title: null,
     phone: null,
@@ -46,14 +47,14 @@ function run(csvBody: string, snap: PeopleSnapshot, skip: number[] = []) {
 
 describe("planPeopleImport", () => {
   it("marks new people as create and unchanged people as unchanged", () => {
-    const existing = person({ email: "bob@x.com", name: "bob", teamSlugs: ["hr"] });
+    const existing = person({ email: "bob@x.com", givenName: "bob", teamSlugs: ["hr"] });
     const plan = run("bob@x.com,bob,,,US,,,,,,,hr,\nnew@x.com,New,,,US,,,,,,,,\n", snapshot([existing]));
     expect(plan.rows.map((r) => r.action)).toEqual(["unchanged", "create"]);
     expect(plan.canApply).toBe(true);
   });
 
   it("lists field changes for an update", () => {
-    const existing = person({ email: "bob@x.com", name: "Bob", title: "Analyst" });
+    const existing = person({ email: "bob@x.com", givenName: "Bob", title: "Analyst" });
     const plan = run("bob@x.com,Bob,,Senior Analyst,US,,,,,,,,\n", snapshot([existing]));
     expect(plan.rows[0]?.action).toBe("update");
     expect(plan.rows[0]?.changes).toEqual([{ field: "title", before: "Analyst", after: "Senior Analyst" }]);
@@ -135,13 +136,13 @@ describe("planPeopleImport", () => {
     };
 
     it("shows an identity change under the provider's name", () => {
-      const existing = person({ email: "bob@x.com", name: "Bob", identities: { github: "old" } });
+      const existing = person({ email: "bob@x.com", givenName: "Bob", identities: { github: "old" } });
       const plan = run2("bob@x.com,Bob,,,US,,,,,,,,,new\n", snapshot([existing]));
       expect(plan.rows[0]?.changes).toEqual([{ field: "github", before: "old", after: "new" }]);
     });
 
     it("clears an identity when the cell is blank", () => {
-      const existing = person({ email: "bob@x.com", name: "Bob", identities: { github: "bob" } });
+      const existing = person({ email: "bob@x.com", givenName: "Bob", identities: { github: "bob" } });
       const plan = run2("bob@x.com,Bob,,,US,,,,,,,,,\n", snapshot([existing]));
       expect(plan.rows[0]?.changes).toEqual([{ field: "github", before: "bob", after: null }]);
     });
@@ -159,7 +160,7 @@ describe("planPeopleImport", () => {
     });
 
     it("keeps accounts whose column the file doesn't have", () => {
-      const existing = person({ email: "bob@x.com", name: "Bob", identities: { github: "bob", linkedin: "bob-l" } });
+      const existing = person({ email: "bob@x.com", givenName: "Bob", identities: { github: "bob", linkedin: "bob-l" } });
       // Only a github column: LinkedIn is kept, GitHub is cleared by the blank cell.
       const plan = run2("bob@x.com,Bob,,,US,,,,,,,,,\n", snapshot([existing]));
       expect(plan.rows[0]?.changes).toEqual([{ field: "github", before: "bob", after: null }]);
@@ -169,8 +170,8 @@ describe("planPeopleImport", () => {
     });
 
     it("lets two people in the file swap accounts", () => {
-      const a = person({ email: "a@x.com", name: "A", identities: { github: "one" } });
-      const b = person({ email: "b@x.com", name: "B", identities: { github: "two" } });
+      const a = person({ email: "a@x.com", givenName: "A", identities: { github: "one" } });
+      const b = person({ email: "b@x.com", givenName: "B", identities: { github: "two" } });
       const plan = run2("a@x.com,A,,,US,,,,,,,,,two\nb@x.com,B,,,US,,,,,,,,,one\n", snapshot([a, b]));
       expect(plan.rows.map((r) => r.action)).toEqual(["update", "update"]);
     });

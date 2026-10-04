@@ -26,7 +26,8 @@ test.describe("admin people and teams", () => {
     await signInAs(context, "jane@example.com");
     await page.goto("/admin/people/new");
 
-    await page.getByLabel("Full name").fill("Ama Ito");
+    await page.getByLabel("Given name").fill("Ama");
+    await page.getByLabel("Family name").fill("Ito");
     await page.getByLabel("Email").fill("ama@example.com");
     await page.getByLabel("Title").fill("Recruiter");
     await page.getByLabel("Manager").selectOption({ label: "Max Osei" });
@@ -46,7 +47,8 @@ test.describe("admin people and teams", () => {
   test("a new person's blank time zone comes from their desk's office", async ({ page, context }) => {
     await signInAs(context, "jane@example.com");
     await page.goto("/admin/people/new");
-    await page.getByLabel("Full name").fill("Ama Ito");
+    await page.getByLabel("Given name").fill("Ama");
+    await page.getByLabel("Family name").fill("Ito");
     await page.getByLabel("Email").fill("ama@example.com");
     await chooseOption(page, page.getByLabel("Desk"), /SF-2-016/);
     await expect(page.getByLabel("Home timezone")).toHaveAttribute(
@@ -98,7 +100,7 @@ test.describe("admin people and teams", () => {
   test("a duplicate email is refused next to the field", async ({ page, context }) => {
     await signInAs(context, "jane@example.com");
     await page.goto("/admin/people/new");
-    await page.getByLabel("Full name").fill("Impostor");
+    await page.getByLabel("Given name").fill("Impostor");
     await page.getByLabel("Email").fill("bob@example.com");
     await page.getByRole("button", { name: "Create person" }).click();
     await expect(page.getByText("Another person already uses this email.")).toBeVisible();

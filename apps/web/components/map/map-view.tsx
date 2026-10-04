@@ -13,7 +13,7 @@ import type {
 import { ROOM_STATE_LABEL, type RoomDisplayState } from "@officeorg/core/map/room-status";
 import { mapStateCss } from "@officeorg/core/map/state-css";
 import { teamSeats, type TeamSeats } from "@officeorg/core/map/team-seats";
-import { displayName, initials } from "@officeorg/core/directory/filter";
+import { displayName, personInitials } from "@officeorg/core/directory/filter";
 import { PersonCard } from "@/components/directory/person-card";
 import { mapParsers } from "@/lib/url-state";
 import { FloorList, KIND_LABEL } from "./floor-list";
@@ -159,7 +159,7 @@ export function MapView({ map, people, teams }: Props) {
         return [
           {
             svgElementId: seat.svgElementId,
-            initials: initials(name),
+            initials: personInitials(person),
             name,
             emphasis:
               seat.personId === params.person

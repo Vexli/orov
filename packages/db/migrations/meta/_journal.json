@@ -43,6 +43,13 @@
       "when": 1791103974310,
       "tag": "0005_vendor_neutral_schema",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1791107532374,
+      "tag": "0006_given_family_name",
+      "breakpoints": true
     }
   ]
 }

@@ -12,6 +12,8 @@ const teams: DirectoryTeam[] = [
 const person = (id: string, teamIds: string[]): DirectoryPerson => ({
   id,
   name: id,
+  givenName: id,
+  familyName: null,
   identities: {},
   phone: null,
   preferredName: null,

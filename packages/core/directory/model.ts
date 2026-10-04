@@ -13,7 +13,10 @@ export interface DirectoryTeam {
 
 export interface DirectoryPerson {
   id: string;
+  // The full name, "given family".
   name: string;
+  givenName: string;
+  familyName: string | null;
   preferredName: string | null;
   email: string;
   title: string | null;

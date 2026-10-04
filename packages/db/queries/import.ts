@@ -44,8 +44,9 @@ export interface PlanOptions {
   skipErrors?: boolean;
 }
 
+// `notices` are things to read before applying, such as names split from a legacy column.
 export type PlanResult<R> =
-  | { ok: true; plan: ImportPlan<R>; skip: number[] }
+  | { ok: true; plan: ImportPlan<R>; skip: number[]; notices: string[] }
   | { ok: false; fatal: string };
 
 export interface ApplyResult {
@@ -58,11 +59,13 @@ export interface ApplyResult {
 function planWithSkips<R>(
   plan: (skip: ReadonlySet<number>) => ImportPlan<R>,
   options: PlanOptions,
-): { ok: true; plan: ImportPlan<R>; skip: number[] } {
+  notices: string[] = [],
+): PlanResult<R> {
   const initial = new Set(options.skip ?? []);
-  if (!options.skipErrors) return { ok: true, plan: plan(initial), skip: [...initial].sort((a, b) => a - b) };
+  const byLine = (a: number, b: number) => a - b;
+  if (!options.skipErrors) return { ok: true, plan: plan(initial), skip: [...initial].sort(byLine), notices };
   const result = planSkippingErrors(plan, initial);
-  return { ok: true, plan: result.plan, skip: [...result.skip].sort((a, b) => a - b) };
+  return { ok: true, plan: result.plan, skip: [...result.skip].sort(byLine), notices };
 }
 
 function applyCounts(plan: ImportPlan<unknown>): ApplyResult {
@@ -112,7 +115,11 @@ export async function planPeopleCsv(
   const parsed = parsePeopleCsv(text);
   if (parsed.fatal) return { ok: false, fatal: parsed.fatal };
   const snapshot = await loadPeopleSnapshot(db);
-  return planWithSkips((skip) => planPeopleImport(parsed.rows, parsed.issues, snapshot, skip), options);
+  return planWithSkips(
+    (skip) => planPeopleImport(parsed.rows, parsed.issues, snapshot, skip),
+    options,
+    parsed.notices,
+  );
 }
 
 // Re-plans inside the transaction, so the result reflects the database at write time rather than
@@ -214,7 +221,8 @@ export async function applyPeopleCsv(
 function personValues(rec: PersonRecord) {
   return {
     email: rec.email,
-    name: rec.name,
+    givenName: rec.givenName,
+    familyName: rec.familyName,
     preferredName: rec.preferredName,
     title: rec.title,
     phone: rec.phone,

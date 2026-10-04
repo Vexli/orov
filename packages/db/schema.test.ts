@@ -56,7 +56,7 @@ describe("migrations", () => {
 describe("invariants enforced by the database", () => {
   it("accepts ISO 3166 country and subdivision codes, and rejects other shapes", async () => {
     const insert = (id: string, homeRegion: string) =>
-      t.db.insert(s.person).values({ id, email: `${id}@x.com`, name: id, homeRegion });
+      t.db.insert(s.person).values({ id, email: `${id}@x.com`, givenName: id, homeRegion });
     await insert("p_country", "US");
     await insert("p_subdivision", "GB-SCT");
     await insert("p_numeric", "FR-75C");
@@ -87,20 +87,20 @@ describe("invariants enforced by the database", () => {
       });
     await t.db
       .insert(s.person)
-      .values({ id: "p1", email: "a@x.com", name: "A", homeRegion: "US", assignedDeskId: "sp" });
+      .values({ id: "p1", email: "a@x.com", givenName: "A", homeRegion: "US", assignedDeskId: "sp" });
 
     await expectUniqueViolation(
       t.db
         .insert(s.person)
-        .values({ id: "p2", email: "b@x.com", name: "B", homeRegion: "US", assignedDeskId: "sp" }),
+        .values({ id: "p2", email: "b@x.com", givenName: "B", homeRegion: "US", assignedDeskId: "sp" }),
       "person_assigned_desk",
     );
   });
 
   it("allows many people with no desk", async () => {
     await t.db.insert(s.person).values([
-      { id: "p1", email: "a@x.com", name: "A", homeRegion: "US" },
-      { id: "p2", email: "b@x.com", name: "B", homeRegion: "US" },
+      { id: "p1", email: "a@x.com", givenName: "A", homeRegion: "US" },
+      { id: "p2", email: "b@x.com", givenName: "B", homeRegion: "US" },
     ]);
     const rows = await t.db.select().from(s.person);
     expect(rows).toHaveLength(2);

@@ -1,6 +1,7 @@
 import { stringify } from "csv-stringify/sync";
 import { z } from "zod";
 import { parseIdentity, PROFILE_PROVIDER_IDS, type Identities } from "../people/identities";
+import { splitFullName } from "../people/names";
 import { normalizePhone } from "../people/phone";
 import type { PersonRecord } from "../records";
 import { regionCodeSchema } from "../regions/iso3166";
@@ -9,7 +10,8 @@ import { parseCsv, type CsvIssue, type CsvRecord } from "./parse";
 
 export const PEOPLE_CSV_HEADERS = [
   "email",
-  "name",
+  "given_name",
+  "family_name",
   "preferred_name",
   "title",
   "home_region",
@@ -28,7 +30,13 @@ export const PEOPLE_CSV_HEADERS = [
   "website",
 ] as const;
 
-const REQUIRED = ["email", "name", "home_region"];
+// given_name is required too, unless the file has the older single `name` column instead.
+const REQUIRED = ["email", "home_region"];
+const LEGACY_NAME = "name";
+
+export const LEGACY_NAME_NOTICE =
+  "This file has a single name column. Each name is split at its last space into a given name " +
+  "and a family name (Mary Ann Smith → Mary Ann / Smith); check the names below.";
 
 // home_region was home_country when it held only two-letter country codes. Those still parse.
 const ALIASES = { home_country: "home_region" };
@@ -48,7 +56,8 @@ const boolish = z
 // One row in the spreadsheet is the full state of one person. A blank cell clears the field.
 export const personCsvRowSchema = z.object({
   email: z.string().transform((v) => v.toLowerCase()).pipe(z.email("email is not a valid address")),
-  name: z.string().min(1, "name is required"),
+  given_name: z.string(),
+  family_name: z.string().transform(blankToNull),
   preferred_name: z.string().transform(blankToNull),
   title: z.string().transform(blankToNull),
   home_region: regionCodeSchema("home_region"),
@@ -83,33 +92,50 @@ export interface ValidPersonRow {
 export interface PeopleCsvResult {
   rows: ValidPersonRow[];
   issues: CsvIssue[];
+  // Things the admin should know before applying, such as names split from a legacy column.
+  notices: string[];
   fatal?: string;
 }
 
 export function parsePeopleCsv(text: string): PeopleCsvResult {
-  const parsed = parseCsv(text, { columns: PEOPLE_CSV_HEADERS, required: REQUIRED, aliases: ALIASES });
-  if (parsed.fatal) return { rows: [], issues: [], fatal: parsed.fatal };
+  const parsed = parseCsv(text, {
+    columns: [...PEOPLE_CSV_HEADERS, LEGACY_NAME],
+    required: REQUIRED,
+    aliases: ALIASES,
+  });
+  if (parsed.fatal) return { rows: [], issues: [], notices: [], fatal: parsed.fatal };
+  const headers = parsed.headers ?? [];
+  const legacyName = !headers.includes("given_name") && headers.includes(LEGACY_NAME);
+  if (!headers.includes("given_name") && !legacyName) {
+    return { rows: [], issues: [], notices: [], fatal: "Missing required column(s): given_name" };
+  }
 
   const absent = PROFILE_PROVIDER_IDS.filter((p) => !parsed.headers?.includes(p));
   const keep = absent.length > 0 ? { keepIdentities: absent } : {};
   const rows: ValidPersonRow[] = [];
   const issues: CsvIssue[] = [];
   for (const row of parsed.records) {
-    const result = validatePersonRow(row);
+    const result = validatePersonRow(row, legacyName);
     if (result.ok) rows.push({ line: row.line, record: result.record, ...keep });
     else issues.push({ line: row.line, message: result.message });
   }
-  return { rows, issues };
+  return { rows, issues, notices: legacyName ? [LEGACY_NAME_NOTICE] : [] };
 }
 
+// `legacyName`: the file has a single `name` column, split into given and family name.
 export function validatePersonRow(
   row: CsvRecord,
+  legacyName = false,
 ): { ok: true; record: PersonRecord } | { ok: false; message: string } {
   const parsed = personCsvRowSchema.safeParse(row.values);
   if (!parsed.success) {
     return { ok: false, message: parsed.error.issues[0]?.message ?? "invalid row" };
   }
   const v = parsed.data;
+  const name = legacyName
+    ? splitFullName(row.values[LEGACY_NAME] ?? "")
+    : { givenName: v.given_name, familyName: v.family_name };
+  if (name.givenName === "") return { ok: false, message: legacyName ? "name is required" : "given_name is required" };
   const teamSlugs = v.teams;
   const primary = v.primary_team;
   if (primary !== null && !teamSlugs.includes(primary)) {
@@ -127,7 +153,8 @@ export function validatePersonRow(
     ok: true,
     record: {
       email: v.email,
-      name: v.name,
+      givenName: name.givenName,
+      familyName: name.familyName,
       preferredName: v.preferred_name,
       title: v.title,
       phone: phone.value,
@@ -147,7 +174,8 @@ export function validatePersonRow(
 export function peopleToCsv(people: PersonRecord[]): string {
   const data = people.map((p) => [
     p.email,
-    p.name,
+    p.givenName,
+    p.familyName ?? "",
     p.preferredName ?? "",
     p.title ?? "",
     p.homeRegion,

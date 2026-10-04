@@ -120,4 +120,10 @@ test.describe("directory", () => {
     await expect(page).toHaveURL(/person=p_priya/);
     await expect(page.locator("#person-row-p_priya")).toHaveAttribute("aria-current", "true");
   });
+
+  test("people are listed by family name", async ({ page }) => {
+    await page.goto("/directory");
+    const names = page.locator("tbody tr").getByRole("button").locator("span.font-medium");
+    await expect(names).toHaveText(["Bob Lindqvist", "Sam Ortiz", "Max Osei", "Jane Park", "Priya Raman"]);
+  });
 });

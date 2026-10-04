@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { fullName } from "@officeorg/core";
 import { PersonFormEditor } from "@/components/admin/person-form";
 import { getDb } from "@officeorg/db/client";
 import { getPersonForEdit, listPeopleForAdmin } from "@officeorg/db/queries/people";
@@ -37,7 +38,7 @@ export default async function EditPersonPage({ params }: { params: Promise<{ id:
 
   return (
     <div>
-      <h1 className="text-xl font-heading">{initial.name}</h1>
+      <h1 className="text-xl font-heading">{fullName(initial)}</h1>
       <div className="mt-6">
         <PersonFormEditor
           id={id}

@@ -78,7 +78,8 @@ export async function seedDemoData(db: Database): Promise<void> {
       {
         id: "p_jane",
         email: "jane@example.com",
-        name: "Jane Park",
+        givenName: "Jane",
+        familyName: "Park",
         title: "Head of HR",
         homeRegion: "CA-ON",
         phone: "+14165550199",
@@ -89,7 +90,8 @@ export async function seedDemoData(db: Database): Promise<void> {
       {
         id: "p_max",
         email: "max@example.com",
-        name: "Max Osei",
+        givenName: "Max",
+        familyName: "Osei",
         title: "HR Business Partner",
         homeRegion: "US-CA",
         homeTimezone: "America/Los_Angeles",
@@ -100,7 +102,8 @@ export async function seedDemoData(db: Database): Promise<void> {
       {
         id: "p_bob",
         email: "bob@example.com",
-        name: "Bob Lindqvist",
+        givenName: "Bob",
+        familyName: "Lindqvist",
         title: "Payroll Analyst",
         homeRegion: "US-CA",
         phone: "+14155550123",
@@ -112,7 +115,8 @@ export async function seedDemoData(db: Database): Promise<void> {
       {
         id: "p_priya",
         email: "priya@example.com",
-        name: "Priya Raman",
+        givenName: "Priya",
+        familyName: "Raman",
         title: "Recruiter",
         homeRegion: "IN-KA",
         homeTimezone: "Asia/Kolkata",
@@ -122,7 +126,8 @@ export async function seedDemoData(db: Database): Promise<void> {
       {
         id: "p_sam",
         email: "sam@example.com",
-        name: "Sam Ortiz",
+        givenName: "Sam",
+        familyName: "Ortiz",
         title: "Recruiter",
         homeRegion: "US",
         homeTimezone: "America/Los_Angeles",

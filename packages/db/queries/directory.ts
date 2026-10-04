@@ -1,5 +1,6 @@
 import { asc, eq } from "drizzle-orm";
 import {
+  compareByFamilyName,
   DEFAULT_REGION_DISPLAY,
   displayPhone,
   formatRegion,
@@ -34,8 +35,9 @@ export async function loadDirectory(
       teamMembers: { with: { team: { columns: { id: true, name: true, slug: true } } } },
       identities: { columns: { provider: true, value: true } },
     },
-    orderBy: (p, { asc }) => [asc(p.name)],
   });
+  // By family name, then given name, with the same collation the browser would use.
+  rows.sort(compareByFamilyName);
 
   const teams = await db.query.team.findMany({
     columns: { id: true, name: true, slug: true, parentTeamId: true },
@@ -50,6 +52,8 @@ export async function loadDirectory(
   const people: DirectoryPerson[] = rows.map((row) => ({
     id: row.id,
     name: row.name,
+    givenName: row.givenName,
+    familyName: row.familyName,
     preferredName: row.preferredName,
     email: row.email,
     title: row.title,

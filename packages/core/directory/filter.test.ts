@@ -1,10 +1,12 @@
 import { describe, expect, it } from "vitest";
+import { splitFullName } from "../people/names";
 import type { DirectoryPerson, DirectoryTeam } from "./model";
 import {
   displayName,
   EMPTY_FILTERS,
   filterDirectory,
   initials,
+  personInitials,
   locationSummary,
   locationText,
   teamScope,
@@ -28,6 +30,7 @@ function person(
   overrides: Partial<DirectoryPerson> & { id: string; name: string },
 ): DirectoryPerson {
   return {
+    ...splitFullName(overrides.name),
     identities: {},
     phone: null,
     preferredName: null,
@@ -167,6 +170,17 @@ describe("labels", () => {
     expect(locationSummary(people[0]!)).toEqual({ region: "Ontario, Canada", badge: "SF-2-003" });
     expect(locationSummary(people[2]!)).toEqual({ region: "India", badge: "Remote" });
     expect(locationText(people[0]!)).toBe("Ontario, Canada SF-2-003");
+  });
+});
+
+describe("personInitials", () => {
+  it.each([
+    [{ preferredName: null, givenName: "Ana María de la", familyName: "Cruz" }, "AC"],
+    [{ preferredName: null, givenName: "Mary Ann", familyName: "Smith" }, "MS"],
+    [{ preferredName: null, givenName: "Priya", familyName: null }, "P"],
+    [{ preferredName: "Bobby Tables", givenName: "Robert", familyName: "Lindqvist" }, "BT"],
+  ])("%j → %j", (person, expected) => {
+    expect(personInitials(person)).toBe(expected);
   });
 });
 

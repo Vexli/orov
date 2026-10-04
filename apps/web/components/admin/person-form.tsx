@@ -74,11 +74,27 @@ export function PersonFormEditor({ id, initial, managers, desks, floors, teams }
       ) : null}
 
       <div className="space-y-4">
-        <label className="block text-sm font-medium">
-          Full name
-          <input className={inputClass} value={values.name} onChange={(e) => set("name", e.target.value)} />
-          {fieldError("name")}
-        </label>
+        <div className="grid grid-cols-2 gap-4">
+          <label className="block text-sm font-medium">
+            Given name
+            <input
+              className={inputClass}
+              autoComplete="off"
+              value={values.givenName}
+              onChange={(e) => set("givenName", e.target.value)}
+            />
+            {fieldError("givenName")}
+          </label>
+          <label className="block text-sm font-medium">
+            Family name
+            <input
+              className={inputClass}
+              autoComplete="off"
+              value={values.familyName ?? ""}
+              onChange={(e) => set("familyName", e.target.value || null)}
+            />
+          </label>
+        </div>
         <label className="block text-sm font-medium">
           Email
           <input className={inputClass} type="email" value={values.email} onChange={(e) => set("email", e.target.value)} />

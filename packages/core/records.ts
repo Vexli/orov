@@ -5,7 +5,8 @@ import type { Identities } from "./people/identities";
 
 export interface PersonRecord {
   email: string;
-  name: string;
+  givenName: string;
+  familyName: string | null;
   preferredName: string | null;
   title: string | null;
   phone: string | null;
@@ -58,7 +59,8 @@ function normalize(value: unknown): unknown {
 }
 
 export const PERSON_FIELDS = [
-  "name",
+  "givenName",
+  "familyName",
   "preferredName",
   "title",
   "phone",
