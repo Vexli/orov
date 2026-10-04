@@ -68,3 +68,9 @@ export function optionalTimeZoneSchema(message = TIME_ZONE_HINT) {
       return zone;
     });
 }
+
+// A person's home time zone: the one they were given, else their desk's office's (#19), else none.
+// Applied when a person is saved or imported, so a blank never overwrites an explicit value.
+export function defaultTimeZone(explicit: string | null, deskTimeZone: string | null | undefined): string | null {
+  return explicit ?? deskTimeZone ?? null;
+}

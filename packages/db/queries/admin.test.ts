@@ -204,6 +204,22 @@ describe("savePerson", () => {
     expect(bob).toEqual(form);
   });
 
+  it("gives a new person with a desk and no time zone their desk's office's zone", async () => {
+    const { id } = await savePerson(t.db, ACTOR, personInput({ assignedDeskId: "sp_sf_2_016" }));
+    expect((await getPersonForEdit(t.db, id))?.homeTimezone).toBe("America/Los_Angeles");
+  });
+
+  it("never overwrites an explicit time zone, and leaves a deskless person's blank", async () => {
+    const withZone = await savePerson(
+      t.db,
+      ACTOR,
+      personInput({ assignedDeskId: "sp_sf_2_016", homeTimezone: "Europe/Kyiv" }),
+    );
+    expect((await getPersonForEdit(t.db, withZone.id))?.homeTimezone).toBe("Europe/Kyiv");
+    const deskless = await savePerson(t.db, ACTOR, personInput({ email: "remote@example.com" }));
+    expect((await getPersonForEdit(t.db, deskless.id))?.homeTimezone).toBeNull();
+  });
+
   it("saves, normalizes and clears profile accounts", async () => {
     const form = (await getPersonForEdit(t.db, "p_max"))!;
     await savePerson(t.db, ACTOR, { ...form, identities: { github: "maxo", gitlab: "max.o" } }, "p_max");

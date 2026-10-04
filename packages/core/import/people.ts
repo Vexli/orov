@@ -1,6 +1,7 @@
 import type { PersonRecord } from "../records";
 import { diffPersonRecords } from "../records";
 import { reachesAncestor } from "../teams/tree";
+import { defaultTimeZone } from "../time/zones";
 import type { CsvIssue } from "../csv/parse";
 import type { ValidPersonRow } from "../csv/people";
 import { summarize, type ImportPlan, type PlannedRow } from "./plan";
@@ -16,6 +17,8 @@ export interface DeskInfo {
   // False when the space isn't a desk, or its floor or space is archived.
   assignable: boolean;
   ownerEmail: string | null;
+  // The desk's office's time zone, the default for a blank home_timezone.
+  timezone: string;
 }
 
 export function planPeopleImport(
@@ -32,7 +35,7 @@ export function planPeopleImport(
   }
 
   for (const original of rows) {
-    const row = withKeptIdentities(original, snapshot);
+    const row = withDeskTimeZone(withKeptIdentities(original, snapshot), snapshot);
     const email = row.record.email;
     const prior = desired.get(email);
     if (prior) {
@@ -163,6 +166,14 @@ function emptyPerson(email: string): PersonRecord {
     primaryTeamSlug: null,
     identities: {},
   };
+}
+
+// A blank home time zone takes the desk's office's, so the dry run shows what will be stored.
+function withDeskTimeZone(row: ValidPersonRow, snapshot: PeopleSnapshot): ValidPersonRow {
+  const { homeTimezone, deskCode } = row.record;
+  if (homeTimezone !== null || deskCode === null) return row;
+  const zone = defaultTimeZone(null, snapshot.desks.get(deskCode)?.timezone);
+  return zone ? { ...row, record: { ...row.record, homeTimezone: zone } } : row;
 }
 
 // Fills in the person's current accounts for the identity columns the file doesn't have.

@@ -13,13 +13,16 @@ export interface DeskOption {
   assignedPersonName: string | null;
   // False when someone else holds the seat, so the picker can show it as taken.
   available: boolean;
+  locationName: string;
+  // The office's time zone, which a person on this desk gets when theirs is blank.
+  timezone: string;
 }
 
 // Desks on active floors. A desk held by `currentPersonId` counts as available to them.
 export async function listDeskOptions(db: Executor, currentPersonId?: string): Promise<DeskOption[]> {
   const desks = await db.query.space.findMany({
     where: eq(s.space.kind, "desk"),
-    with: { floor: { with: { location: { columns: { name: true } } } } },
+    with: { floor: { with: { location: { columns: { name: true, timezone: true } } } } },
     orderBy: (sp, { asc }) => [asc(sp.name)],
   });
   const holders = await db
@@ -42,6 +45,8 @@ export async function listDeskOptions(db: Executor, currentPersonId?: string): P
         assignedPersonId,
         assignedPersonName: holder?.name ?? null,
         available: assignedPersonId === null || assignedPersonId === currentPersonId,
+        locationName: d.floor.location.name,
+        timezone: d.floor.location.timezone,
       };
     });
 }

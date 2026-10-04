@@ -1,5 +1,6 @@
 import { and, eq, inArray, ne, sql } from "drizzle-orm";
 import {
+  defaultTimeZone,
   identityProvider,
   PROFILE_PROVIDER_IDS,
   type Identities,
@@ -221,7 +222,10 @@ export async function savePerson(
       title: input.title,
       phone: input.phone,
       homeRegion: input.homeRegion,
-      homeTimezone: input.homeTimezone,
+      homeTimezone: defaultTimeZone(
+        input.homeTimezone,
+        input.assignedDeskId ? await deskTimeZone(tx, input.assignedDeskId) : null,
+      ),
       startDate: input.startDate,
       active: input.active,
       managerId: input.managerId,
@@ -274,6 +278,16 @@ export async function savePerson(
     });
     return { id: personId };
   });
+}
+
+async function deskTimeZone(tx: Executor, deskId: string): Promise<string | null> {
+  const [row] = await tx
+    .select({ timezone: s.location.timezone })
+    .from(s.space)
+    .innerJoin(s.floor, eq(s.floor.id, s.space.floorId))
+    .innerJoin(s.location, eq(s.location.id, s.floor.locationId))
+    .where(eq(s.space.id, deskId));
+  return row?.timezone ?? null;
 }
 
 // Checks the desk can be assigned. If someone else holds it, returns them when the admin asked
