@@ -15,6 +15,7 @@ const person = (id: string, teamIds: string[]): DirectoryPerson => ({
   givenName: id,
   familyName: null,
   identities: {},
+  office: null,
   phone: null,
   preferredName: null,
   email: `${id}@x.com`,

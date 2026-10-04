@@ -64,7 +64,7 @@ export function filterDirectory(
 
   return people.filter((p) => {
     if (scope && !explicitTeams(p).some((t) => scope.has(t.id))) return false;
-    if (filters.locationSlug && p.desk?.locationSlug !== filters.locationSlug) return false;
+    if (filters.locationSlug && officeSlugOf(p) !== filters.locationSlug) return false;
     if (filters.hasDesk && !p.desk) return false;
     return matchesQuery([p.name, p.preferredName, p.email, p.title, p.desk?.name], filters.q);
   });
@@ -97,16 +97,23 @@ export function initials(name: string): string {
     .join("");
 }
 
+// The office someone works from: their desk's, or the one they're assigned to without a desk.
+export function officeSlugOf(person: Pick<DirectoryPerson, "desk" | "office">): string | null {
+  return person.desk?.locationSlug ?? person.office?.slug ?? null;
+}
+
 export interface LocationSummary {
   // The home region, in the viewer's region format.
   region: string;
-  // Shown as a badge after the region: the desk's seat code, or "Remote" without one.
+  // Shown as a badge after the region: the desk's seat code, the office of someone without a
+  // desk, or "Remote".
   badge: string;
 }
 
-// Where someone is based: "Ontario, Canada [SF-2-003]", or "India [Remote]" without a desk.
+// Where someone is based: "Ontario, Canada [SF-2-003]", "United States [San Francisco]" for
+// someone in an office without a desk, or "India [Remote]".
 export function locationSummary(person: DirectoryPerson): LocationSummary {
-  return { region: person.homeRegionLabel, badge: person.desk?.name ?? "Remote" };
+  return { region: person.homeRegionLabel, badge: person.desk?.name ?? person.office?.name ?? "Remote" };
 }
 
 // The summary as plain text, for sorting and anywhere a badge can't be drawn.

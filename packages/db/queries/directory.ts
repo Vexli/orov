@@ -34,6 +34,7 @@ export async function loadDirectory(
       },
       teamMembers: { with: { team: { columns: { id: true, name: true, slug: true } } } },
       identities: { columns: { provider: true, value: true } },
+      office: { columns: { slug: true, name: true } },
     },
   });
   // By family name, then given name, with the same collation the browser would use.
@@ -87,6 +88,7 @@ export async function loadDirectory(
         }))
         .sort((a, b) => Number(b.isPrimary) - Number(a.isPrimary) || a.name.localeCompare(b.name)),
       identities: profileIdentities(row.identities),
+      office: row.office ? { slug: row.office.slug, name: row.office.name } : null,
     };
   });
 

@@ -53,6 +53,7 @@ describe("forms", () => {
     active: true,
     managerId: null,
     assignedDeskId: null,
+    officeId: null,
     teamIds: [],
     primaryTeamId: null,
     identities: {},

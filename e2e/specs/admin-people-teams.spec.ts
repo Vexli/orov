@@ -171,6 +171,31 @@ test.describe("admin people and teams", () => {
     }
   });
 
+  test("someone without a desk can belong to an office", async ({ page, context }) => {
+    await signInAs(context, "jane@example.com");
+    // Bob has a desk, so his office comes from it.
+    await page.goto("/admin/people/p_bob");
+    await expect(page.getByRole("combobox", { name: /^Office/ })).toBeDisabled();
+
+    await page.goto("/admin/people/p_priya");
+    await page.getByRole("combobox", { name: /^Office/ }).selectOption({ label: "San Francisco" });
+    await page.getByRole("button", { name: "Save person" }).click();
+    await expect(page).toHaveURL(/\/admin\/people$/);
+    await expect(page.getByRole("row", { name: /priya@example\.com/ })).toContainText("San Francisco, no desk");
+
+    await page.goto("/directory?person=p_priya");
+    await expect(page.getByRole("complementary", { name: "Priya Raman details" })).toContainText(
+      "Karnātaka, India San Francisco",
+    );
+    await page.getByLabel("Filter by location").selectOption({ label: "San Francisco" });
+    await expect(page.locator("#person-row-p_priya")).toBeVisible();
+
+    await page.goto("/map?loc=sf");
+    await expect(page.getByRole("complementary", { name: "San Francisco overview" })).toContainText(
+      "1 person works here without a desk.",
+    );
+  });
+
   test("a duplicate email is refused next to the field", async ({ page, context }) => {
     await signInAs(context, "jane@example.com");
     await page.goto("/admin/people/new");

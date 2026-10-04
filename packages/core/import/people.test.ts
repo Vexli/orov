@@ -20,6 +20,7 @@ function person(overrides: Partial<PersonRecord> & { email: string }): PersonRec
     active: true,
     managerEmail: null,
     deskCode: null,
+    officeSlug: null,
     teamSlugs: [],
     primaryTeamSlug: null,
     identities: {},
@@ -32,15 +33,16 @@ function snapshot(people: PersonRecord[] = [], extra: Partial<PeopleSnapshot> = 
     people: new Map(people.map((p) => [p.email, p])),
     teamSlugs: new Set(["hr", "eng", "payroll"]),
     // HR is led by Jane; Payroll, under HR, has no lead of its own.
+    offices: new Map([["sf", { timezone: "America/Los_Angeles" }], ["ldn", { timezone: "Europe/London" }]]),
     teams: new Map([
       ["hr", { parentTeamId: null, leadId: "jane@x.com" }],
       ["payroll", { parentTeamId: "hr", leadId: null }],
       ["eng", { parentTeamId: null, leadId: null }],
     ]),
     desks: new Map([
-      ["SF-2-014", { assignable: true, ownerEmail: null, timezone: "America/Los_Angeles" }],
-      ["SF-2-015", { assignable: true, ownerEmail: null, timezone: "America/Los_Angeles" }],
-      ["SF-ARCH-1", { assignable: false, ownerEmail: null, timezone: "America/Los_Angeles" }],
+      ["SF-2-014", { assignable: true, ownerEmail: null, timezone: "America/Los_Angeles", officeSlug: "sf" }],
+      ["SF-2-015", { assignable: true, ownerEmail: null, timezone: "America/Los_Angeles", officeSlug: "sf" }],
+      ["SF-ARCH-1", { assignable: false, ownerEmail: null, timezone: "America/Los_Angeles", officeSlug: "sf" }],
     ]),
     ...extra,
   };
@@ -311,6 +313,27 @@ describe("planPeopleImport", () => {
     it("refuses a last day before the start date", () => {
       const plan = run3("email,name,home_region,start_date,end_date", "a@x.com,A,US,2026-05-01,2026-04-30\n", snapshot());
       expect(plan.rows[0]?.message).toBe("end_date can't be before start_date");
+    });
+  });
+
+  describe("office without a desk (N9)", () => {
+    const plan = (body: string, snap = snapshot()) => {
+      const parsed = parsePeopleCsv(`email,name,home_region,desk,office\n${body}`);
+      return planPeopleImport(parsed.rows, parsed.issues, snap);
+    };
+
+    it("puts someone without a desk in an office, with that office's time zone", () => {
+      const row = plan("kim@x.com,Kim,GB,,LDN\n").rows[0];
+      expect(row?.record).toMatchObject({ officeSlug: "ldn", homeTimezone: "Europe/London" });
+    });
+
+    it("refuses an unknown office, and one that isn't the desk's", () => {
+      expect(plan("kim@x.com,Kim,GB,,nyc\n").rows[0]?.message).toBe('unknown office "nyc"');
+      expect(plan("kim@x.com,Kim,GB,SF-2-014,ldn\n").rows[0]?.message).toMatch(/isn't the office of desk "SF-2-014"/);
+    });
+
+    it("doesn't store an office that matches the desk's: the desk already says it", () => {
+      expect(plan("kim@x.com,Kim,US,SF-2-014,sf\n").rows[0]?.record?.officeSlug).toBeNull();
     });
   });
 });

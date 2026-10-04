@@ -169,6 +169,7 @@ person        (id, email UNIQUE, givenName, familyName?, name (generated: "given
                preferredName?, title?, photoUrl?, phone? (E.164),
                homeRegion (ISO 3166 code), homeTimezone?,
                managerId → person?, assignedDeskId → space? UNIQUE (partial, non-null),
+               officeId → location? (only without a desk, N9),
                startDate?, endDate? (last day, admin-only, N6), active bool, createdAt, updatedAt)
 team          (id, slug UNIQUE, name, parentTeamId → team?, leadId → person?,
                chatChannelId?, color?)

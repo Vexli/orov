@@ -18,6 +18,8 @@ export interface PersonRecord {
   active: boolean;
   managerEmail: string | null;
   deskCode: string | null;
+  // Only for someone without a desk (N9); with a desk, the office is the desk's.
+  officeSlug: string | null;
   teamSlugs: string[];
   primaryTeamSlug: string | null;
   // Profile accounts only (github, linkedin, …), by provider id. Messaging ids are not
@@ -73,6 +75,7 @@ export const PERSON_FIELDS = [
   "active",
   "managerEmail",
   "deskCode",
+  "officeSlug",
   "teamSlugs",
   "primaryTeamSlug",
 ] as const satisfies readonly (keyof PersonRecord)[];

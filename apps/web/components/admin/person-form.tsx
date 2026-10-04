@@ -26,12 +26,13 @@ interface Props {
   desks: DeskOption[];
   floors: PickerFloor[];
   teams: TeamChoice[];
+  offices: { id: string; name: string }[];
 }
 
 const inputClass =
   "mt-1 w-full rounded-md border border-border bg-transparent px-3 py-2 text-sm";
 
-export function PersonFormEditor({ id, initial, managers, desks, floors, teams }: Props) {
+export function PersonFormEditor({ id, initial, managers, desks, floors, teams, offices }: Props) {
   const router = useRouter();
   const [values, setValues] = useState<PersonForm>(initial);
   const [error, setError] = useState<{ message: string; field?: string } | null>(null);
@@ -234,6 +235,29 @@ export function PersonFormEditor({ id, initial, managers, desks, floors, teams }
           onSwapChange={(swap) => set("swapDesk", swap)}
           error={fieldError("assignedDeskId")}
         />
+
+        {/* N9: someone in an office without a desk of their own, such as a hot-desker. */}
+        <label className="block text-sm font-medium">
+          Office
+          <select
+            className={inputClass}
+            value={values.assignedDeskId ? "" : (values.officeId ?? "")}
+            disabled={values.assignedDeskId !== null}
+            aria-describedby="office-hint"
+            onChange={(e) => set("officeId", e.target.value || null)}
+          >
+            <option value="">None (remote)</option>
+            {sortByName(offices).map((o) => (
+              <option key={o.id} value={o.id}>
+                {o.name}
+              </option>
+            ))}
+          </select>
+        </label>
+        <span id="office-hint" className="-mt-3 block text-xs text-muted-fg">
+          {values.assignedDeskId ? "Set by the desk." : "For someone who works in an office but has no desk of their own."}
+        </span>
+        {fieldError("officeId")}
       </div>
 
       <fieldset className="md:col-span-2">

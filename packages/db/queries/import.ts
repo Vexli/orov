@@ -1,4 +1,4 @@
-import { eq, isNotNull, inArray } from "drizzle-orm";
+import { eq, inArray, isNotNull, isNull } from "drizzle-orm";
 import {
   parsePeopleCsv,
   parseTeamsCsv,
@@ -84,7 +84,9 @@ async function loadPeopleSnapshot(db: Executor): Promise<PeopleSnapshot> {
 
   const deskRows = await db.query.space.findMany({
     where: eq(s.space.kind, "desk"),
-    with: { floor: { columns: { archivedAt: true }, with: { location: { columns: { timezone: true } } } } },
+    with: {
+      floor: { columns: { archivedAt: true }, with: { location: { columns: { timezone: true, slug: true } } } },
+    },
   });
   const owners = await db
     .select({ email: s.person.email, deskId: s.person.assignedDeskId })
@@ -98,6 +100,7 @@ async function loadPeopleSnapshot(db: Executor): Promise<PeopleSnapshot> {
       assignable: desk.archivedAt === null && desk.floor.archivedAt === null,
       ownerEmail: ownerByDeskId.get(desk.id) ?? null,
       timezone: desk.floor.location.timezone,
+      officeSlug: desk.floor.location.slug,
     });
   }
 
@@ -113,6 +116,14 @@ async function loadPeopleSnapshot(db: Executor): Promise<PeopleSnapshot> {
     teamSlugs: new Set(teams.map((t) => t.slug)),
     teams: new Map(
       teams.map((t) => [t.slug, { parentTeamId: t.parentSlug, leadId: leadBySlug.get(t.slug) ?? null }]),
+    ),
+    offices: new Map(
+      (
+        await db
+          .select({ slug: s.location.slug, timezone: s.location.timezone })
+          .from(s.location)
+          .where(isNull(s.location.archivedAt))
+      ).map((o) => [o.slug, { timezone: o.timezone }]),
     ),
     desks,
   };
@@ -181,6 +192,10 @@ export async function applyPeopleCsv(
       await writeProfileIdentities(tx, idByEmail.get(row.record!.email)!, {});
     }
 
+    const idByOfficeSlug = new Map(
+      (await tx.select({ id: s.location.id, slug: s.location.slug }).from(s.location)).map((l) => [l.slug, l.id]),
+    );
+
     for (const row of changed) {
       const rec = row.record!;
       const personId = idByEmail.get(rec.email)!;
@@ -207,6 +222,7 @@ export async function applyPeopleCsv(
         .set({
           managerId: rec.managerEmail ? (idByEmail.get(rec.managerEmail) ?? null) : null,
           assignedDeskId: rec.deskCode ? (idByDeskCode.get(rec.deskCode) ?? null) : null,
+          officeId: rec.officeSlug ? (idByOfficeSlug.get(rec.officeSlug) ?? null) : null,
         })
         .where(eq(s.person.id, personId));
     }

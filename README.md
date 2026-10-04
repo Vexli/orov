@@ -58,6 +58,8 @@ the phase-by-phase delivery plan with progress notes.
 - Everyone can change their own preferred name, phone, home time zone and account links on
   **My profile**, without an admin
 - Admins can record a person's last working day, which only admins ever see
+- Someone without a desk of their own can still belong to an office: they count for it in the
+  directory's office filter and the map's overview, and get its time zone
 - Someone saved or imported without a manager reports to the lead of their primary team (for a
   lead, the lead of the team above)
 - Phone numbers are checked and stored in international form (`+14155550123`), shown on the
