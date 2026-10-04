@@ -38,7 +38,7 @@ export default async function NewPersonPage() {
           managers={people.map((p) => ({ id: p.id, name: p.name }))}
           desks={desks}
           floors={floors}
-          teams={teams.map((t) => ({ id: t.id, name: t.name }))}
+          teams={teams.map((t) => ({ id: t.id, name: t.name, parentTeamId: t.parentTeamId, leadId: t.leadId }))}
         />
       </div>
     </div>

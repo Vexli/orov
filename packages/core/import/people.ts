@@ -1,6 +1,6 @@
 import type { PersonRecord } from "../records";
 import { diffPersonRecords } from "../records";
-import { reachesAncestor } from "../teams/tree";
+import { inheritedManager, reachesAncestor, type TeamLeadInfo } from "../teams/tree";
 import { defaultTimeZone } from "../time/zones";
 import type { CsvIssue } from "../csv/parse";
 import type { ValidPersonRow } from "../csv/people";
@@ -10,6 +10,8 @@ import { summarize, type ImportPlan, type PlannedRow } from "./plan";
 export interface PeopleSnapshot {
   people: Map<string, PersonRecord>;
   teamSlugs: Set<string>;
+  // By slug, with parents as slugs and leads as emails, for the default manager (#11).
+  teams: Map<string, TeamLeadInfo>;
   desks: Map<string, DeskInfo>;
 }
 
@@ -62,6 +64,18 @@ export function planPeopleImport(
     desired.set(email, row);
   }
 
+  // A blank manager_email means the default: the primary team's lead (#11). A default that would
+  // close a reporting loop is dropped rather than reported, since the admin didn't ask for it.
+  const inherited = new Set<string>();
+  for (const [email, row] of desired) {
+    const { managerEmail, primaryTeamSlug } = row.record;
+    if (managerEmail !== null || primaryTeamSlug === null) continue;
+    const lead = inheritedManager(email, primaryTeamSlug, snapshot.teams);
+    if (lead === null || (!desired.has(lead) && !snapshot.people.has(lead))) continue;
+    desired.set(email, { ...row, record: { ...row.record, managerEmail: lead } });
+    inherited.add(email);
+  }
+
   // Final manager of each person after this import. Anyone not in the file keeps their current manager.
   const finalManager = (email: string): string | null => {
     const row = desired.get(email);
@@ -76,6 +90,13 @@ export function planPeopleImport(
   }
   for (const [email, person] of snapshot.people) {
     if (!desired.has(email) && person.deskCode) pushTo(deskClaims, person.deskCode, email);
+  }
+
+  for (const email of inherited) {
+    const row = desired.get(email)!;
+    if (reachesAncestor(finalManager, row.record.managerEmail, email)) {
+      desired.set(email, { ...row, record: { ...row.record, managerEmail: null } });
+    }
   }
 
   // Accounts after this import, keyed "provider value", claimed the same way as desks.

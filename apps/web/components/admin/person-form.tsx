@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import type { PersonForm } from "@officeorg/core";
 import { PROFILE_PROVIDERS } from "@officeorg/core/people/identities";
+import { inheritedManager } from "@officeorg/core/teams/tree";
 import type { DeskOption, PickerFloor } from "@officeorg/db/queries/spaces";
 import { savePersonAction, type SaveState } from "@/app/admin/people/actions";
 import { SeatPicker } from "./seat-picker";
@@ -13,6 +14,8 @@ import { TimeZoneList } from "./time-zone-list";
 export interface TeamChoice {
   id: string;
   name: string;
+  parentTeamId: string | null;
+  leadId: string | null;
 }
 
 interface Props {
@@ -33,6 +36,24 @@ export function PersonFormEditor({ id, initial, managers, desks, floors, teams }
   const [error, setError] = useState<{ message: string; field?: string } | null>(null);
   const [pending, startTransition] = useTransition();
 
+  // The manager a blank manager gets on save (#11): the primary team's lead, or the lead above.
+  const teamTree = new Map(teams.map((t) => [t.id, t]));
+  const defaultManagerFor = (primaryTeamId: string | null) =>
+    inheritedManager(id ?? "", primaryTeamId, teamTree);
+  const defaultManagerId = defaultManagerFor(values.primaryTeamId);
+  const defaultManager = managers.find((m) => m.id === defaultManagerId) ?? null;
+  const leadOf = defaultManagerId ? teams.find((t) => t.leadId === defaultManagerId) : undefined;
+
+  // Choosing another primary team moves the manager along, but only if they were the old team's
+  // default; a manager the admin picked stays.
+  function setPrimaryTeam(primaryTeamId: string | null) {
+    setValues((v) => ({
+      ...v,
+      primaryTeamId,
+      managerId: v.managerId !== null && v.managerId === defaultManagerFor(v.primaryTeamId) ? null : v.managerId,
+    }));
+  }
+
   // The zone a blank home time zone gets on save (#19): the chosen desk's office's.
   const deskZone = desks.find((d) => d.id === values.assignedDeskId) ?? null;
 
@@ -44,7 +65,9 @@ export function PersonFormEditor({ id, initial, managers, desks, floors, teams }
     setValues((v) => {
       const teamIds = on ? [...v.teamIds, teamId] : v.teamIds.filter((t) => t !== teamId);
       const primaryTeamId = v.primaryTeamId && teamIds.includes(v.primaryTeamId) ? v.primaryTeamId : null;
-      return { ...v, teamIds, primaryTeamId };
+      const managerId =
+        primaryTeamId !== v.primaryTeamId && v.managerId === defaultManagerFor(v.primaryTeamId) ? null : v.managerId;
+      return { ...v, teamIds, primaryTeamId, managerId };
     });
   }
 
@@ -168,7 +191,11 @@ export function PersonFormEditor({ id, initial, managers, desks, floors, teams }
         <label className="block text-sm font-medium">
           Manager
           <select className={inputClass} value={values.managerId ?? ""} onChange={(e) => set("managerId", e.target.value || null)}>
-            <option value="">No manager</option>
+            <option value="">
+              {defaultManager
+                ? `Default: ${defaultManager.name}${leadOf ? `, lead of ${leadOf.name}` : ""}`
+                : "No manager"}
+            </option>
             {managers.map((m) => (
               <option key={m.id} value={m.id}>
                 {m.name}
@@ -233,7 +260,7 @@ export function PersonFormEditor({ id, initial, managers, desks, floors, teams }
                   aria-label={`Primary team ${t.name}`}
                   disabled={!checked}
                   checked={values.primaryTeamId === t.id}
-                  onChange={() => set("primaryTeamId", t.id)}
+                  onChange={() => setPrimaryTeam(t.id)}
                 />
               </li>
             );
