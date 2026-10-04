@@ -773,11 +773,11 @@ Built after #21 step 2, #22 and #29, at the project owner's direction; #30 still
 
 **G. Integrations (with Phases 4 and 5)**
 
-- [ ] #4–6 Provider-agnostic interfaces in `packages/integrations`
-    - **Depends on:** Phases 4 and 5
+- [!] #4–6 Provider-agnostic interfaces in `packages/integrations`
+    - **Blocked:** built with Phases 4 and 5, which wait on the Phase 0 spikes (a Google Workspace service account and a Slack workspace). The schema half is done above.
     - **Design (from the note):** `MessagingProvider` (`matchUsers(emails)`, `listProfiles()` for #3, `personLink`/`channelLink` with web fallback, `openGroupChat(viewerToken, ids)`, `maxGroupSize`, `subscribeStatusChannel`/`history(since)`, `react(messageRef, emoji)`), `CalendarProvider` (`outOfOffice`, `workingLocation`), `RoomDirectory` + `RoomStatusSource` (`listRooms()`, `freeBusy(resourceIds, from, to)`), fakes for each. Selected by env: `MESSAGING_PROVIDER`, `CALENDAR_PROVIDER`, `ROOMS_PROVIDER`; `INTEGRATIONS=fake` sets them all. Providers declare capabilities (`supportsGroupChat`, `supportsReactions`) and the UI hides what's missing. Later targets: Microsoft Teams + M365 (Graph; chat deep links need no API call), Robin/Skedda/Envoy (room status only), Google Chat/Mattermost/Discord (spike each). Rewrite §3, §4, §8 and §10 around providers when this lands.
-- [ ] #3 Sync photo and title from the messaging tool
-    - **Depends on:** #4 (interfaces); #2 is done
+- [!] #3 Sync photo and title from the messaging tool
+    - **Blocked:** needs #4's `MessagingProvider.listProfiles()`, so Phase 5; #2 is done
     - **Design (from the note):** wire `photoUrl` through `DirectoryPerson`, the card, the map overlay (`<image>` with a circular clip, falling back to initials) and org nodes (scheme-checked, through `escapeHtml`). A nightly `profiles:sync` job plus an admin "Sync now" with a diff (reuse `diffRecords` and the import dry-run UI). Per-field precedence (`person.title_source: manual | synced`; an admin edit flips it to manual). Proxy images same-origin (`/api/avatars/[personId]`) to keep CSP `img-src 'self'`. Open question: sync titles at all? Recommended: photos on by default, titles opt-in per deployment.
 
 **H. Rebrand**
