@@ -46,10 +46,10 @@ describe("people import", () => {
   it("re-importing an export changes nothing and writes no audit rows", async () => {
     const csv = await exportPeopleCsv(t.db);
     const dry = await planPeopleCsv(t.db, csv);
-    expect(dry.ok && dry.plan.counts).toEqual({ create: 0, update: 0, unchanged: 5, error: 0 });
+    expect(dry.ok && dry.plan.counts).toEqual({ create: 0, update: 0, unchanged: 5, error: 0, skipped: 0 });
 
     const result = await applyPeopleCsv(t.db, "admin@example.com", csv);
-    expect(result).toEqual({ created: 0, updated: 0, unchanged: 5 });
+    expect(result).toEqual({ created: 0, updated: 0, unchanged: 5, skipped: 0 });
     expect(await listAudit(t.db)).toEqual([]);
   });
 
@@ -99,6 +99,37 @@ describe("people import", () => {
       { personId: "p_bob", provider: "github", value: "bobl" },
       { personId: "p_max", provider: "github", value: "bob-lindqvist" },
     ]);
+  });
+
+  it("applies a file with its bad row skipped, and the result matches the dry run", async () => {
+    const csv = people(
+      "good@example.com,Good Person,,,US,,,,,,,,",
+      "not-an-email,Bad Row,,,US,,,,,,,,",
+      "lee@example.com,Lee Chen,,,US,,,,,,,nope,",
+      "ama@example.com,Ama Ito,,,US,,,,,lee@example.com,,,",
+    );
+    const dry = await planPeopleCsv(t.db, csv, { skipErrors: true });
+    // Lines 3 (bad email) and 4 (unknown team) are errors; Ama on line 5 depends on Lee.
+    expect(dry.ok && dry.skip).toEqual([3, 4, 5]);
+    expect(dry.ok && dry.plan.counts).toMatchObject({ create: 1, skipped: 3, error: 0 });
+
+    const result = await applyPeopleCsv(t.db, "jane@example.com", csv, dry.ok ? dry.skip : []);
+    expect(result).toEqual({ created: 1, updated: 0, unchanged: 0, skipped: 3 });
+    expect(await personByEmail("good@example.com")).toBeDefined();
+    expect(await personByEmail("lee@example.com")).toBeUndefined();
+    expect(await personByEmail("ama@example.com")).toBeUndefined();
+    expect((await listAudit(t.db)).map((a) => a.entityId)).toHaveLength(1);
+  });
+
+  it("refuses to apply when a row that isn't skipped depends on one that is", async () => {
+    const csv = people(
+      "lee@example.com,Lee Chen,,,US,,,,,,,,",
+      "ama@example.com,Ama Ito,,,US,,,,,lee@example.com,,,",
+    );
+    await expect(applyPeopleCsv(t.db, "jane@example.com", csv, [2])).rejects.toThrow(
+      /line 3: manager lee@example.com is on line 2, which is skipped/,
+    );
+    expect(await personByEmail("ama@example.com")).toBeUndefined();
   });
 
   it("writes nothing when any row is invalid", async () => {
@@ -168,7 +199,7 @@ describe("teams import", () => {
     ].join("\n");
     const result = await applyTeamsCsv(t.db, "admin@example.com", csv);
     // hr is not in the file, so it is neither created nor updated.
-    expect(result).toEqual({ created: 1, updated: 1, unchanged: 0 });
+    expect(result).toEqual({ created: 1, updated: 1, unchanged: 0, skipped: 0 });
 
     const child = await t.db.query.team.findFirst({
       where: eq(s.team.slug, "hr-ops"),
@@ -196,6 +227,6 @@ describe("teams import", () => {
 
   it("round-trips an export without changes", async () => {
     const csv = await exportTeamsCsv(t.db);
-    expect(await applyTeamsCsv(t.db, "admin@example.com", csv)).toEqual({ created: 0, updated: 0, unchanged: 3 });
+    expect(await applyTeamsCsv(t.db, "admin@example.com", csv)).toEqual({ created: 0, updated: 0, unchanged: 3, skipped: 0 });
   });
 });

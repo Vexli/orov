@@ -21,20 +21,31 @@ export interface DeskInfo {
   timezone: string;
 }
 
+// `skip` holds the line numbers the admin left out. They're removed before anything else is
+// checked, so the other rows are validated against the world without them: a row whose manager
+// or parent is on a skipped line becomes an error rather than being written half-broken.
 export function planPeopleImport(
   rows: ValidPersonRow[],
   parseIssues: CsvIssue[],
   snapshot: PeopleSnapshot,
+  skip: ReadonlySet<number> = new Set(),
 ): ImportPlan<PersonRecord> {
   const planned: PlannedRow<PersonRecord>[] = [];
   const errors = new Map<string, string>(); // email -> message, for rows that will not be applied
   const desired = new Map<string, ValidPersonRow>();
+  const skippedLine = new Map<string, number>(); // email -> line, for messages about dependencies
 
   for (const issue of parseIssues) {
-    planned.push({ line: issue.line, key: `line ${issue.line}`, action: "error", changes: [], message: issue.message });
+    const action = skip.has(issue.line) ? "skipped" : "error";
+    planned.push({ line: issue.line, key: `line ${issue.line}`, action, changes: [], message: issue.message });
   }
 
   for (const original of rows) {
+    if (skip.has(original.line)) {
+      planned.push({ line: original.line, key: original.record.email, action: "skipped", changes: [] });
+      if (!skippedLine.has(original.record.email)) skippedLine.set(original.record.email, original.line);
+      continue;
+    }
     const row = withDeskTimeZone(withKeptIdentities(original, snapshot), snapshot);
     const email = row.record.email;
     const prior = desired.get(email);
@@ -83,7 +94,7 @@ export function planPeopleImport(
 
   for (const [email, row] of desired) {
     const rec = row.record;
-    const problem = validateReferences(row, snapshot, desired, finalManager, deskClaims, identityClaims);
+    const problem = validateReferences(row, snapshot, desired, finalManager, deskClaims, identityClaims, skippedLine);
     if (problem) errors.set(email, problem);
     if (errors.has(email)) {
       planned.push({ line: row.line, key: email, action: "error", changes: [], message: errors.get(email), record: rec });
@@ -116,6 +127,7 @@ function validateReferences(
   finalManager: (email: string) => string | null,
   deskClaims: Map<string, string[]>,
   identityClaims: Map<string, string[]>,
+  skippedLine: Map<string, number>,
 ): string | null {
   const rec = row.record;
 
@@ -126,7 +138,10 @@ function validateReferences(
   if (rec.managerEmail !== null) {
     if (rec.managerEmail === rec.email) return "manager_email cannot be the person themself";
     if (!desired.has(rec.managerEmail) && !snapshot.people.has(rec.managerEmail)) {
-      return `manager ${rec.managerEmail} is not in the file or the database`;
+      const line = skippedLine.get(rec.managerEmail);
+      return line !== undefined
+        ? `manager ${rec.managerEmail} is on line ${line}, which is skipped`
+        : `manager ${rec.managerEmail} is not in the file or the database`;
     }
     if (reachesAncestor(finalManager, rec.managerEmail, rec.email)) {
       return `manager chain loops back to ${rec.email}`;
@@ -138,7 +153,13 @@ function validateReferences(
     if (!desk) return `unknown desk "${rec.deskCode}"`;
     if (!desk.assignable) return `desk "${rec.deskCode}" is not a desk, or its floor is archived`;
     const claimants = (deskClaims.get(rec.deskCode) ?? []).filter((e) => e !== rec.email);
-    if (claimants.length > 0) return `desk "${rec.deskCode}" is also assigned to ${claimants[0]}`;
+    if (claimants.length > 0) {
+      const line = skippedLine.get(claimants[0]!);
+      // The holder's move off this desk was on a skipped line, so they keep it.
+      return line !== undefined
+        ? `desk "${rec.deskCode}" is still assigned to ${claimants[0]}, whose line ${line} is skipped`
+        : `desk "${rec.deskCode}" is also assigned to ${claimants[0]}`;
+    }
   }
 
   for (const [provider, value] of Object.entries(rec.identities)) {

@@ -51,9 +51,10 @@ the phase-by-phase delivery plan with progress notes.
 - Phone numbers are checked and stored in international form (`+14155550123`), shown on the
   person card as a link to call. Home time zones are checked too, and default to the time zone of
   the person's desk
-- CSV import with a dry-run diff before anything is written (files saved by Excel in
-  Windows-1252 or UTF-16, separated by commas, semicolons or tabs, are detected), CSV export, and
-  an audit log of every admin change, filterable by entity, date and admin, and exportable as CSV
+- CSV import with a dry-run diff before anything is written, where rows with errors can be
+  skipped. Files saved by Excel (Windows-1252 or UTF-16, separated by commas, semicolons or tabs)
+  are detected. CSV export, and an audit log of every admin change, filterable by entity, date and
+  admin, and exportable as CSV
 - ISO 3166 region codes (`US`, `US-CA`, `CA-ON`), and a per-user setting for how regions are
   displayed
 - A semantic theme layer: components are styled only through theme slots, never raw colors

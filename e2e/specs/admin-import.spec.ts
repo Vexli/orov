@@ -38,7 +38,7 @@ test.describe("admin CSV import (U10)", () => {
     await expect(page.getByText("jane@example.com").first()).toBeVisible();
   });
 
-  test("a file with a bad row shows the error and enables nothing", async ({ page, context }) => {
+  test("a file with a bad row can't be applied until the row is skipped", async ({ page, context }) => {
     await signInAs(context, "jane@example.com");
     await page.goto("/admin/import");
 
@@ -57,6 +57,45 @@ test.describe("admin CSV import (U10)", () => {
 
     await expect(page.getByText("email is not a valid address")).toBeVisible();
     await expect(page.getByRole("button", { name: /Apply/ })).toBeDisabled();
+
+    await page.getByLabel("Skip people line 3").check();
+    await expect(page.getByText("Not imported: email is not a valid address")).toBeVisible();
+    await expect(page.getByText(/· 1 skipped/)).toBeVisible();
+    await page.getByRole("button", { name: /Apply 1 change/ }).click();
+    await expect(page.getByText("Imported. 1 created, 0 updated, 0 unchanged, 1 skipped.")).toBeVisible();
+  });
+
+  test("skipping the rows with errors also skips the rows that depend on them", async ({ page, context }) => {
+    await signInAs(context, "jane@example.com");
+    await page.goto("/admin/import");
+    const csv = [
+      "email,name,home_region,manager_email,teams",
+      "lee@example.com,Lee Chen,US,,nope",
+      "ama@example.com,Ama Ito,US,lee@example.com,",
+      "kim@example.com,Kim Lee,US,,",
+      "",
+    ].join("\n");
+    await page.getByLabel("people CSV file").setInputFiles({
+      name: "people.csv",
+      mimeType: "text/csv",
+      buffer: Buffer.from(csv),
+    });
+    await expect(page.getByText('unknown team "nope" (import teams first)')).toBeVisible();
+
+    await page.getByRole("button", { name: "Skip all rows with errors" }).click();
+    await expect(page.getByLabel("Skip people line 2")).toBeChecked();
+    await expect(page.getByLabel("Skip people line 3")).toBeChecked();
+    await expect(page.getByText("Not imported: manager lee@example.com is on line 2, which is skipped")).toBeVisible();
+    await expect(page.getByLabel("Skip people line 4")).not.toBeChecked();
+
+    // Un-skipping Ama alone isn't allowed to write her with a manager who doesn't exist.
+    await page.getByLabel("Skip people line 3").uncheck();
+    await expect(page.getByText("manager lee@example.com is on line 2, which is skipped")).toBeVisible();
+    await expect(page.getByRole("button", { name: /Apply/ })).toBeDisabled();
+    await page.getByLabel("Skip people line 3").check();
+
+    await page.getByRole("button", { name: /Apply 1 change/ }).click();
+    await expect(page.getByText("Imported. 1 created, 0 updated, 0 unchanged, 2 skipped.")).toBeVisible();
   });
 
   test("a file saved by Excel in Windows-1252 keeps its accented names", async ({ page, context }) => {
