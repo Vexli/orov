@@ -163,7 +163,11 @@ test.describe("person focus and team highlight", () => {
     await page.goto("/directory");
     await page.getByRole("searchbox", { name: "Search people" }).fill("bob");
     await page.getByRole("button", { name: /Bob Lindqvist/ }).click();
-    await page.getByRole("link", { name: "Show SF-2-014 on the map" }).click();
+    // The card's desk link. The list row has one too, since #15.
+    await page
+      .getByRole("complementary", { name: "Bob Lindqvist details" })
+      .getByRole("link", { name: "Show SF-2-014 on the map" })
+      .click();
 
     await expect(page).toHaveURL(/\/map\?.*person=p_bob/);
     await expect(page.getByRole("heading", { name: "San Francisco, Floor 2" })).toBeVisible();
