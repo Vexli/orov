@@ -44,6 +44,9 @@ export interface DirectoryPerson {
   // Every membership. `inherited` ones follow from a membership of a sub-team (#23); the views
   // match on the explicit ones (explicitTeams), so a team means the same with or without them.
   teams: { id: string; name: string; slug: string; isPrimary: boolean; inherited: boolean }[];
+  // The office someone without a desk belongs to (N9), such as a hot-desker. Null with a desk:
+  // their office is the desk's.
+  office: { slug: string; name: string } | null;
   // Profile accounts by provider id. Links are built with identityLinks, never from the value.
   identities: Identities;
 }

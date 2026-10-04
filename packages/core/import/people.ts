@@ -12,6 +12,8 @@ export interface PeopleSnapshot {
   teamSlugs: Set<string>;
   // By slug, with parents as slugs and leads as emails, for the default manager (#11).
   teams: Map<string, TeamLeadInfo>;
+  // Offices by slug, for someone in one without a desk (N9).
+  offices: Map<string, { timezone: string }>;
   desks: Map<string, DeskInfo>;
 }
 
@@ -21,6 +23,7 @@ export interface DeskInfo {
   ownerEmail: string | null;
   // The desk's office's time zone, the default for a blank home_timezone.
   timezone: string;
+  officeSlug: string;
 }
 
 // `skip` holds the line numbers the admin left out. They're removed before anything else is
@@ -114,13 +117,14 @@ export function planPeopleImport(
   }
 
   for (const [email, row] of desired) {
-    const rec = row.record;
     const problem = validateReferences(row, snapshot, desired, finalManager, deskClaims, identityClaims, skippedLine);
     if (problem) errors.set(email, problem);
     if (errors.has(email)) {
-      planned.push({ line: row.line, key: email, action: "error", changes: [], message: errors.get(email), record: rec });
+      planned.push({ line: row.line, key: email, action: "error", changes: [], message: errors.get(email), record: row.record });
       continue;
     }
+    // A desk sets the office, so a (matching) office given with one isn't stored (N9).
+    const rec = row.record.deskCode ? { ...row.record, officeSlug: null } : row.record;
 
     const existing = snapshot.people.get(email);
     if (!existing) {
@@ -183,6 +187,14 @@ function validateReferences(
     }
   }
 
+  if (rec.officeSlug !== null) {
+    if (!snapshot.offices.has(rec.officeSlug)) return `unknown office "${rec.officeSlug}"`;
+    const deskOffice = rec.deskCode ? snapshot.desks.get(rec.deskCode)?.officeSlug : undefined;
+    if (deskOffice && deskOffice !== rec.officeSlug) {
+      return `office "${rec.officeSlug}" isn't the office of desk "${rec.deskCode}"; leave office blank for someone with a desk`;
+    }
+  }
+
   for (const [provider, value] of Object.entries(rec.identities)) {
     const others = (identityClaims.get(identityKey(provider, value)) ?? []).filter((e) => e !== rec.email);
     if (others.length > 0) return `${provider} "${value}" also belongs to ${others[0]}`;
@@ -206,6 +218,7 @@ function emptyPerson(email: string): PersonRecord {
     active: true,
     managerEmail: null,
     deskCode: null,
+    officeSlug: null,
     teamSlugs: [],
     primaryTeamSlug: null,
     identities: {},
@@ -214,9 +227,10 @@ function emptyPerson(email: string): PersonRecord {
 
 // A blank home time zone takes the desk's office's, so the dry run shows what will be stored.
 function withDeskTimeZone(row: ValidPersonRow, snapshot: PeopleSnapshot): ValidPersonRow {
-  const { homeTimezone, deskCode } = row.record;
-  if (homeTimezone !== null || deskCode === null) return row;
-  const zone = defaultTimeZone(null, snapshot.desks.get(deskCode)?.timezone);
+  const { homeTimezone, deskCode, officeSlug } = row.record;
+  if (homeTimezone !== null) return row;
+  const officeZone = officeSlug ? snapshot.offices.get(officeSlug)?.timezone : undefined;
+  const zone = defaultTimeZone(null, deskCode ? snapshot.desks.get(deskCode)?.timezone : officeZone);
   return zone ? { ...row, record: { ...row.record, homeTimezone: zone } } : row;
 }
 
@@ -228,6 +242,7 @@ function withKeptValues(row: ValidPersonRow, snapshot: PeopleSnapshot): ValidPer
   const record = { ...row.record, identities: { ...row.record.identities } };
   for (const column of row.absentColumns) {
     if (column === "end_date") record.endDate = current.endDate;
+    else if (column === "office") record.officeSlug = current.officeSlug;
     else if (current.identities[column]) record.identities[column] = current.identities[column];
   }
   return { ...row, record };

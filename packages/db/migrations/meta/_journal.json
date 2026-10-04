@@ -99,6 +99,13 @@
       "when": 1791125116298,
       "tag": "0013_person_end_date",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1791126110338,
+      "tag": "0014_person_office",
+      "breakpoints": true
     }
   ]
 }

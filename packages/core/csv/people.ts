@@ -22,6 +22,7 @@ export const PEOPLE_CSV_HEADERS = [
   "active",
   "manager_email",
   "desk",
+  "office",
   "teams",
   "primary_team",
   // One column per profile provider in people/identities.ts. Keep the two lists in step.
@@ -77,6 +78,7 @@ export const personCsvRowSchema = z.object({
   active: boolish,
   manager_email: z.string().transform((v) => (v === "" ? null : v.toLowerCase())).pipe(z.email("manager_email is not a valid address").nullable()),
   desk: z.string().transform(blankToNull),
+  office: z.string().transform((v) => (v === "" ? null : v.toLowerCase())),
   teams: z
     .string()
     .transform((v) =>
@@ -95,8 +97,8 @@ export interface ValidPersonRow {
   absentColumns?: string[];
 }
 
-// The account columns (#12) and end_date (N6).
-export const KEPT_IF_ABSENT = [...PROFILE_PROVIDER_IDS, "end_date"];
+// The account columns (#12), end_date (N6) and office (N9).
+export const KEPT_IF_ABSENT = [...PROFILE_PROVIDER_IDS, "end_date", "office"];
 
 export interface PeopleCsvResult {
   rows: ValidPersonRow[];
@@ -177,6 +179,7 @@ export function validatePersonRow(
       active: v.active,
       managerEmail: v.manager_email,
       deskCode: v.desk,
+      officeSlug: v.office,
       teamSlugs,
       primaryTeamSlug: primary,
       identities,
@@ -199,6 +202,7 @@ export function peopleToCsv(people: PersonRecord[]): string {
     p.active ? "true" : "false",
     p.managerEmail ?? "",
     p.deskCode ?? "",
+    p.officeSlug ?? "",
     [...p.teamSlugs].sort().join(";"),
     p.primaryTeamSlug ?? "",
     ...PROFILE_PROVIDER_IDS.map((provider) => p.identities[provider] ?? ""),

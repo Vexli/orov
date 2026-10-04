@@ -55,6 +55,7 @@ export async function managerWouldLoop(
 const personWith = {
   manager: { columns: { email: true } },
   assignedDesk: { columns: { name: true } },
+  office: { columns: { slug: true } },
   teamMembers: { with: { team: { columns: { slug: true } } } },
   identities: { columns: { provider: true, value: true } },
 } as const;
@@ -80,6 +81,7 @@ function toPersonRecord(row: PersonRow): PersonRecord {
     active: row.active,
     managerEmail: row.manager?.email ?? null,
     deskCode: row.assignedDesk?.name ?? null,
+    officeSlug: row.office?.slug ?? null,
     // Explicit memberships only: inherited ones follow from these, so the spreadsheet holds what
     // was chosen and a re-import is stable.
     teamSlugs: row.teamMembers.filter((m) => m.source === "explicit").map((m) => m.team.slug).sort(),
@@ -127,6 +129,7 @@ export async function listPeopleForAdmin(db: Executor) {
     with: {
       manager: { columns: { id: true, name: true } },
       assignedDesk: { columns: { id: true, name: true } },
+      office: { columns: { name: true } },
       teamMembers: { with: { team: { columns: { slug: true, name: true } } } },
     },
   });
@@ -142,6 +145,7 @@ export async function listPeopleForAdmin(db: Executor) {
     managerName: row.manager?.name ?? null,
     deskId: row.assignedDesk?.id ?? null,
     deskName: row.assignedDesk?.name ?? null,
+    officeName: row.office?.name ?? null,
     teams: row.teamMembers
       .map((m) => ({
         id: m.teamId,
@@ -175,6 +179,7 @@ export async function getPersonForEdit(db: Executor, id: string): Promise<Person
     active: row.active,
     managerId: row.managerId,
     assignedDeskId: row.assignedDeskId,
+    officeId: row.officeId,
     teamIds: row.teamMembers.filter((m) => m.source === "explicit").map((m) => m.teamId),
     primaryTeamId: row.teamMembers.find((m) => m.isPrimary)?.teamId ?? null,
     identities: profileIdentities(row.identities),
@@ -237,6 +242,15 @@ async function savePersonIn(
 
   await checkIdentitiesFree(tx, input.identities, id);
 
+  // A desk sets the office (N9), so an office is only stored for someone without one.
+  const officeId = input.assignedDeskId ? null : input.officeId;
+  let officeZone: string | null = null;
+  if (officeId) {
+    const office = await tx.query.location.findFirst({ where: eq(s.location.id, officeId), columns: { timezone: true } });
+    if (!office) throw new ValidationError("Choose an existing office.", "officeId");
+    officeZone = office.timezone;
+  }
+
   const values = {
     email: input.email,
     givenName: input.givenName,
@@ -247,13 +261,14 @@ async function savePersonIn(
     homeRegion: input.homeRegion,
     homeTimezone: defaultTimeZone(
       input.homeTimezone,
-      input.assignedDeskId ? await deskTimeZone(tx, input.assignedDeskId) : null,
+      input.assignedDeskId ? await deskTimeZone(tx, input.assignedDeskId) : officeZone,
     ),
     startDate: input.startDate,
     endDate: input.endDate,
     active: input.active,
     managerId,
     assignedDeskId: input.assignedDeskId,
+    officeId,
     updatedAt: new Date(),
   };
 

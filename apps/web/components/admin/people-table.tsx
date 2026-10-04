@@ -13,6 +13,7 @@ export interface PeopleTableRow extends AdminPersonRow {
   id: string;
   // The last working day in the admin's date format (N6), or null.
   endDateLabel: string | null;
+  officeName: string | null;
   teams: { id: string; name: string; isPrimary: boolean; inherited: boolean }[];
 }
 
@@ -185,7 +186,9 @@ export function PeopleTable({ people, teams }: Props) {
                     : p.teams.map((t) => <TeamChip key={t.id} team={t} className="mr-1" />)}
                 </td>
                 <td className="py-2 pr-3">{p.managerName ?? "—"}</td>
-                <td className="py-2 pr-3 font-mono text-xs">{p.deskName ?? "—"}</td>
+                <td className="py-2 pr-3 font-mono text-xs">
+                  {p.deskName ?? (p.officeName ? <span className="font-sans">{p.officeName}, no desk</span> : "—")}
+                </td>
                 <td className="py-2 pr-3">
                   {p.active ? "Active" : <span className="text-muted-fg">Inactive</span>}
                   {p.endDateLabel ? (

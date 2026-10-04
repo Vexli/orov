@@ -32,6 +32,7 @@ function person(
   return {
     ...splitFullName(overrides.name),
     identities: {},
+    office: null,
     phone: null,
     preferredName: null,
     email: `${overrides.id}@example.com`,
@@ -186,6 +187,19 @@ describe("labels", () => {
     expect(locationSummary(people[0]!)).toEqual({ region: "Ontario, Canada", badge: "SF-2-003" });
     expect(locationSummary(people[2]!)).toEqual({ region: "India", badge: "Remote" });
     expect(locationText(people[0]!)).toBe("Ontario, Canada SF-2-003");
+  });
+});
+
+describe("someone in an office without a desk (N9)", () => {
+  const kim = person({ id: "p_kim", name: "Kim Lee", office: { slug: "sf", name: "San Francisco" } });
+
+  it("counts for that office in the office filter", () => {
+    const sf = filterDirectory([...people, kim], { ...EMPTY_FILTERS, locationSlug: "sf" }, teams);
+    expect(names(sf)).toContain("p_kim");
+  });
+
+  it("shows the office instead of Remote", () => {
+    expect(locationSummary(kim).badge).toBe("San Francisco");
   });
 });
 

@@ -32,6 +32,7 @@ function person(
   return {
     ...splitFullName(overrides.name),
     identities: {},
+    office: null,
     phone: null,
     preferredName: null,
     email: `${overrides.id}@example.com`,

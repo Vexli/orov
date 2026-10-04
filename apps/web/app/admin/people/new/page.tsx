@@ -1,5 +1,6 @@
 import { PersonFormEditor } from "@/components/admin/person-form";
 import { getDb } from "@officeorg/db/client";
+import { listLocationsWithFloors } from "@officeorg/db/queries/floors";
 import { listPeopleForAdmin } from "@officeorg/db/queries/people";
 import { listDeskOptions, listPickerFloors } from "@officeorg/db/queries/spaces";
 import { listTeamsForAdmin } from "@officeorg/db/queries/teams";
@@ -12,6 +13,11 @@ export default async function NewPersonPage() {
     listPickerFloors(db),
     listTeamsForAdmin(db),
   ]);
+
+  // Offices someone can belong to without a desk (N9).
+  const offices = (await listLocationsWithFloors(getDb()))
+    .filter((l) => l.archivedAt === null)
+    .map((l) => ({ id: l.id, name: l.name }));
 
   return (
     <div>
@@ -32,6 +38,7 @@ export default async function NewPersonPage() {
             active: true,
             managerId: null,
             assignedDeskId: null,
+            officeId: null,
             teamIds: [],
             primaryTeamId: null,
             identities: {},
@@ -40,6 +47,7 @@ export default async function NewPersonPage() {
           desks={desks}
           floors={floors}
           teams={teams.map((t) => ({ id: t.id, name: t.name, parentTeamId: t.parentTeamId, leadId: t.leadId }))}
+          offices={offices}
         />
       </div>
     </div>

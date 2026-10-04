@@ -235,6 +235,8 @@ export const person = pgTable(
     homeTimezone: text("home_timezone"),
     managerId: text("manager_id").references((): AnyPgColumn => person.id),
     assignedDeskId: text("assigned_desk_id").references(() => space.id),
+    // The office of someone without a desk (N9). Null with a desk, whose office it is.
+    officeId: text("office_id").references(() => location.id),
     startDate: date("start_date"),
     // The last working day (N6). Admin-only.
     endDate: date("end_date"),
@@ -490,6 +492,7 @@ export const personRelations = relations(person, ({ one, many }) => ({
   }),
   reports: many(person, { relationName: "manager" }),
   assignedDesk: one(space, { fields: [person.assignedDeskId], references: [space.id] }),
+  office: one(location, { fields: [person.officeId], references: [location.id] }),
   teamMembers: many(teamMember),
   identities: many(personIdentity),
 }));

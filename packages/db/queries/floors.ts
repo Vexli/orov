@@ -700,6 +700,9 @@ export async function deleteLocation(db: Database, actorEmail: string, locationI
     if (!before) throw new ValidationError("This office no longer exists.");
     const floors = await tx.query.floor.findMany({ where: eq(s.floor.locationId, locationId) });
     await refuseIfUsed(tx, floors.map((f) => f.id), before.name);
+    // People can belong to an office without a desk (N9).
+    const member = await tx.query.person.findFirst({ where: eq(s.person.officeId, locationId), columns: { name: true } });
+    if (member) throw new ValidationError(`${member.name} belongs to ${before.name}. Move them first, or archive it instead.`);
     for (const floor of floors) {
       await tx.delete(s.floor).where(eq(s.floor.id, floor.id));
       await recordAudit(tx, actorEmail, { entity: "floor", entityId: floor.id, action: "delete", before: floor, after: null });

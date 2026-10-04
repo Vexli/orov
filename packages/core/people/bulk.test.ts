@@ -16,6 +16,7 @@ const bob: PersonForm = {
   active: true,
   managerId: "p_max",
   assignedDeskId: "sp_1",
+  officeId: null,
   teamIds: ["t_payroll", "t_hr"],
   primaryTeamId: "t_payroll",
   identities: {},

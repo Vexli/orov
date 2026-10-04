@@ -51,6 +51,7 @@ function personInput(overrides: Partial<PersonForm>): PersonForm {
     active: true,
     managerId: null,
     assignedDeskId: null,
+    officeId: null,
     teamIds: [],
     primaryTeamId: null,
     identities: {},
@@ -303,6 +304,19 @@ describe("savePerson", () => {
     const sam = await t.db.query.person.findFirst({ where: eq(s.person.id, "p_sam") });
     expect(sam?.active).toBe(false);
     expect((await listAudit(t.db, { entity: "person" }))[0]).toMatchObject({ action: "update", entityId: "p_sam" });
+  });
+});
+
+describe("an office without a desk (N9)", () => {
+  it("puts someone in an office without a desk, with the office's time zone", async () => {
+    const { id } = await savePerson(t.db, ACTOR, personInput({ officeId: "loc_sf" }));
+    const row = await t.db.query.person.findFirst({ where: eq(s.person.id, id) });
+    expect(row).toMatchObject({ officeId: "loc_sf", homeTimezone: "America/Los_Angeles" });
+  });
+
+  it("doesn't store an office for someone with a desk", async () => {
+    const { id } = await savePerson(t.db, ACTOR, personInput({ officeId: "loc_sf", assignedDeskId: "sp_sf_2_016" }));
+    expect((await t.db.query.person.findFirst({ where: eq(s.person.id, id) }))?.officeId).toBeNull();
   });
 });
 

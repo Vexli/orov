@@ -316,6 +316,7 @@ export function MapView({ map, people, teams }: Props) {
             location={map.locations.find((l) => l.slug === floor.locationSlug)!}
             currentFloor={floor.slug}
             seats={map.seats}
+            withoutDesk={people.filter((p) => !p.desk && p.office?.slug === floor.locationSlug).length}
             onFloor={goTo}
           />
         )}
@@ -464,11 +465,14 @@ function OfficeOverview({
   location,
   currentFloor,
   seats,
+  withoutDesk,
   onFloor,
 }: {
   location: MapLocation;
   currentFloor: string;
   seats: MapSeat[];
+  // People in this office who have no desk of their own (N9).
+  withoutDesk: number;
   onFloor: (loc: string, floor: string | null) => void;
 }) {
   return (
@@ -516,6 +520,11 @@ function OfficeOverview({
           })}
         </tbody>
       </table>
+      {withoutDesk > 0 ? (
+        <p className="mt-3 text-sm">
+          {withoutDesk} {withoutDesk === 1 ? "person works" : "people work"} here without a desk.
+        </p>
+      ) : null}
       <p className="mt-4 text-sm text-muted-fg">Select a desk or a room on the map.</p>
     </aside>
   );
