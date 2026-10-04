@@ -22,7 +22,7 @@ export const EMPTY_FILTERS: DirectoryFilters = {
 export function teamScope(
   teamId: string,
   includeSubteams: boolean,
-  teams: DirectoryTeam[],
+  teams: Pick<DirectoryTeam, "id" | "parentTeamId">[],
 ): Set<string> {
   const scope = new Set([teamId]);
   if (!includeSubteams) return scope;
@@ -39,25 +39,27 @@ export function teamScope(
   return scope;
 }
 
+// Every whitespace-separated token of `q` appears somewhere in the fields, ignoring case.
+// A blank query matches everything.
+export function matchesQuery(fields: readonly (string | null | undefined)[], q: string): boolean {
+  const tokens = q.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  if (tokens.length === 0) return true;
+  const haystack = fields.filter(Boolean).join(" ").toLowerCase();
+  return tokens.every((token) => haystack.includes(token));
+}
+
 export function filterDirectory(
   people: DirectoryPerson[],
   filters: DirectoryFilters,
   teams: DirectoryTeam[],
 ): DirectoryPerson[] {
   const scope = filters.teamId ? teamScope(filters.teamId, filters.includeSubteams, teams) : null;
-  const tokens = filters.q.trim().toLowerCase().split(/\s+/).filter(Boolean);
 
   return people.filter((p) => {
     if (scope && !p.teams.some((t) => scope.has(t.id))) return false;
     if (filters.locationSlug && p.desk?.locationSlug !== filters.locationSlug) return false;
     if (filters.hasDesk && !p.desk) return false;
-    if (tokens.length > 0) {
-      const haystack = [p.name, p.preferredName ?? "", p.email, p.title ?? "", p.desk?.name ?? ""]
-        .join(" ")
-        .toLowerCase();
-      if (!tokens.every((token) => haystack.includes(token))) return false;
-    }
-    return true;
+    return matchesQuery([p.name, p.preferredName, p.email, p.title, p.desk?.name], filters.q);
   });
 }
 
