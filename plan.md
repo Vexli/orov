@@ -764,7 +764,10 @@ Built after #21 step 2, #22 and #29, at the project owner's direction; #30 still
 - [ ] N2 Directory and org chart use the full page width, with the person card floating over the content
 - [ ] N3 Keep the main menu at the top while scrolling
 - [ ] N4 Map and org chart filters in a secondary bar between the main menu and the content
-- [ ] N5 People and teams sorted alphabetically in every dropdown
+- [x] N5 People and teams sorted alphabetically in every dropdown
+    - **Completed:** 2026-10-04
+    - **Branch:** merged from `feature/sorted-dropdowns`
+    - **Notes:** `sortByName` in `core/people/names.ts` (the lists' `Intl.Collator("en")`) applied at render in the org, directory and map team filters, the admin people team filter, the person form's manager select, the team form's parent and lead selects, and the bulk bar's manager/team select. Dropdowns sort by the shown full name (given name first); lists keep sorting by family name (#2). The no-README-change check: the README doesn't describe dropdown order. Tests: 1 unit, 1 Playwright.
 - [ ] N6 Final date (admin view only)
     - **Decided (2026-10-04):** a person's last working day: `person.endDate` beside `startDate`, in the admin form, admin list and people CSV; never sent to viewers.
 - [x] N7 Flags as a standalone region display option
