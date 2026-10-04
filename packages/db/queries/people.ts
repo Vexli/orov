@@ -125,6 +125,7 @@ export async function listPeopleForAdmin(db: Executor) {
     name: row.name,
     email: row.email,
     title: row.title,
+    phone: row.phone,
     active: row.active,
     managerId: row.manager?.id ?? null,
     managerName: row.manager?.name ?? null,

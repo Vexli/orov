@@ -1,5 +1,6 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
-import { resetE2eDatabase } from "../support/database";
+import { getPersonForEdit, savePerson } from "@officeorg/db/queries/people";
+import { resetE2eDatabase, withE2eDb } from "../support/database";
 import { signInAs } from "../support/session";
 
 // Picks an option by its visible text, which may be a regex, and resolves to its value.
@@ -57,6 +58,41 @@ test.describe("admin people and teams", () => {
 
     await page.getByRole("row", { name: /Ama Ito/ }).getByRole("link", { name: "Edit" }).click();
     await expect(page.getByLabel("Home timezone")).toHaveValue("America/Los_Angeles");
+  });
+
+  test("a phone number is stored in international form and dialled from the card", async ({
+    page,
+    context,
+  }) => {
+    await signInAs(context, "jane@example.com");
+    // Max is based in the US, so a number without a country code is read as a US number.
+    await page.goto("/admin/people/p_max");
+    await page.getByLabel("Phone").fill("not a number");
+    await page.getByRole("button", { name: "Save person" }).click();
+    await expect(page.getByText(/Phone isn't a valid number/)).toBeVisible();
+
+    await page.getByLabel("Phone").fill("(415) 555-0177");
+    await page.getByRole("button", { name: "Save person" }).click();
+    await expect(page).toHaveURL(/\/admin\/people$/);
+    await page.goto("/directory?person=p_max");
+    const link = page
+      .getByRole("complementary", { name: "Max Osei details" })
+      .getByRole("link", { name: "+1 415 555 0177" });
+    await expect(link).toHaveAttribute("href", "tel:+14155550177");
+  });
+
+  test("numbers stored before validation are listed for fixing", async ({ page, context }) => {
+    // savePerson trusts its input (the action validates first), so this stores a number the way
+    // one was stored before validation existed.
+    await withE2eDb(async (db) => {
+      const sam = (await getPersonForEdit(db, "p_sam"))!;
+      await savePerson(db, "jane@example.com", { ...sam, phone: "ext 4411" }, "p_sam");
+    });
+    await signInAs(context, "jane@example.com");
+    await page.goto("/admin/people");
+    const report = page.getByRole("region", { name: "Phone numbers to fix" });
+    await expect(report).toContainText("1 phone number isn't in a standard format");
+    await expect(report.getByRole("link", { name: "Sam Ortiz" })).toHaveAttribute("href", "/admin/people/p_sam");
   });
 
   test("a duplicate email is refused next to the field", async ({ page, context }) => {

@@ -95,6 +95,7 @@ export function PersonFormEditor({ id, initial, managers, desks, floors, teams }
         <label className="block text-sm font-medium">
           Phone
           <input className={inputClass} value={values.phone ?? ""} onChange={(e) => set("phone", e.target.value || null)} />
+          {fieldError("phone")}
         </label>
       </div>
 

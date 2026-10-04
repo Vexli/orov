@@ -2,6 +2,7 @@ import { z } from "zod";
 import { regionCodeSchema } from "../regions/iso3166";
 import { optionalTimeZoneSchema } from "../time/zones";
 import { parseIdentity, PROFILE_PROVIDER_IDS, type Identities } from "./identities";
+import { normalizePhone } from "./phone";
 
 // Admin form schemas. Ids come from select boxes, so these check shape only.
 // The database layer checks that the ids exist and that the write keeps the invariants.
@@ -62,6 +63,16 @@ export const personFormSchema = z
   .refine((v) => v.primaryTeamId === null || v.teamIds.includes(v.primaryTeamId), {
     message: "The primary team must be one of the selected teams",
     path: ["primaryTeamId"],
+  })
+  // The phone is read in the home region's country unless it has a country code, so it's checked
+  // once the region is known.
+  .transform((v, ctx) => {
+    const phone = normalizePhone(v.phone, v.homeRegion);
+    if (!phone.ok) {
+      ctx.addIssue({ code: "custom", message: phone.message, path: ["phone"] });
+      return z.NEVER;
+    }
+    return { ...v, phone: phone.value };
   });
 
 export type PersonForm = z.infer<typeof personFormSchema>;

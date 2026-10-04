@@ -84,6 +84,19 @@ describe("parsePeopleCsv", () => {
   });
 });
 
+describe("phone", () => {
+  it("is stored in E.164, read in the home region's country", () => {
+    const csv = `${HEADER}\na@x.com,A,,,US-CA,,(415) 555-0123,,,,,,\nb@x.com,B,,,GB,,020 7946 0018,,,,,,\n`;
+    const { rows } = parsePeopleCsv(csv);
+    expect(rows.map((r) => r.record.phone)).toEqual(["+14155550123", "+442079460018"]);
+  });
+
+  it("is a row error when it isn't a number", () => {
+    const { issues } = parsePeopleCsv(`${HEADER}\na@x.com,A,,,US,,call reception,,,,,,\n`);
+    expect(issues[0]?.message).toMatch(/^phone: Phone isn't a valid number/);
+  });
+});
+
 describe("home_timezone", () => {
   it("is stored canonically, and a made-up zone is a row error", () => {
     const csv = `${HEADER}\na@x.com,A,,,US,america/new_york,,,,,,,\nb@x.com,B,,,US,Mars/Olympus,,,,,,,\n`;

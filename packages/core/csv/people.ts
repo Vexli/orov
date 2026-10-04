@@ -1,6 +1,7 @@
 import { stringify } from "csv-stringify/sync";
 import { z } from "zod";
 import { parseIdentity, PROFILE_PROVIDER_IDS, type Identities } from "../people/identities";
+import { normalizePhone } from "../people/phone";
 import type { PersonRecord } from "../records";
 import { regionCodeSchema } from "../regions/iso3166";
 import { optionalTimeZoneSchema } from "../time/zones";
@@ -114,6 +115,8 @@ export function validatePersonRow(
   if (primary !== null && !teamSlugs.includes(primary)) {
     return { ok: false, message: `primary_team "${primary}" must also appear in teams` };
   }
+  const phone = normalizePhone(v.phone, v.home_region);
+  if (!phone.ok) return { ok: false, message: `phone: ${phone.message}` };
   const identities: Identities = {};
   for (const provider of PROFILE_PROVIDER_IDS) {
     const result = parseIdentity(provider, row.values[provider]);
@@ -127,7 +130,7 @@ export function validatePersonRow(
       name: v.name,
       preferredName: v.preferred_name,
       title: v.title,
-      phone: v.phone,
+      phone: phone.value,
       homeRegion: v.home_region,
       homeTimezone: v.home_timezone,
       startDate: v.start_date,
