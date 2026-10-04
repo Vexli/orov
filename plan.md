@@ -694,7 +694,10 @@ The improvement backlog raised after Phases 1–3. Each item keeps its number fr
 
 **C. People model**
 
-- [ ] #2 Given and family name as separate fields
+- [x] #2 Given and family name as separate fields
+    - **Completed:** 2026-10-04
+    - **Branch:** merged from `feature/given-family-name`
+    - **Notes:** Migration `0006` (hand-written, same snapshot method as `0005`): `given_name` NOT NULL, `family_name` nullable, backfilled by splitting at the last whitespace (whitespace inside a name is normalized to one space; checked on sample rows), and `name` re-created as `GENERATED ALWAYS AS (…) STORED NOT NULL`. **Departs from the note:** `name` stays generated rather than being dropped after a release, so every reader of the full name (search's trigram match, org tree, map, pickers, audit labels) is unchanged and only writers moved to the parts. Dropping it later means switching those reads to `fullName()`. `core/people/names.ts`: `splitFullName` (the migration's rule), `fullName`, `compareByFamilyName` (fixed `Intl.Collator("en")`, so server and browser agree; "Å" sorts with "A"). `personInitials` uses the first given name and the family name. `PersonRecord`/`PersonForm` have `givenName`/`familyName`; `PERSON_FIELDS` diffs them separately. CSV: `given_name`, `family_name`; a file with only `name` is split and the dry run shows a notice (`PlanResult.notices`, rendered as a `note`). Lists sort in JS after loading (`loadDirectory`, `listPeopleForAdmin`). Family-name-first order is out of scope (`fullName` is the place to add it). Tests: 18 unit, 4 DB, 1 Playwright; 3 specs updated for the form fields.
 - [ ] #11 Default manager from the primary team's lead
 - [ ] #23 Auto-add parent-team memberships
 
