@@ -761,9 +761,16 @@ Built after #21 step 2, #22 and #29, at the project owner's direction; #30 still
 
 - [ ] N1 Allow dual managers
     - **Decided (2026-10-04):** two **equal** managers, not primary + dotted line. The reporting structure stops being a tree: needs a `person_manager(personId, managerId)` table (or a second column), cycle checks over both edges, an org chart that can draw a person under two managers (d3-org-chart needs a single parent, so likely a duplicated node or a different layout), and decisions for #11's default-manager rule, the CSV (`manager_email` holding two emails), bulk edit and the person card. Needs a design pass before building.
-- [ ] N2 Directory and org chart use the full page width, with the person card floating over the content
-- [ ] N3 Keep the main menu at the top while scrolling
-- [ ] N4 Map and org chart filters in a secondary bar between the main menu and the content
+- [x] N2 Directory and org chart use the full page width, with the person card floating over the content
+    - **Completed:** 2026-10-04
+    - **Branch:** merged from `feature/full-width-layout` (with N3 and N4)
+    - **Notes:** The `(app)` layout's `main` dropped `max-w-7xl` (Settings and Profile keep their own `max-w-xl`). `FloatingPanel` in `components/view-bar.tsx`: fixed at the right on `lg` (below the bar with `belowBar`), static below the content on narrow screens; the view pads its content with `FLOATING_PANEL_GUTTER` while a person is selected, so the card never covers a row or control. The "Select someone to see their card" placeholder is gone. **Interpretation:** the map keeps its right column, since it shows the office overview when nothing is selected. Checked with desktop screenshots.
+- [x] N3 Keep the main menu at the top while scrolling
+    - **Completed:** 2026-10-04 (`feature/full-width-layout`)
+    - **Notes:** `sticky top-0 z-30 bg-bg` header; one `lg:h-14` row on wide screens, which the bar and panel offsets rely on. On narrow screens it can wrap, and the bar below it isn't sticky.
+- [x] N4 Map and org chart filters in a secondary bar between the main menu and the content
+    - **Completed:** 2026-10-04 (`feature/full-width-layout`)
+    - **Notes:** `ViewBar` (`role="region"`, named "Map filters" / "Org chart filters"), full width under the menu, `lg:sticky lg:top-14`. Map: floors, areas, team highlight with its counts, Map/List. Org: tree, Chart/List, team highlight. The directory's filters stay in its header (the note named the map and org chart only).
 - [x] N5 People and teams sorted alphabetically in every dropdown
     - **Completed:** 2026-10-04
     - **Branch:** merged from `feature/sorted-dropdowns`
