@@ -145,24 +145,25 @@ test.describe("org chart focus and highlight", () => {
     );
   });
 
-  test("a highlighted team lights up its members, with sub-teams only when asked", async ({
+  test("a highlighted team lights up its members, with sub-teams unless they're turned off", async ({
     page,
   }) => {
     await page.goto("/org");
     await page.getByLabel("Highlight team").selectOption({ label: "HR" });
     await expect(page).toHaveURL(/team=t_hr/);
     await expect(page.getByRole("status", { name: "Highlighted team" })).toHaveText(
-      "HR: 3 people",
-    );
-    const lit = page.locator("[data-org-chart] [data-highlighted]");
-    await expect(lit).toHaveCount(3);
-    await expect(node(page, "p_priya")).not.toHaveAttribute("data-highlighted", "");
-
-    await page.getByLabel("Include sub-teams").check();
-    await expect(page.getByRole("status", { name: "Highlighted team" })).toHaveText(
       "HR and sub-teams: 5 people",
     );
+    const lit = page.locator("[data-org-chart] [data-highlighted]");
     await expect(lit).toHaveCount(5);
+
+    await page.getByLabel("Include sub-teams").uncheck();
+    await expect(page).toHaveURL(/sub=false/);
+    await expect(page.getByRole("status", { name: "Highlighted team" })).toHaveText(
+      "HR: 3 people",
+    );
+    await expect(lit).toHaveCount(3);
+    await expect(node(page, "p_priya")).not.toHaveAttribute("data-highlighted", "");
   });
 
   test("in the team tree, a team, its sub-teams and their members light up, and clicking a team highlights it", async ({

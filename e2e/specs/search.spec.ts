@@ -28,21 +28,22 @@ test.describe("view tabs and search", () => {
   test("the tabs carry the selected person and team, and leave view-only params behind", async ({
     page,
   }) => {
-    await page.goto("/map?person=p_bob&team=t_hr&sub=true&view=list");
+    // sub=false is carried. (Sub-teams are the default, so sub=true is left out of links.)
+    await page.goto("/map?person=p_bob&team=t_hr&sub=false&view=list");
     await expect(tab(page, "Org chart")).toHaveAttribute(
       "href",
-      "/org?person=p_bob&team=t_hr&sub=true",
+      "/org?person=p_bob&team=t_hr&sub=false",
     );
     await expect(tab(page, "Directory")).toHaveAttribute(
       "href",
-      "/directory?person=p_bob&team=t_hr&sub=true",
+      "/directory?person=p_bob&team=t_hr&sub=false",
     );
 
     // A selection made in the page updates the tabs without a reload.
     await page.getByRole("button", { name: "SF-2-003" }).click();
     await expect(tab(page, "Org chart")).toHaveAttribute(
       "href",
-      "/org?person=p_jane&team=t_hr&sub=true",
+      "/org?person=p_jane&team=t_hr&sub=false",
     );
   });
 
@@ -68,7 +69,7 @@ test.describe("view tabs and search", () => {
     await expect(page).toHaveURL(/tree=team/);
     await expect(page).toHaveURL(/team=t_payroll/);
     await expect(page.getByRole("status", { name: "Highlighted team" })).toHaveText(
-      "Payroll: 1 person",
+      "Payroll and sub-teams: 1 person",
     );
   });
 

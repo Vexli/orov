@@ -264,13 +264,13 @@ Anything without one of these prefixes is decoration.
 ### URL schema (the only selection state)
 
 ```
-/{directory|map|org}?loc=sf&floor=2&area=south-wing&person=p_123&team=t_9&sub=1&multi=p_1,p_2
+/{directory|map|org}?loc=sf&floor=2&area=south-wing&person=p_123&team=t_9&sub=false&multi=p_1,p_2
 ```
 
 | Param                  | Effect                                                                                                                       |
 | ---------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
 | `person`               | The focused person. Every view centers on them.                                                                              |
-| `team`                 | The highlighted team. `sub=1` includes descendant teams (U2).                                                                |
+| `team`                 | The highlighted team, with its descendant teams (U2). `sub=false` limits it to the team itself.                                                                |
 | `multi`                | A multi-select set for group chat (U7). Shown in a selection tray in the shell.                                              |
 | `loc`, `floor`, `area` | Only the map uses these. When a `person` is set and their desk is elsewhere, the map changes these params to match the desk. |
 

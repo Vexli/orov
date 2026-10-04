@@ -13,7 +13,7 @@ export interface DirectoryFilters {
 export const EMPTY_FILTERS: DirectoryFilters = {
   q: "",
   teamId: null,
-  includeSubteams: false,
+  includeSubteams: true,
   locationSlug: null,
   hasDesk: false,
 };
