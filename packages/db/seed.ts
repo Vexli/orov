@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { eq } from "drizzle-orm";
 import { sanitizeSvg } from "@officeorg/core/svg/sanitize";
 import { createDb, type Database } from "./client";
+import { syncInheritedMemberships } from "./queries/memberships";
 import { resetDatabase } from "./reset";
 import * as s from "./schema";
 
@@ -151,6 +152,10 @@ export async function seedDemoData(db: Database): Promise<void> {
       { personId: "p_priya", teamId: "t_recruiting", isPrimary: true },
       { personId: "p_sam", teamId: "t_recruiting", isPrimary: true },
     ]);
+
+    // Priya and Sam (Recruiting) and Bob (Payroll) are inherited members of HR; Bob is also an
+    // explicit one.
+    await syncInheritedMemberships(tx);
 
     await tx.insert(s.personIdentity).values([
       { personId: "p_bob", provider: "github", value: "bob-lindqvist" },

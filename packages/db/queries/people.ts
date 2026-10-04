@@ -12,6 +12,7 @@ import {
 import type { Database, Executor } from "../client";
 import * as s from "../schema";
 import { recordAudit } from "./audit";
+import { syncInheritedMemberships } from "./memberships";
 import { ValidationError } from "./errors";
 
 // True if walking up the manager chain from `personId` returns to `personId`.
@@ -74,7 +75,9 @@ function toPersonRecord(row: PersonRow): PersonRecord {
     active: row.active,
     managerEmail: row.manager?.email ?? null,
     deskCode: row.assignedDesk?.name ?? null,
-    teamSlugs: row.teamMembers.map((m) => m.team.slug).sort(),
+    // Explicit memberships only: inherited ones follow from these, so the spreadsheet holds what
+    // was chosen and a re-import is stable.
+    teamSlugs: row.teamMembers.filter((m) => m.source === "explicit").map((m) => m.team.slug).sort(),
     primaryTeamSlug: row.teamMembers.find((m) => m.isPrimary)?.team.slug ?? null,
     identities: profileIdentities(row.identities),
   };
@@ -134,7 +137,13 @@ export async function listPeopleForAdmin(db: Executor) {
     deskId: row.assignedDesk?.id ?? null,
     deskName: row.assignedDesk?.name ?? null,
     teams: row.teamMembers
-      .map((m) => ({ id: m.teamId, slug: m.team.slug, name: m.team.name, isPrimary: m.isPrimary }))
+      .map((m) => ({
+        id: m.teamId,
+        slug: m.team.slug,
+        name: m.team.name,
+        isPrimary: m.isPrimary,
+        inherited: m.source === "inherited",
+      }))
       .sort((a, b) => Number(b.isPrimary) - Number(a.isPrimary) || a.name.localeCompare(b.name)),
   }));
 }
@@ -159,7 +168,7 @@ export async function getPersonForEdit(db: Executor, id: string): Promise<Person
     active: row.active,
     managerId: row.managerId,
     assignedDeskId: row.assignedDeskId,
-    teamIds: row.teamMembers.map((m) => m.teamId),
+    teamIds: row.teamMembers.filter((m) => m.source === "explicit").map((m) => m.teamId),
     primaryTeamId: row.teamMembers.find((m) => m.isPrimary)?.teamId ?? null,
     identities: profileIdentities(row.identities),
   };
@@ -280,6 +289,7 @@ export async function savePerson(
     }
 
     await writeProfileIdentities(tx, personId, input.identities);
+    await syncInheritedMemberships(tx);
 
     const after = await loadPersonRecord(tx, personId);
     await recordAudit(tx, actorEmail, {

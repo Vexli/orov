@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { DirectoryPerson } from "@officeorg/core/directory/model";
 import { displayName, personInitials } from "@officeorg/core/directory/filter";
 import { identityLinks } from "@officeorg/core/people/identities";
+import { TeamChip } from "../team-chip";
 import { LocationLabel } from "./location-label";
 
 interface Props {
@@ -82,14 +83,8 @@ export function PersonCard({ person, onSelectPerson, onClose }: Props) {
           ) : (
             <ul className="flex flex-wrap gap-1.5">
               {person.teams.map((t) => (
-                <li
-                  key={t.id}
-                  className={`rounded px-2 py-0.5 text-xs ${
-                    t.isPrimary ? "bg-primary font-medium text-primary-fg" : "bg-muted text-fg"
-                  }`}
-                >
-                  {t.name}
-                  {t.isPrimary ? " (primary)" : ""}
+                <li key={t.id}>
+                  <TeamChip team={t} labelPrimary />
                 </li>
               ))}
             </ul>

@@ -1,4 +1,4 @@
-import { displayName, teamScope } from "../directory/filter";
+import { displayName, explicitTeams, teamScope } from "../directory/filter";
 import type { DirectoryPerson, DirectoryTeam } from "../directory/model";
 
 // The org chart's two trees (plan.md §7): who reports to whom, and which teams sit inside which.
@@ -58,7 +58,9 @@ export function teamTree(teams: DirectoryTeam[], people: DirectoryPerson[]): Org
   const sortedPeople = sortByLabel(people);
   const nodes: OrgNode[] = [];
   for (const team of [...teams].sort((a, b) => a.name.localeCompare(b.name))) {
-    const members = sortedPeople.filter((p) => p.teams.some((t) => t.id === team.id));
+    // Explicit memberships only: an inherited one would list the person again under every team
+    // above their own.
+    const members = sortedPeople.filter((p) => explicitTeams(p).some((t) => t.id === team.id));
     nodes.push({
       id: team.id,
       parentId: parents.get(team.id) ?? null,
@@ -98,7 +100,8 @@ export function personNodeId(
   person: Pick<DirectoryPerson, "id" | "teams">,
 ): string | null {
   if (kind === "reporting") return person.id;
-  const team = person.teams.find((t) => t.isPrimary) ?? person.teams[0];
+  const teams = explicitTeams(person);
+  const team = teams.find((t) => t.isPrimary) ?? teams[0];
   return team ? memberNodeId(team.id, person.id) : null;
 }
 
@@ -116,11 +119,11 @@ export function teamHighlightIds(
   if (kind === "team") {
     const lit = new Set([...scope].filter((id) => teams.some((t) => t.id === id)));
     for (const p of people) {
-      for (const t of p.teams) if (lit.has(t.id)) lit.add(memberNodeId(t.id, p.id));
+      for (const t of explicitTeams(p)) if (lit.has(t.id)) lit.add(memberNodeId(t.id, p.id));
     }
     return lit;
   }
-  return new Set(people.filter((p) => p.teams.some((t) => scope.has(t.id))).map((p) => p.id));
+  return new Set(people.filter((p) => explicitTeams(p).some((t) => scope.has(t.id))).map((p) => p.id));
 }
 
 // The nodes that start out visible: the root and the two levels below it.

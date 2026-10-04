@@ -171,8 +171,9 @@ person        (id, email UNIQUE, givenName, familyName?, name (generated: "given
                startDate?, active bool, createdAt, updatedAt)
 team          (id, slug UNIQUE, name, parentTeamId → team?, leadId → person?,
                chatChannelId?, color?)
-team_member   (personId, teamId, isPrimary bool)   PK(personId, teamId)
-                partial UNIQUE(personId) WHERE isPrimary
+team_member   (personId, teamId, isPrimary bool, source: explicit | inherited)
+                PK(personId, teamId), partial UNIQUE(personId) WHERE isPrimary
+                inherited: derived from an explicit membership of a sub-team (Phase 7 #23)
 person_identity (personId → person ON DELETE CASCADE, provider, value)
                 PK(personId, provider), UNIQUE(provider, value)
                 provider: github | gitlab | linkedin | website (profile, admin-edited)

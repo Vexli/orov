@@ -111,6 +111,29 @@ test.describe("admin people and teams", () => {
     await expect(page.getByRole("row", { name: /Ama Ito/ })).toContainText("Jane Park");
   });
 
+  test("joining a sub-team makes someone a member of the teams above it", async ({ page, context }) => {
+    await signInAs(context, "jane@example.com");
+    // Priya is in Recruiting, so she's in HR through it.
+    await page.goto("/directory?person=p_priya");
+    const card = page.getByRole("complementary", { name: "Priya Raman details" });
+    await expect(card.getByText("HR (through a sub-team)")).toBeAttached();
+
+    await page.goto("/admin/people/p_priya");
+    const hr = page.getByLabel("Member of HR", { exact: true });
+    await expect(hr).toBeChecked();
+    await expect(hr).toBeDisabled();
+    await expect(page.getByText("through Recruiting")).toBeVisible();
+
+    // Moving her to Payroll keeps HR (through Payroll); taking her out of every team drops it.
+    await page.getByLabel("Member of Recruiting", { exact: true }).uncheck();
+    await expect(hr).not.toBeChecked();
+    await page.getByLabel("Member of Payroll", { exact: true }).check();
+    await expect(page.getByText("through Payroll")).toBeVisible();
+    await page.getByRole("button", { name: "Save person" }).click();
+    await expect(page).toHaveURL(/\/admin\/people$/);
+    await expect(page.getByRole("row", { name: /Priya Raman/ })).toContainText("HR (through a sub-team)");
+  });
+
   test("a duplicate email is refused next to the field", async ({ page, context }) => {
     await signInAs(context, "jane@example.com");
     await page.goto("/admin/people/new");

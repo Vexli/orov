@@ -50,6 +50,13 @@
       "when": 1791107532374,
       "tag": "0006_given_family_name",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1791109083285,
+      "tag": "0007_inherited_team_memberships",
+      "breakpoints": true
     }
   ]
 }

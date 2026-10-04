@@ -63,7 +63,11 @@ describe("people import", () => {
     const ama = await personByEmail("ama@example.com");
     expect(ama?.manager?.email).toBe("lee@example.com");
     expect(ama?.assignedDesk?.name).toBe("SF-2-016");
-    expect(ama?.teamMembers.map((m) => m.team.slug)).toEqual(["recruiting"]);
+    expect(ama?.teamMembers.filter((m) => m.source === "explicit").map((m) => m.team.slug)).toEqual([
+      "recruiting",
+    ]);
+    // Recruiting is under HR, so she's an inherited member of HR too.
+    expect(ama?.teamMembers.find((m) => m.team.slug === "hr")?.source).toBe("inherited");
 
     const lee = await personByEmail("lee@example.com");
     expect(lee?.manager?.email).toBe("jane@example.com");

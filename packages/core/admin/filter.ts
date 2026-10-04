@@ -1,4 +1,4 @@
-import { matchesQuery, teamScope } from "../directory/filter";
+import { explicitTeams, matchesQuery, teamScope } from "../directory/filter";
 
 // Filters for the admin people and teams lists. Pure, so they run in the browser on the rows the
 // server sent, and in tests.
@@ -17,7 +17,7 @@ export interface AdminPersonRow {
   managerName: string | null;
   deskName: string | null;
   active: boolean;
-  teams: { id: string }[];
+  teams: { id: string; inherited?: boolean }[];
 }
 
 export interface AdminPeopleFilters {
@@ -48,7 +48,7 @@ export function filterAdminPeople<R extends AdminPersonRow>(
     if (filters.status === "inactive" && p.active) return false;
     if (filters.desk === "with" && !p.deskName) return false;
     if (filters.desk === "without" && p.deskName) return false;
-    if (scope && !p.teams.some((t) => scope.has(t.id))) return false;
+    if (scope && !explicitTeams(p).some((t) => scope.has(t.id))) return false;
     return matchesQuery([p.name, p.email, p.title, p.managerName, p.deskName], filters.q);
   });
 }

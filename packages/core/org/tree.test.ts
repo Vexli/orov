@@ -23,7 +23,7 @@ const teams: DirectoryTeam[] = [
 
 const team = (id: string, isPrimary = true) => {
   const t = teams.find((x) => x.id === id)!;
-  return { id: t.id, name: t.name, slug: t.slug, isPrimary };
+  return { id: t.id, name: t.name, slug: t.slug, isPrimary, inherited: false };
 };
 
 function person(
@@ -154,6 +154,16 @@ describe("teamTree", () => {
 
   it("is empty without teams", () => {
     expect(teamTree([], people)).toEqual([]);
+  });
+});
+
+describe("teamTree with inherited memberships", () => {
+  it("lists a person only under the teams they were put in", () => {
+    const inHr = { id: "t_hr", name: "HR", slug: "hr", isPrimary: false, inherited: true };
+    const priyaPlusHr = { ...priya, teams: [...priya.teams, inHr] };
+    const ids = teamTree(teams, [jane, priyaPlusHr]).map((n) => n.id);
+    expect(ids).toContain(memberNodeId("t_recruiting", "p_priya"));
+    expect(ids).not.toContain(memberNodeId("t_hr", "p_priya"));
   });
 });
 

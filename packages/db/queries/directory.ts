@@ -73,7 +73,13 @@ export async function loadDirectory(
         }
       : null,
     teams: row.teamMembers
-      .map((m) => ({ id: m.team.id, name: m.team.name, slug: m.team.slug, isPrimary: m.isPrimary }))
+      .map((m) => ({
+        id: m.team.id,
+        name: m.team.name,
+        slug: m.team.slug,
+        isPrimary: m.isPrimary,
+        inherited: m.source === "inherited",
+      }))
       .sort((a, b) => Number(b.isPrimary) - Number(a.isPrimary) || a.name.localeCompare(b.name)),
     identities: profileIdentities(row.identities),
   }));

@@ -16,6 +16,7 @@ import {
 import type { Database, Executor } from "../client";
 import * as s from "../schema";
 import { recordAudit } from "./audit";
+import { syncInheritedMemberships } from "./memberships";
 import { hasManagerCycle, loadPersonRecords, writeProfileIdentities } from "./people";
 import { hasTeamCycle, loadTeamRecords } from "./teams";
 
@@ -210,6 +211,8 @@ export async function applyPeopleCsv(
         .where(eq(s.person.id, personId));
     }
 
+    await syncInheritedMemberships(tx);
+
     for (const row of changed) {
       const personId = idByEmail.get(row.record!.email)!;
       if (await hasManagerCycle(tx, personId)) {
@@ -291,6 +294,9 @@ export async function applyTeamsCsv(
         .set({ parentTeamId: rec.parentSlug ? (idBySlug.get(rec.parentSlug) ?? null) : null })
         .where(eq(s.team.slug, rec.slug));
     }
+
+    // A team that moved takes its members' inherited memberships with it.
+    await syncInheritedMemberships(tx);
 
     for (const row of changed) {
       const teamId = idBySlug.get(row.record!.slug)!;

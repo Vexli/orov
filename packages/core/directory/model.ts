@@ -37,7 +37,9 @@ export interface DirectoryPerson {
     locationSlug: string;
     locationRegion: string;
   } | null;
-  teams: { id: string; name: string; slug: string; isPrimary: boolean }[];
+  // Every membership. `inherited` ones follow from a membership of a sub-team (#23); the views
+  // match on the explicit ones (explicitTeams), so a team means the same with or without them.
+  teams: { id: string; name: string; slug: string; isPrimary: boolean; inherited: boolean }[];
   // Profile accounts by provider id. Links are built with identityLinks, never from the value.
   identities: Identities;
 }

@@ -59,6 +59,9 @@ export const presenceDateScope = pgEnum("presence_date_scope", [
   "parse",
 ]);
 
+// Whether a membership was chosen, or follows from one in a sub-team (#23).
+export const membershipSource = pgEnum("membership_source", ["explicit", "inherited"]);
+
 export const roomState = pgEnum("room_state", ["free", "busy", "soon"]);
 
 export const appRole = pgEnum("app_role", ["viewer", "admin"]);
@@ -279,6 +282,9 @@ export const teamMember = pgTable(
       .notNull()
       .references(() => team.id, { onDelete: "cascade" }),
     isPrimary: boolean("is_primary").notNull().default(false),
+    // A member of a sub-team is also an "inherited" member of every team above it. Those rows
+    // are derived (syncInheritedMemberships) and never primary.
+    source: membershipSource("source").notNull().default("explicit"),
   },
   (t) => [
     primaryKey({ columns: [t.personId, t.teamId] }),
