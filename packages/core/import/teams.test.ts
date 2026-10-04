@@ -38,4 +38,11 @@ describe("planTeamsImport", () => {
     expect(plan.rows[0]?.action).toBe("update");
     expect(plan.rows[0]?.changes).toEqual([{ field: "name", before: "HR", after: "People" }]);
   });
+
+  it("flags a team whose parent is on a skipped line", () => {
+    const parsed = parseTeamsCsv(`${HEADER}\nfin,Finance,,,\npay,Payroll,fin,,\n`);
+    const plan = planTeamsImport(parsed.rows, parsed.issues, new Map(), new Set([2]));
+    expect(plan.rows.map((r) => r.action)).toEqual(["skipped", "error"]);
+    expect(plan.rows[1]?.message).toBe('parent team "fin" is on line 2, which is skipped');
+  });
 });

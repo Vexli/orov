@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { PersonRecord } from "../records";
 import { parsePeopleCsv } from "../csv/people";
 import { planPeopleImport, type PeopleSnapshot } from "./people";
+import { planSkippingErrors } from "./plan";
 
 const HEADER = "email,name,preferred_name,title,home_region,home_timezone,phone,start_date,active,manager_email,desk,teams,primary_team";
 
@@ -37,10 +38,10 @@ function snapshot(people: PersonRecord[] = [], extra: Partial<PeopleSnapshot> = 
   };
 }
 
-function run(csvBody: string, snap: PeopleSnapshot) {
+function run(csvBody: string, snap: PeopleSnapshot, skip: number[] = []) {
   const parsed = parsePeopleCsv(`${HEADER}\n${csvBody}`);
   expect(parsed.fatal).toBeUndefined();
-  return planPeopleImport(parsed.rows, parsed.issues, snap);
+  return planPeopleImport(parsed.rows, parsed.issues, snap, new Set(skip));
 }
 
 describe("planPeopleImport", () => {
@@ -190,6 +191,69 @@ describe("planPeopleImport", () => {
     it("leaves the zone blank without a desk", () => {
       const plan = run("new@x.com,New,,,US,,,,,,,,\n", snapshot());
       expect(plan.rows[0]?.record?.homeTimezone).toBeNull();
+    });
+  });
+
+  describe("skipping rows", () => {
+    it("leaves a skipped row out and lets the rest apply", () => {
+      // Line 3 is bad; skipping it makes the file applicable.
+      const body = "a@x.com,A,,,US,,,,,,,,\nbad-email,Bad,,,US,,,,,,,,\nb@x.com,B,,,US,,,,,,,,\n";
+      expect(run(body, snapshot()).canApply).toBe(false);
+      const plan = run(body, snapshot(), [3]);
+      expect(plan.rows.map((r) => r.action)).toEqual(["create", "skipped", "create"]);
+      expect(plan.counts).toMatchObject({ create: 2, skipped: 1, error: 0 });
+      expect(plan.canApply).toBe(true);
+    });
+
+    it.each([
+      [
+        "a manager defined on a skipped line",
+        "lee@x.com,Lee,,,US,,,,,,,,\nama@x.com,Ama,,,US,,,,,lee@x.com,,,\n",
+        "manager lee@x.com is on line 2, which is skipped",
+      ],
+      [
+        "the other half of a desk swap",
+        // Bob holds SF-2-014 and his row would move him to SF-2-015; Max's row takes SF-2-014.
+        "bob@x.com,bob,,,US,,,,,,SF-2-015,,\nmax@x.com,max,,,US,,,,,,SF-2-014,,\n",
+        'desk "SF-2-014" is still assigned to bob@x.com, whose line 2 is skipped',
+      ],
+    ])("flags a row that depends on %s", (_, body, message) => {
+      const bob = person({ email: "bob@x.com", deskCode: "SF-2-014" });
+      const max = person({ email: "max@x.com" });
+      const plan = run(body, snapshot([bob, max]), [2]);
+      expect(plan.rows[1]).toMatchObject({ action: "error", message });
+      expect(plan.canApply).toBe(false);
+    });
+
+    it("can skip a row whose own parse failed", () => {
+      const plan = run("not-an-email,X,,,US,,,,,,,,\na@x.com,A,,,US,,,,,,,,\n", snapshot(), [2]);
+      expect(plan.rows[0]).toMatchObject({ action: "skipped", message: "email is not a valid address" });
+      expect(plan.canApply).toBe(true);
+    });
+
+    it("can't apply when every row is skipped", () => {
+      expect(run("a@x.com,A,,,US,,,,,,,,\n", snapshot(), [2]).canApply).toBe(false);
+    });
+  });
+
+  describe("planSkippingErrors", () => {
+    it("skips error rows, then the rows that depended on them, and says why", () => {
+      // Lee's row is bad (unknown team). Ama's manager is Lee, so she goes too; Kim is fine.
+      const body = [
+        "lee@x.com,Lee,,,US,,,,,,,nope,",
+        "ama@x.com,Ama,,,US,,,,,lee@x.com,,,",
+        "kim@x.com,Kim,,,US,,,,,,,,",
+        "",
+      ].join("\n");
+      const parsed = parsePeopleCsv(`${HEADER}\n${body}`);
+      const { plan, skip } = planSkippingErrors((s) => planPeopleImport(parsed.rows, parsed.issues, snapshot(), s));
+      expect([...skip].sort()).toEqual([2, 3]);
+      expect(plan.rows.map((r) => [r.action, r.message])).toEqual([
+        ["skipped", 'unknown team "nope" (import teams first)'],
+        ["skipped", "manager lee@x.com is on line 2, which is skipped"],
+        ["create", undefined],
+      ]);
+      expect(plan.canApply).toBe(true);
     });
   });
 });

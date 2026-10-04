@@ -4,6 +4,7 @@ import {
   parseTeamsCsv,
   peopleToCsv,
   planPeopleImport,
+  planSkippingErrors,
   planTeamsImport,
   teamsToCsv,
   type DeskInfo,
@@ -35,12 +36,42 @@ function rejectionFor(plan: ImportPlan<unknown>): ImportRejectedError {
   return new ImportRejectedError(`The file has errors, so nothing was imported.${reason}`, plan);
 }
 
-export type PlanResult<R> = { ok: true; plan: ImportPlan<R> } | { ok: false; fatal: string };
+// `skip` lists file line numbers the admin left out. `skipErrors` also skips every row with an
+// error, and then the rows that depended on them; the result's `skip` is the full set, which the
+// apply step must be given so it writes what the dry run showed.
+export interface PlanOptions {
+  skip?: readonly number[];
+  skipErrors?: boolean;
+}
+
+export type PlanResult<R> =
+  | { ok: true; plan: ImportPlan<R>; skip: number[] }
+  | { ok: false; fatal: string };
 
 export interface ApplyResult {
   created: number;
   updated: number;
   unchanged: number;
+  skipped: number;
+}
+
+function planWithSkips<R>(
+  plan: (skip: ReadonlySet<number>) => ImportPlan<R>,
+  options: PlanOptions,
+): { ok: true; plan: ImportPlan<R>; skip: number[] } {
+  const initial = new Set(options.skip ?? []);
+  if (!options.skipErrors) return { ok: true, plan: plan(initial), skip: [...initial].sort((a, b) => a - b) };
+  const result = planSkippingErrors(plan, initial);
+  return { ok: true, plan: result.plan, skip: [...result.skip].sort((a, b) => a - b) };
+}
+
+function applyCounts(plan: ImportPlan<unknown>): ApplyResult {
+  return {
+    created: plan.counts.create,
+    updated: plan.counts.update,
+    unchanged: plan.counts.unchanged,
+    skipped: plan.counts.skipped,
+  };
 }
 
 async function loadPeopleSnapshot(db: Executor): Promise<PeopleSnapshot> {
@@ -73,11 +104,15 @@ async function loadPeopleSnapshot(db: Executor): Promise<PeopleSnapshot> {
   };
 }
 
-export async function planPeopleCsv(db: Executor, text: string): Promise<PlanResult<PersonRecord>> {
+export async function planPeopleCsv(
+  db: Executor,
+  text: string,
+  options: PlanOptions = {},
+): Promise<PlanResult<PersonRecord>> {
   const parsed = parsePeopleCsv(text);
   if (parsed.fatal) return { ok: false, fatal: parsed.fatal };
   const snapshot = await loadPeopleSnapshot(db);
-  return { ok: true, plan: planPeopleImport(parsed.rows, parsed.issues, snapshot) };
+  return planWithSkips((skip) => planPeopleImport(parsed.rows, parsed.issues, snapshot, skip), options);
 }
 
 // Re-plans inside the transaction, so the result reflects the database at write time rather than
@@ -87,13 +122,15 @@ export async function planPeopleCsv(db: Executor, text: string): Promise<PlanRes
 //      It also clears their profile accounts, so two people can swap one the same way.
 //   2. Set managers, desks, team memberships and accounts, now that every referenced person exists.
 //   3. Check each changed person for a manager cycle.
+// Skipped lines write nothing.
 export async function applyPeopleCsv(
   db: Database,
   actorEmail: string,
   text: string,
+  skip: readonly number[] = [],
 ): Promise<ApplyResult> {
   return db.transaction(async (tx) => {
-    const planned = await planPeopleCsv(tx, text);
+    const planned = await planPeopleCsv(tx, text, { skip });
     if (!planned.ok) throw new ImportRejectedError(planned.fatal);
     if (!planned.plan.canApply) throw rejectionFor(planned.plan);
     const snapshot = await loadPeopleSnapshot(tx);
@@ -170,11 +207,7 @@ export async function applyPeopleCsv(
       });
     }
 
-    return {
-      created: planned.plan.counts.create,
-      updated: planned.plan.counts.update,
-      unchanged: planned.plan.counts.unchanged,
-    };
+    return applyCounts(planned.plan);
   });
 }
 
@@ -192,18 +225,27 @@ function personValues(rec: PersonRecord) {
   };
 }
 
-export async function planTeamsCsv(db: Executor, text: string): Promise<PlanResult<TeamRecord>> {
+export async function planTeamsCsv(
+  db: Executor,
+  text: string,
+  options: PlanOptions = {},
+): Promise<PlanResult<TeamRecord>> {
   const parsed = parseTeamsCsv(text);
   if (parsed.fatal) return { ok: false, fatal: parsed.fatal };
   const existing = new Map((await loadTeamRecords(db)).map((t) => [t.slug, t]));
-  return { ok: true, plan: planTeamsImport(parsed.rows, parsed.issues, existing) };
+  return planWithSkips((skip) => planTeamsImport(parsed.rows, parsed.issues, existing, skip), options);
 }
 
 // Same three-pass shape as applyPeopleCsv. Team leads are not part of the spreadsheet, so an
 // import never changes them.
-export async function applyTeamsCsv(db: Database, actorEmail: string, text: string): Promise<ApplyResult> {
+export async function applyTeamsCsv(
+  db: Database,
+  actorEmail: string,
+  text: string,
+  skip: readonly number[] = [],
+): Promise<ApplyResult> {
   return db.transaction(async (tx) => {
-    const planned = await planTeamsCsv(tx, text);
+    const planned = await planTeamsCsv(tx, text, { skip });
     if (!planned.ok) throw new ImportRejectedError(planned.fatal);
     if (!planned.plan.canApply) throw rejectionFor(planned.plan);
     const existing = new Map((await loadTeamRecords(tx)).map((t) => [t.slug, t]));
@@ -246,11 +288,7 @@ export async function applyTeamsCsv(db: Database, actorEmail: string, text: stri
       });
     }
 
-    return {
-      created: planned.plan.counts.create,
-      updated: planned.plan.counts.update,
-      unchanged: planned.plan.counts.unchanged,
-    };
+    return applyCounts(planned.plan);
   });
 }
 
