@@ -29,7 +29,9 @@ Anything without one of these prefixes is **decoration**: walls, labels, furnitu
 
 Rules:
 
-- **Slugs** are lowercase letters, digits and single hyphens: `south-wing`, `huddle-a`.
+- **Slugs** are lowercase letters, digits and single hyphens: `south-wing`, `huddle-a`. They
+  stay ASCII on purpose, because they end up in SVG ids, CSS selectors and URLs. People's and
+  teams' names have no such limit; only these ids do.
 - **`<floor>` in a desk id must be the floor's slug** in OfficeOrg (usually its number), so
   `desk-2-…` only goes on floor 2. The upload is rejected otherwise, because desk codes have to
   be unique across every office.

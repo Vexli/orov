@@ -67,13 +67,16 @@ export function displayName(person: Pick<DirectoryPerson, "name" | "preferredNam
   return person.preferredName ?? person.name;
 }
 
-// Up to two letters for an avatar: "Bob Lindqvist" → "BL".
+const graphemes = new Intl.Segmenter(undefined, { granularity: "grapheme" });
+
+// Up to two letters for an avatar: "Bob Lindqvist" → "BL". A letter is a whole grapheme, so a
+// decomposed accent ("E" + U+0301) or a character outside the BMP isn't cut in half.
 export function initials(name: string): string {
   return name
     .split(/\s+/)
     .filter(Boolean)
     .slice(0, 2)
-    .map((part) => part[0]!.toUpperCase())
+    .map((part) => graphemes.segment(part)[Symbol.iterator]().next().value!.segment.toUpperCase())
     .join("");
 }
 

@@ -58,4 +58,44 @@ test.describe("admin CSV import (U10)", () => {
     await expect(page.getByText("email is not a valid address")).toBeVisible();
     await expect(page.getByRole("button", { name: /Apply/ })).toBeDisabled();
   });
+
+  test("a file saved by Excel in Windows-1252 keeps its accented names", async ({ page, context }) => {
+    await signInAs(context, "jane@example.com");
+    await page.goto("/admin/import");
+    const csv = [
+      "email,name,home_region",
+      "jose@example.com,José Müller,ES",
+      "zoe@example.com,Zoë Ångström,SE",
+      "",
+    ].join("\r\n");
+    await page.getByLabel("people CSV file").setInputFiles({
+      name: "people.csv",
+      mimeType: "text/csv",
+      buffer: Buffer.from(csv, "latin1"),
+    });
+
+    await expect(page.getByRole("status", { name: "people file encoding" })).toContainText(
+      "Read as Windows-1252",
+    );
+    await expect(page.getByText("José Müller")).toBeVisible();
+    await page.getByRole("button", { name: /Apply 2 change/ }).click();
+    await expect(page.getByText("2 created")).toBeVisible();
+
+    await page.goto("/directory?q=zo");
+    await expect(page.getByRole("button", { name: /Zoë Ångström/ })).toBeVisible();
+  });
+
+  test("Excel's UTF-16 'Unicode Text' (tab-separated) imports too", async ({ page, context }) => {
+    await signInAs(context, "jane@example.com");
+    await page.goto("/admin/import");
+    const tsv = "email\tname\thome_region\r\nzoe@example.com\tZoë Ångström\tSE\r\n";
+    await page.getByLabel("people CSV file").setInputFiles({
+      name: "people.txt",
+      mimeType: "text/plain",
+      buffer: Buffer.concat([Buffer.from([0xff, 0xfe]), Buffer.from(tsv, "utf16le")]),
+    });
+    await expect(page.getByRole("status", { name: "people file encoding" })).toContainText("Read as UTF-16 LE");
+    await expect(page.getByText("Zoë Ångström")).toBeVisible();
+    await expect(page.getByRole("button", { name: /Apply 1 change/ })).toBeEnabled();
+  });
 });

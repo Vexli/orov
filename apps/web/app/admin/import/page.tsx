@@ -10,6 +10,11 @@ export default function ImportPage() {
           Each import is a dry run first. Nothing is written until every row is valid, and every change is
           recorded in the audit log.
         </p>
+        <p className="mt-1 text-sm text-muted-fg">
+          UTF-8 is preferred. Files saved by Excel (Windows-1252 &ldquo;CSV&rdquo;, or UTF-16
+          &ldquo;Unicode Text&rdquo;) are detected, and you can change the encoding if names look
+          wrong. Columns may be separated by commas, semicolons or tabs.
+        </p>
         <p className="mt-2 text-sm">
           <a className="underline" href="/api/export/people">Export people CSV</a>
           {" · "}
