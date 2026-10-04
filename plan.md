@@ -767,7 +767,10 @@ Built after #21 step 2, #22 and #29, at the project owner's direction; #30 still
 - [ ] N6 Final date (admin view only)
     - **Decided (2026-10-04):** a person's last working day: `person.endDate` beside `startDate`, in the admin form, admin list and people CSV; never sent to viewers.
 - [ ] N7 Flags as a standalone region display option (adjusts #28: a flag-only mode alongside the four text modes; the flag stays `aria-hidden`, so the accessible text needs a fallback)
-- [ ] N8 Don't draw area names on the map; use areas only to filter (adjusts #26: drop the area labels, keep room and point-of-interest labels)
+- [x] N8 Don't draw area names on the map; use areas only to filter
+    - **Completed:** 2026-10-04
+    - **Branch:** merged from `feature/no-area-labels`
+    - **Notes:** `map-view` no longer builds area labels; `labelLayout(box, name)` lost its `kind` and area layout; `FloorMap` no longer measures `area-` shapes. Area buttons and dimming are unchanged. The map labels spec now checks areas have no label and dims by rooms. One full e2e run had an unidentified single failure that didn't recur in two more runs; if it shows up again, record which spec. Tests: 1 unit removed, 2 Playwright updated.
 - [ ] N9 Assign a person to an office without a desk (a person → location link for remote-in-office or hot-desk staff; affects the map's office counts, the directory's office filter and #19's time zone default)
 - [ ] N10 Seating planner: admins plan a seating chart by grouping (e.g. by team), lock individuals in place, and auto-regroup the rest (large; needs a design pass)
 
