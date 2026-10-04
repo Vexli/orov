@@ -116,7 +116,10 @@ test.describe("admin CSV import (U10)", () => {
     await expect(page.getByRole("status", { name: "people file encoding" })).toContainText(
       "Read as Windows-1252",
     );
-    await expect(page.getByText("José Müller")).toBeVisible();
+    // A single name column is split at the last space, and the dry run says so.
+    await expect(page.getByRole("note")).toContainText("This file has a single name column.");
+    await expect(page.getByText("José", { exact: true })).toBeVisible();
+    await expect(page.getByText("Müller", { exact: true })).toBeVisible();
     await page.getByRole("button", { name: /Apply 2 change/ }).click();
     await expect(page.getByText("2 created")).toBeVisible();
 
@@ -134,7 +137,7 @@ test.describe("admin CSV import (U10)", () => {
       buffer: Buffer.concat([Buffer.from([0xff, 0xfe]), Buffer.from(tsv, "utf16le")]),
     });
     await expect(page.getByRole("status", { name: "people file encoding" })).toContainText("Read as UTF-16 LE");
-    await expect(page.getByText("Zoë Ångström")).toBeVisible();
+    await expect(page.getByText("Ångström", { exact: true })).toBeVisible();
     await expect(page.getByRole("button", { name: /Apply 1 change/ })).toBeEnabled();
   });
 });

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { DirectoryPerson } from "@officeorg/core/directory/model";
-import { displayName, initials } from "@officeorg/core/directory/filter";
+import { displayName, personInitials } from "@officeorg/core/directory/filter";
 import { identityLinks } from "@officeorg/core/people/identities";
 import { LocationLabel } from "./location-label";
 
@@ -22,7 +22,7 @@ export function PersonCard({ person, onSelectPerson, onClose }: Props) {
           aria-hidden="true"
           className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-muted text-sm font-semibold text-fg"
         >
-          {initials(name)}
+          {personInitials(person)}
         </div>
         <div className="min-w-0 flex-1">
           <h2 className="text-lg font-heading">{name}</h2>

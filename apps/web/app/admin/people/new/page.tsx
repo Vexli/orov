@@ -20,7 +20,8 @@ export default async function NewPersonPage() {
         <PersonFormEditor
           initial={{
             email: "",
-            name: "",
+            givenName: "",
+            familyName: null,
             preferredName: null,
             title: null,
             phone: null,

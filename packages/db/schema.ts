@@ -205,7 +205,16 @@ export const person = pgTable(
   {
     id: id("p"),
     email: text("email").notNull().unique(),
-    name: text("name").notNull(),
+    givenName: text("given_name").notNull(),
+    // Null for someone with a single name.
+    familyName: text("family_name"),
+    // The full name, kept in step by the database so every reader of `name` (search, the org
+    // chart, the map) works unchanged. Write givenName and familyName instead.
+    name: text("name")
+      .notNull()
+      .generatedAlwaysAs(
+        sql`CASE WHEN family_name IS NULL OR family_name = '' THEN given_name ELSE given_name || ' ' || family_name END`,
+      ),
     preferredName: text("preferred_name"),
     title: text("title"),
     photoUrl: text("photo_url"),

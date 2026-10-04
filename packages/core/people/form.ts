@@ -44,7 +44,8 @@ export const identitiesInputSchema = z
 export const personFormSchema = z
   .object({
     email: z.string().trim().toLowerCase().pipe(z.email("Enter a valid email address")),
-    name: z.string().trim().min(1, "Name is required"),
+    givenName: z.string().trim().min(1, "Given name is required"),
+    familyName: optionalText,
     preferredName: optionalText,
     title: optionalText,
     phone: optionalText,

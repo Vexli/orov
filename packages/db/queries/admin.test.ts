@@ -8,7 +8,7 @@ import { listAudit } from "./audit";
 import { ValidationError } from "./errors";
 import { listDeskOptions, listPickerFloors } from "./spaces";
 import { deleteTeam, getTeamForEdit, saveTeam } from "./teams";
-import { getPersonForEdit, savePerson, setPersonActive } from "./people";
+import { getPersonForEdit, listPeopleForAdmin, savePerson, setPersonActive } from "./people";
 
 let t: TestDatabase;
 
@@ -31,7 +31,8 @@ const ACTOR = "jane@example.com";
 function personInput(overrides: Partial<PersonForm>): PersonForm {
   return {
     email: "new@example.com",
-    name: "New Person",
+    givenName: "New",
+    familyName: "Person",
     preferredName: null,
     title: null,
     phone: null,
@@ -108,7 +109,7 @@ describe("savePerson", () => {
   it("rejects a manager that would close a loop, and leaves the chain unchanged", async () => {
     // Bob reports to Max, who reports to Jane. Making Jane report to Bob closes the loop.
     await expectValidation(
-      savePerson(t.db, ACTOR, personInput({ email: "jane@example.com", name: "Jane Park", managerId: "p_bob" }), "p_jane"),
+      savePerson(t.db, ACTOR, personInput({ email: "jane@example.com", givenName: "Jane", familyName: "Park", managerId: "p_bob" }), "p_jane"),
       /would create a loop/,
       "managerId",
     );
@@ -118,7 +119,7 @@ describe("savePerson", () => {
 
   it("rejects being your own manager", async () => {
     await expectValidation(
-      savePerson(t.db, ACTOR, personInput({ email: "max@example.com", name: "Max Osei", managerId: "p_max" }), "p_max"),
+      savePerson(t.db, ACTOR, personInput({ email: "max@example.com", givenName: "Max", familyName: "Osei", managerId: "p_max" }), "p_max"),
       /would create a loop/,
       "managerId",
     );
@@ -136,7 +137,7 @@ describe("savePerson", () => {
     await savePerson(
       t.db,
       ACTOR,
-      personInput({ email: "max@example.com", name: "Max Osei", managerId: "p_jane", assignedDeskId: "sp_sf_2_014", swapDesk: true }),
+      personInput({ email: "max@example.com", givenName: "Max", familyName: "Osei", managerId: "p_jane", assignedDeskId: "sp_sf_2_014", swapDesk: true }),
       "p_max",
     );
     const desk = async (id: string) => (await t.db.query.person.findFirst({ where: eq(s.person.id, id) }))?.assignedDeskId;
@@ -160,7 +161,7 @@ describe("savePerson", () => {
 
   it("lets a person keep the seat they already have", async () => {
     await expect(
-      savePerson(t.db, ACTOR, personInput({ email: "bob@example.com", name: "Bob Lindqvist", managerId: "p_max", assignedDeskId: "sp_sf_2_014" }), "p_bob"),
+      savePerson(t.db, ACTOR, personInput({ email: "bob@example.com", givenName: "Bob", familyName: "Lindqvist", managerId: "p_max", assignedDeskId: "sp_sf_2_014" }), "p_bob"),
     ).resolves.toEqual({ id: "p_bob" });
   });
 
@@ -218,6 +219,20 @@ describe("savePerson", () => {
     expect((await getPersonForEdit(t.db, withZone.id))?.homeTimezone).toBe("Europe/Kyiv");
     const deskless = await savePerson(t.db, ACTOR, personInput({ email: "remote@example.com" }));
     expect((await getPersonForEdit(t.db, deskless.id))?.homeTimezone).toBeNull();
+  });
+
+  it("stores the given and family names, and the database builds the full name", async () => {
+    const { id } = await savePerson(t.db, ACTOR, personInput({ givenName: "Mary Ann", familyName: "Smith" }));
+    const row = await t.db.query.person.findFirst({ where: eq(s.person.id, id) });
+    expect(row).toMatchObject({ givenName: "Mary Ann", familyName: "Smith", name: "Mary Ann Smith" });
+    const single = await savePerson(t.db, ACTOR, personInput({ email: "kaito@example.com", givenName: "Kaito", familyName: null }));
+    expect((await t.db.query.person.findFirst({ where: eq(s.person.id, single.id) }))?.name).toBe("Kaito");
+  });
+
+  it("lists people by family name, then given name", async () => {
+    await savePerson(t.db, ACTOR, personInput({ email: "anna@example.com", givenName: "Anna", familyName: "Lindqvist" }));
+    const names = (await listPeopleForAdmin(t.db)).map((p) => p.name);
+    expect(names).toEqual(["Anna Lindqvist", "Bob Lindqvist", "Sam Ortiz", "Max Osei", "Jane Park", "Priya Raman"]);
   });
 
   it("saves, normalizes and clears profile accounts", async () => {

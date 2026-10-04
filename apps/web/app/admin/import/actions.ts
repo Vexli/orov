@@ -22,7 +22,12 @@ export interface ImportInput {
 }
 
 export type PreviewState =
-  | { ok: true; plan: ImportPlan<PersonRecord> | ImportPlan<TeamRecord>; skip: number[] }
+  | {
+      ok: true;
+      plan: ImportPlan<PersonRecord> | ImportPlan<TeamRecord>;
+      skip: number[];
+      notices: string[];
+    }
   | { ok: false; error: string };
 
 export type ApplyState = { ok: true; result: ApplyResult } | { ok: false; error: string };
@@ -33,7 +38,9 @@ function lines(skip: unknown): number[] {
 }
 
 function toPreview(result: PlanResult<PersonRecord> | PlanResult<TeamRecord>): PreviewState {
-  return result.ok ? { ok: true, plan: result.plan, skip: result.skip } : { ok: false, error: result.fatal };
+  return result.ok
+    ? { ok: true, plan: result.plan, skip: result.skip, notices: result.notices }
+    : { ok: false, error: result.fatal };
 }
 
 async function applying(run: () => Promise<ApplyResult>): Promise<ApplyState> {

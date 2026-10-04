@@ -28,3 +28,4 @@ export * from "./csv/audit";
 export * from "./csv/decode";
 export * from "./time/zones";
 export * from "./people/phone";
+export * from "./people/names";

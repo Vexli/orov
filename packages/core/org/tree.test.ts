@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { splitFullName } from "../people/names";
 import type { DirectoryPerson, DirectoryTeam } from "../directory/model";
 import { escapeHtml } from "./html";
 import {
@@ -29,6 +30,7 @@ function person(
   overrides: Partial<DirectoryPerson> & { id: string; name: string },
 ): DirectoryPerson {
   return {
+    ...splitFullName(overrides.name),
     identities: {},
     phone: null,
     preferredName: null,

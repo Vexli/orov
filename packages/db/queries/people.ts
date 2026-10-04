@@ -1,5 +1,6 @@
 import { and, eq, inArray, ne, sql } from "drizzle-orm";
 import {
+  compareByFamilyName,
   defaultTimeZone,
   identityProvider,
   PROFILE_PROVIDER_IDS,
@@ -61,7 +62,8 @@ async function findPersonRow(db: Executor, id: string) {
 function toPersonRecord(row: PersonRow): PersonRecord {
   return {
     email: row.email,
-    name: row.name,
+    givenName: row.givenName,
+    familyName: row.familyName,
     preferredName: row.preferredName,
     title: row.title,
     phone: row.phone,
@@ -110,7 +112,7 @@ export async function loadPersonRecord(db: Executor, id: string): Promise<Person
   return row ? toPersonRecord(row) : null;
 }
 
-// Rows for the admin list and the manager picker. Team membership is included.
+// Rows for the admin list and the manager picker, by family name. Team membership is included.
 export async function listPeopleForAdmin(db: Executor) {
   const rows = await db.query.person.findMany({
     with: {
@@ -118,9 +120,8 @@ export async function listPeopleForAdmin(db: Executor) {
       assignedDesk: { columns: { id: true, name: true } },
       teamMembers: { with: { team: { columns: { slug: true, name: true } } } },
     },
-    orderBy: (p, { asc }) => [asc(p.name)],
   });
-  return rows.map((row) => ({
+  return rows.sort(compareByFamilyName).map((row) => ({
     id: row.id,
     name: row.name,
     email: row.email,
@@ -146,7 +147,8 @@ export async function getPersonForEdit(db: Executor, id: string): Promise<Person
   if (!row) return null;
   return {
     email: row.email,
-    name: row.name,
+    givenName: row.givenName,
+    familyName: row.familyName,
     preferredName: row.preferredName,
     title: row.title,
     phone: row.phone,
@@ -218,7 +220,8 @@ export async function savePerson(
 
     const values = {
       email: input.email,
-      name: input.name,
+      givenName: input.givenName,
+      familyName: input.familyName,
       preferredName: input.preferredName,
       title: input.title,
       phone: input.phone,

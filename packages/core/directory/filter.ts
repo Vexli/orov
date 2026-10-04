@@ -67,6 +67,16 @@ export function displayName(person: Pick<DirectoryPerson, "name" | "preferredNam
   return person.preferredName ?? person.name;
 }
 
+// A person's avatar letters: their preferred name's, else the first given name's and the family
+// name's ("Ana María de la Cruz" → "AC", where splitting the full name would give "AM").
+export function personInitials(
+  person: Pick<DirectoryPerson, "preferredName" | "givenName" | "familyName">,
+): string {
+  if (person.preferredName) return initials(person.preferredName);
+  const first = person.givenName.trim().split(/\s+/)[0] ?? "";
+  return initials(person.familyName ? `${first} ${person.familyName}` : person.givenName);
+}
+
 const graphemes = new Intl.Segmenter(undefined, { granularity: "grapheme" });
 
 // Up to two letters for an avatar: "Bob Lindqvist" → "BL". A letter is a whole grapheme, so a

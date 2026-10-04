@@ -27,7 +27,8 @@ the phase-by-phase delivery plan with progress notes.
 - Sign-in through any SSO provider Auth.js supports (Google, Microsoft Entra ID, Okta, AWS
   Cognito or any OpenID Connect issuer), limited to one company email domain, with `viewer` and
   `admin` roles
-- Directory with search, team and location filters, a person card, and selection kept in the URL
+- Directory with search, team and location filters, a person card, and selection kept in the URL.
+  People have a given name and a family name, and lists sort by family name
 - Floor map: the floor drawing with an avatar at each occupied desk, zoom and pan, and a card
   for the person, desk or room you click. Switch offices and floors, open an area such as the
   South Wing as a zoomed view, and see each floor's headcount, desks and rooms. The map follows

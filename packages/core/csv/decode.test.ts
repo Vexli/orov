@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { decodeCsv } from "./decode";
+import { fullName } from "../people/names";
 import { parsePeopleCsv } from "./people";
 
 const TEXT = "email,name,home_region\njose@x.com,José Müller,ES\nzoe@x.com,Zoë Ångström,SE\n";
@@ -51,13 +52,13 @@ describe("importing Excel files", () => {
   it("imports a Windows-1252 file's accented names", () => {
     const { rows, issues } = parsePeopleCsv(decodeCsv(latin1(TEXT)).text);
     expect(issues).toEqual([]);
-    expect(rows.map((r) => r.record.name)).toEqual(["José Müller", "Zoë Ångström"]);
+    expect(rows.map((r) => fullName(r.record))).toEqual(["José Müller", "Zoë Ångström"]);
   });
 
   it("imports Excel's tab-separated UTF-16 'Unicode Text'", () => {
     const { rows, issues } = parsePeopleCsv(decodeCsv(utf16(TEXT.replaceAll(",", "\t"), true, true)).text);
     expect(issues).toEqual([]);
-    expect(rows.map((r) => r.record.name)).toEqual(["José Müller", "Zoë Ångström"]);
+    expect(rows.map((r) => fullName(r.record))).toEqual(["José Müller", "Zoë Ångström"]);
   });
 
   it("imports a semicolon-separated file, keeping a quoted teams list intact", () => {
@@ -67,6 +68,6 @@ describe("importing Excel files", () => {
 
   it("stores decomposed (NFD) accents in composed (NFC) form", () => {
     const nfd = "email,name,home_region\njose@x.com,José,ES\n";
-    expect(parsePeopleCsv(nfd).rows[0]?.record.name).toBe("José".normalize("NFC"));
+    expect(parsePeopleCsv(nfd).rows[0]!.record.givenName).toBe("José".normalize("NFC"));
   });
 });

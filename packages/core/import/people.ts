@@ -173,7 +173,8 @@ function validateReferences(
 function emptyPerson(email: string): PersonRecord {
   return {
     email,
-    name: "",
+    givenName: "",
+    familyName: null,
     preferredName: null,
     title: null,
     phone: null,
