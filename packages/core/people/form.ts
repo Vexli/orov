@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { regionCodeSchema } from "../regions/iso3166";
+import { optionalTimeZoneSchema } from "../time/zones";
 import { parseIdentity, PROFILE_PROVIDER_IDS, type Identities } from "./identities";
 
 // Admin form schemas. Ids come from select boxes, so these check shape only.
@@ -47,7 +48,7 @@ export const personFormSchema = z
     title: optionalText,
     phone: optionalText,
     homeRegion: regionCodeSchema("Home region"),
-    homeTimezone: optionalText,
+    homeTimezone: optionalTimeZoneSchema(),
     startDate: isoDate,
     active: z.boolean(),
     managerId: z.string().nullable(),

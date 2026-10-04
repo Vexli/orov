@@ -116,6 +116,28 @@ test.describe("admin people and teams", () => {
     await expect(page.getByRole("row", { name: /Recruiting/ })).toHaveCount(0);
   });
 
+  test("a home time zone must be a real zone, and is stored in its canonical form", async ({
+    page,
+    context,
+  }) => {
+    await signInAs(context, "jane@example.com");
+    await page.goto("/admin/people/p_bob");
+    const zone = page.getByLabel("Home timezone");
+    await expect(zone).toHaveAttribute("list", "person-time-zones");
+
+    await zone.fill("Mars/Olympus");
+    await page.getByRole("button", { name: "Save person" }).click();
+    await expect(page.getByText("Use an IANA time zone, such as America/Los_Angeles")).toBeVisible();
+
+    await zone.fill("america/new_york");
+    await page.getByRole("button", { name: "Save person" }).click();
+    await expect(page).toHaveURL(/\/admin\/people$/);
+    await page.goto("/directory?person=p_bob");
+    await expect(page.getByRole("complementary", { name: "Bob Lindqvist details" })).toContainText(
+      "America/New_York",
+    );
+  });
+
   test("an admin sets profile accounts, and the person card links to them", async ({ page, context }) => {
     await signInAs(context, "jane@example.com");
     await page.goto("/admin/people/p_max");

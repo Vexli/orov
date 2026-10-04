@@ -84,6 +84,15 @@ describe("parsePeopleCsv", () => {
   });
 });
 
+describe("home_timezone", () => {
+  it("is stored canonically, and a made-up zone is a row error", () => {
+    const csv = `${HEADER}\na@x.com,A,,,US,america/new_york,,,,,,,\nb@x.com,B,,,US,Mars/Olympus,,,,,,,\n`;
+    const { rows, issues } = parsePeopleCsv(csv);
+    expect(rows[0]?.record.homeTimezone).toBe("America/New_York");
+    expect(issues).toEqual([{ line: 3, message: expect.stringMatching(/^home_timezone is not an IANA time zone/) }]);
+  });
+});
+
 describe("identity columns", () => {
   it("has one column per profile provider, in registry order", () => {
     expect(PEOPLE_CSV_HEADERS.slice(-PROFILE_PROVIDER_IDS.length)).toEqual(PROFILE_PROVIDER_IDS);

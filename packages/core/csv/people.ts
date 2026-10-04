@@ -3,6 +3,7 @@ import { z } from "zod";
 import { parseIdentity, PROFILE_PROVIDER_IDS, type Identities } from "../people/identities";
 import type { PersonRecord } from "../records";
 import { regionCodeSchema } from "../regions/iso3166";
+import { optionalTimeZoneSchema } from "../time/zones";
 import { parseCsv, type CsvIssue, type CsvRecord } from "./parse";
 
 export const PEOPLE_CSV_HEADERS = [
@@ -50,7 +51,9 @@ export const personCsvRowSchema = z.object({
   preferred_name: z.string().transform(blankToNull),
   title: z.string().transform(blankToNull),
   home_region: regionCodeSchema("home_region"),
-  home_timezone: z.string().transform(blankToNull),
+  home_timezone: optionalTimeZoneSchema(
+    "home_timezone is not an IANA time zone (for example America/Los_Angeles)",
+  ),
   phone: z.string().transform(blankToNull),
   start_date: z
     .string()
