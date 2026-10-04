@@ -10,7 +10,10 @@ describe("encryptExport / decryptExport", () => {
     const b = JSON.stringify(encryptExport(DATA, PASS));
     expect(a).not.toBe(b);
     expect(decryptExport(a, PASS)).toBe(DATA);
-    expect(a).not.toContain("Zo");
+    // The plaintext doesn't appear, in any encoding. (Short fragments can occur by chance in the
+    // random base64 ciphertext, so the check uses the whole value.)
+    expect(a).not.toContain("Ångström");
+    expect(a).not.toContain(Buffer.from(DATA).toString("base64").slice(0, 24));
   });
 
   it("fails cleanly on a wrong passphrase", () => {
