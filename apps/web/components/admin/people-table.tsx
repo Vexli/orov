@@ -7,6 +7,7 @@ import { filterAdminPeople, type AdminPersonRow } from "@officeorg/core/admin/fi
 import { adminPeopleParsers } from "@/lib/url-state";
 import { TeamChip } from "../team-chip";
 import { BulkActionBar } from "./bulk-action-bar";
+import { sortByName } from "@officeorg/core/people/names";
 
 export interface PeopleTableRow extends AdminPersonRow {
   id: string;
@@ -69,7 +70,7 @@ export function PeopleTable({ people, teams }: Props) {
           className={controlClass}
         >
           <option value="">All teams</option>
-          {teams.map((t) => (
+          {sortByName(teams).map((t) => (
             <option key={t.id} value={t.id}>
               {t.name}
             </option>

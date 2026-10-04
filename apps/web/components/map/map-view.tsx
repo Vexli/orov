@@ -20,6 +20,7 @@ import { mapParsers } from "@/lib/url-state";
 import { FloorList, KIND_LABEL } from "./floor-list";
 import { RegionText } from "../directory/location-label";
 import { FloorMap, type Avatar, type MapLabel, type RoomCue } from "./floor-map";
+import { sortByName } from "@officeorg/core/people/names";
 
 interface Props {
   map: MapData;
@@ -541,7 +542,7 @@ function TeamHighlight({
         className="rounded-md border border-border bg-transparent px-3 py-1.5 text-sm"
       >
         <option value="">Highlight a team…</option>
-        {teams.map((t) => (
+        {sortByName(teams).map((t) => (
           <option key={t.id} value={t.id}>
             {t.name}
           </option>

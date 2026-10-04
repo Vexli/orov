@@ -10,6 +10,7 @@ import type { DeskOption, PickerFloor } from "@officeorg/db/queries/spaces";
 import { savePersonAction, type SaveState } from "@/app/admin/people/actions";
 import { SeatPicker } from "./seat-picker";
 import { TimeZoneList } from "./time-zone-list";
+import { sortByName } from "@officeorg/core/people/names";
 
 export interface TeamChoice {
   id: string;
@@ -208,7 +209,7 @@ export function PersonFormEditor({ id, initial, managers, desks, floors, teams }
                 ? `Default: ${defaultManager.name}${leadOf ? `, lead of ${leadOf.name}` : ""}`
                 : "No manager"}
             </option>
-            {managers.map((m) => (
+            {sortByName(managers).map((m) => (
               <option key={m.id} value={m.id}>
                 {m.name}
               </option>

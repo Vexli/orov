@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useRef, useState, useTransition } from "react";
 import type { BulkPatch } from "@officeorg/core/people/bulk";
 import { bulkUpdatePeopleAction } from "@/app/admin/people/actions";
+import { sortByName } from "@officeorg/core/people/names";
 
 type Action =
   | "deactivate"
@@ -120,7 +121,7 @@ export function BulkActionBar({ selected, managers, teams, onDone }: Props) {
           <option value="">
             {spec.needs === "manager" ? "Choose a manager" : "Choose a team"}
           </option>
-          {options.map((o) => (
+          {sortByName(options).map((o) => (
             <option key={o.id} value={o.id}>
               {o.name}
             </option>
