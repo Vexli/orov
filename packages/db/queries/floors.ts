@@ -11,6 +11,7 @@ import {
   type AreaEdit,
   type SpaceEdit,
 } from "@officeorg/core";
+import { DrawingEditError, editDrawing, type DrawingEdit } from "@officeorg/core/svg/edit";
 import { parseFloorSvg } from "@officeorg/core/svg/parse";
 import { sanitizeSvg, SvgError } from "@officeorg/core/svg/sanitize";
 import type { Database, Executor } from "../client";
@@ -116,7 +117,13 @@ export async function getFloorForAdmin(db: Executor, id: string) {
     .from(s.svgAsset)
     .where(eq(s.svgAsset.floorId, id))
     .orderBy(desc(s.svgAsset.version));
-  return { ...floor, versions };
+  const current = floor.svgAssetId
+    ? await db.query.svgAsset.findFirst({
+        where: eq(s.svgAsset.id, floor.svgAssetId),
+        columns: { sanitizedSvg: true },
+      })
+    : null;
+  return { ...floor, versions, currentSvg: current?.sanitizedSvg ?? null };
 }
 
 export async function saveFloor(
@@ -271,6 +278,31 @@ export async function previewFloorUpload(
 ): Promise<FloorPreview> {
   const floor = await findFloor(db, floorId);
   return plan(db, floor, clean(raw));
+}
+
+// Applies one edit made in the browser (#21) to `base` (the current drawing when null) and
+// previews the result exactly as an upload of it would be. Nothing is written: applying goes
+// through applyFloorUpload with the returned drawing, as a new version.
+export async function previewDrawingEdit(
+  db: Executor,
+  floorId: string,
+  base: string | null,
+  edit: DrawingEdit,
+): Promise<FloorPreview & { svg: string; svgElementId: string }> {
+  const floor = await findFloor(db, floorId);
+  let drawing = base;
+  if (drawing === null) {
+    if (!floor.svgAssetId) throw new ValidationError("Upload a drawing first; edits change an existing one.");
+    drawing = (await findAsset(db, floorId, floor.svgAssetId)).sanitizedSvg;
+  }
+  try {
+    const edited = editDrawing(clean(drawing), floor.slug, edit);
+    const svg = clean(edited.svg);
+    return { ...(await plan(db, floor, svg)), svg, svgElementId: edited.svgElementId };
+  } catch (error) {
+    if (error instanceof DrawingEditError) throw new ValidationError(error.message);
+    throw error;
+  }
 }
 
 async function findAsset(db: Executor, floorId: string, assetId: string) {

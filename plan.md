@@ -616,7 +616,7 @@ The five spikes from §2 and `docs/spikes.md`.
 ### Phase 6: Polish (ongoing)
 
 - [ ] Mobile layout: map as full-screen sheet, directory first
-- [ ] Click-to-place seat editor in the app, so new desks don't need a Figma round-trip
+- [x] Click-to-place seat editor in the app, so new desks don't need a Figma round-trip (done as Phase 7 #21 step 2, 2026-10-04)
 - [ ] "Who's in today" dashboard per location (shown only when presence display is on, §8.5)
 - [ ] Optional HRIS sync, which replaces CSV as the people source
 - [ ] Live theme sync from the Figma Variables REST API (Enterprise plans only) or the Penpot API

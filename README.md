@@ -69,7 +69,9 @@ the phase-by-phase delivery plan with progress notes.
 - A semantic theme layer: components are styled only through theme slots, never raw colors
 - Admin pages for offices and floors. Each office chooses what its floors are called (Floor,
   Building, Wing, …), and the map and admin pages use that word. Rooms and areas can be renamed,
-  and meeting rooms given a seat count, without a new drawing. Uploading a floor drawing (SVG)
+  and meeting rooms given a seat count, without a new drawing; desks and rooms can be added or
+  removed on the drawing itself in the browser, and the result is reviewed and saved as a new
+  version, like an upload. Uploading a floor drawing (SVG)
   sanitizes it, shows what it
   adds, moves and removes before anything is saved, and keeps every version for rollback. How to
   draw one is in [`docs/map-authoring.md`](docs/map-authoring.md)

@@ -13,6 +13,7 @@ import {
   previewFloorRollback,
   previewFloorUpload,
   listFloorSpacesForAdmin,
+  previewDrawingEdit,
   rollbackFloor,
   saveArea,
   saveFloor,
@@ -309,5 +310,33 @@ describe("renaming rooms and areas", () => {
     const { spaces } = await listFloorSpacesForAdmin(t.db, "fl_sf_2");
     expect(spaces.some((sp) => sp.kind === "desk")).toBe(false);
     expect(spaces.map((sp) => sp.name)).toContain("Boardroom");
+  });
+});
+
+describe("editing the drawing in the browser", () => {
+  it("places a desk as a new version, ready to assign", async () => {
+    const preview = await previewDrawingEdit(t.db, "fl_sf_2", null, {
+      kind: "addDesk",
+      rect: { x: 400, y: 600, width: 90, height: 56 },
+    });
+    expect(preview.svgElementId).toBe("desk-2-017");
+    expect(preview.diff.spaces.added.map((a) => a.svgElementId)).toEqual(["desk-2-017"]);
+
+    const { version } = await applyFloorUpload(t.db, ACTOR, "fl_sf_2", preview.svg, NO);
+    expect(version).toBe(2);
+    const desk = await t.db.query.space.findFirst({ where: eq(s.space.svgElementId, "desk-2-017") });
+    expect(desk).toMatchObject({ kind: "desk", name: "SF-2-017", archivedAt: null });
+  });
+
+  it("stacks edits on a drawing that hasn't been applied yet", async () => {
+    const first = await previewDrawingEdit(t.db, "fl_sf_2", null, {
+      kind: "addRoom",
+      name: "Fjord",
+      rect: { x: 400, y: 600, width: 120, height: 100 },
+    });
+    const second = await previewDrawingEdit(t.db, "fl_sf_2", first.svg, { kind: "remove", svgElementId: "desk-2-014" });
+    expect(second.diff.spaces.added.map((a) => a.svgElementId)).toEqual(["room-fjord"]);
+    // Bob sits at SF-2-014, so removing it needs the admin's confirmation, as with an upload.
+    expect(second.diff.spaces.removedAssigned.map((r) => r.svgElementId)).toEqual(["desk-2-014"]);
   });
 });

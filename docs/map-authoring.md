@@ -53,7 +53,11 @@ Rules:
 - **Names come from the slug** the first time a room or area appears (`huddle-a` → "Huddle A").
   Uploading the drawing again never renames a room or area that already exists. To give one a
   better name ("Fjord" for `room-huddle-a`), rename it on the floor's admin page; the drawing
-  doesn't change. The map shows
+  doesn't change.
+- **Small changes don't need the drawing tool.** On a floor's admin page, "Edit the drawing
+  here" adds a desk (numbered after the floor's highest), draws a rectangular room (its id comes
+  from the name you give it) or removes a desk or room. Each change is shown like an upload
+  before it's saved as a new version. For walls or anything else, edit the drawing itself. The map shows
   the name centred in the room's shape (an area's in its top-left corner), shrunk to fit, and
   cut short with "…" if the shape is too small.
 
