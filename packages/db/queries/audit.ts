@@ -15,12 +15,14 @@ export const AUDIT_ENTITIES = [
   "area",
   // A download of the audit log itself, so the log shows who took a copy.
   "audit_log",
+  // The whole organization exported or imported as an encrypted file (#29).
+  "organization",
 ] as const;
 
 export interface AuditEntry {
   entity: (typeof AUDIT_ENTITIES)[number];
   entityId: string;
-  action: "create" | "update" | "delete" | "export";
+  action: "create" | "update" | "delete" | "export" | "import";
   before?: unknown;
   after?: unknown;
 }

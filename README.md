@@ -59,6 +59,8 @@ the phase-by-phase delivery plan with progress notes.
 - Phone numbers are checked and stored in international form (`+14155550123`), shown on the
   person card as a link to call. Home time zones are checked too, and default to the time zone of
   the person's desk
+- An encrypted export of the whole organization, for backups and moving between instances (see
+  [Backup and moving instances](#backup-and-moving-instances))
 - CSV import with a dry-run diff before anything is written, where rows with errors can be
   skipped. Files saved by Excel (Windows-1252 or UTF-16, separated by commas, semicolons or tabs)
   are detected. CSV export, and an audit log of every admin change, filterable by entity, date and
@@ -235,6 +237,24 @@ and RDS allow it). `GET /api/health` is a liveness check. `/theme.css` and
 logo. Run one web replica
 at a time while a schema change is being deployed, because two replicas migrating at once can
 race.
+
+### Backup and moving instances
+
+Admins can download the whole organization as one file under **Admin → Backup**: offices,
+floors with every drawing version, areas, rooms and desks, teams, people with their memberships
+and accounts, users and their settings, themes and brand files. Ids are kept, so links survive a
+move. The file is encrypted with a passphrase the admin chooses (scrypt, then AES-256-GCM), so it
+can travel by email or sit on a shared drive; without the passphrase it can't be opened. It
+never contains messaging tokens, presence data or the audit log (export that from the audit log
+page). Exports and imports are both recorded in the audit log.
+
+To load a file, choose **Merge** (add and update by id; a reused email, slug, desk code or account
+is a conflict and blocks the import) or **Replace** (empty this instance's organization data and
+load the file: for restoring a backup or setting up a new instance). Each shows what would
+change before anything is written. Roles come from the file only if the admin asks, and the
+importing admin always stays an admin. A file must come from an instance on the same database
+schema version; files from older versions can't be read yet. This complements the database's
+own backups and point-in-time recovery; it doesn't replace them.
 
 ## Acknowledgements
 
