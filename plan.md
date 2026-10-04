@@ -788,7 +788,10 @@ Built after #21 step 2, #22 and #29, at the project owner's direction; #30 still
     - **Completed:** 2026-10-04
     - **Branch:** merged from `feature/no-area-labels`
     - **Notes:** `map-view` no longer builds area labels; `labelLayout(box, name)` lost its `kind` and area layout; `FloorMap` no longer measures `area-` shapes. Area buttons and dimming are unchanged. The map labels spec now checks areas have no label and dims by rooms. One full e2e run had an unidentified single failure that didn't recur in two more runs; if it shows up again, record which spec. Tests: 1 unit removed, 2 Playwright updated.
-- [ ] N9 Assign a person to an office without a desk (a person → location link for remote-in-office or hot-desk staff; affects the map's office counts, the directory's office filter and #19's time zone default)
+- [x] N9 Assign a person to an office without a desk
+    - **Completed:** 2026-10-04
+    - **Branch:** merged from `feature/office-without-desk`
+    - **Notes:** Migration `0014` (`person.office_id` → `location`). Stored only without a desk: `savePersonIn` and the import planner drop it when a desk is set, and the planner refuses an office that isn't the desk's. `DirectoryPerson.office`, `officeSlugOf` (desk office, else assigned office) for the office filter, `locationSummary` badge shows the office instead of "Remote". `PersonRecord.officeSlug`; CSV `office` column after `desk`, in `KEPT_IF_ABSENT`. Time zone default (#19) falls back to the office's. Map overview: "N people work here without a desk". `deleteLocation` refuses an office with people in it. **Not handled:** archiving an office leaves its desk-less people pointing at it (they show the archived office's name); a follow-up could ask, as with desks. Tests: 5 unit, 2 DB, 1 Playwright.
 - [ ] N10 Seating planner: admins plan a seating chart by grouping (e.g. by team), lock individuals in place, and auto-regroup the rest (large; needs a design pass)
 
 **G. Integrations (with Phases 4 and 5)**
