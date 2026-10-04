@@ -64,6 +64,13 @@
       "when": 1791109456929,
       "tag": "0008_date_format_setting",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1791109787058,
+      "tag": "0009_region_flag_setting",
+      "breakpoints": true
     }
   ]
 }

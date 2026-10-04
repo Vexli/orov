@@ -20,6 +20,7 @@ export interface MapLocation {
   name: string;
   // The office's region in the viewer's display style (plan.md §7.1).
   regionLabel: string;
+  regionFlag: string | null;
   floors: MapFloorLink[];
 }
 

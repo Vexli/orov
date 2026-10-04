@@ -10,7 +10,12 @@ export function LocationLabel({ person, linkDesk = false }: { person: DirectoryP
   const { region, badge } = locationSummary(person);
   return (
     <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
-      <span>{region}</span>{" "}
+      <span>
+        {/* Screen readers would read "flag: Canada" before "Canada", so the flag is hidden from
+            them; the text says the same. */}
+        {person.homeRegionFlag ? <span aria-hidden="true">{person.homeRegionFlag} </span> : null}
+        {region}
+      </span>{" "}
       {linkDesk && person.desk ? (
         <Link
           href={{ pathname: "/map", query: { person: person.id } }}

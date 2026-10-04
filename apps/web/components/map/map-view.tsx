@@ -443,7 +443,10 @@ function OfficeOverview({
   return (
     <aside aria-label={`${location.name} overview`} className="rounded-lg border border-border p-5">
       <h2 className="text-lg font-heading">{location.name}</h2>
-      <p className="text-sm text-muted-fg">{location.regionLabel}</p>
+      <p className="text-sm text-muted-fg">
+        {location.regionFlag ? <span aria-hidden="true">{location.regionFlag} </span> : null}
+        {location.regionLabel}
+      </p>
       <table className="mt-4 w-full text-left text-sm">
         <thead className="border-b border-border text-xs uppercase text-muted-fg">
           <tr>

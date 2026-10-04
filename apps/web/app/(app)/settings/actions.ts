@@ -15,7 +15,9 @@ export async function saveSettingsAction(formData: FormData): Promise<void> {
   const dateFormat = formData.get("dateFormat");
   if (!isRegionDisplay(regionDisplay) || !isDateFormat(dateFormat)) redirect("/settings?error=1");
 
-  await setUserSettings(getDb(), user.email, { regionDisplay, dateFormat });
+  // An unticked checkbox isn't sent at all.
+  const regionFlag = formData.get("regionFlag") === "on";
+  await setUserSettings(getDb(), user.email, { regionDisplay, regionFlag, dateFormat });
   // Every view formats regions and dates on the server, so drop cached pages for the whole app.
   revalidatePath("/", "layout");
   redirect("/settings?saved=1");

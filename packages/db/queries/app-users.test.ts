@@ -67,6 +67,7 @@ describe("region display preference", () => {
     await expect(getAppUser(t.db, "bob@example.com")).resolves.toEqual({
       role: "viewer",
       regionDisplay: "country_region",
+      regionFlag: false,
       dateFormat: "iso",
     });
   });

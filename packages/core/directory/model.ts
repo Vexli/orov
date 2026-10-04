@@ -25,6 +25,8 @@ export interface DirectoryPerson {
   // homeRegion formatted with the viewer's region display preference, on the server, so the
   // browser never needs the subdivision list.
   homeRegionLabel: string;
+  // The country's flag, when the viewer turned flags on (#28). Shown hidden from screen readers.
+  homeRegionFlag: string | null;
   homeTimezone: string | null;
   // Formatted on the server, like homeRegionLabel, so the browser never loads the phone metadata.
   phone: PhoneDisplay | null;

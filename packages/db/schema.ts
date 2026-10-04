@@ -380,6 +380,8 @@ export const appUser = pgTable("app_user", {
   regionDisplay: regionDisplay("region_display")
     .notNull()
     .default("country_region"),
+  // Whether region labels get the country's flag in front (#28).
+  regionFlag: boolean("region_flag").notNull().default(false),
   // How this user sees dates and times (#27).
   dateFormat: dateFormat("date_format").notNull().default("iso"),
   lastSeenAt: timestamp("last_seen_at", { withTimezone: true }),

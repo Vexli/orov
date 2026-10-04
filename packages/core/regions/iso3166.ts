@@ -98,3 +98,31 @@ export function formatRegion(code: string, display: RegionDisplay, locale = "en"
       return region ? `${region}, ${country}` : country;
   }
 }
+
+// How a user wants region codes shown: the display mode, and whether to put the country's flag
+// in front (#28). The flag is separate from the label so the UI can hide it from screen readers,
+// and because Windows shows flag emoji as letter pairs ("CA"), the text label is always kept.
+export interface RegionFormat {
+  display: RegionDisplay;
+  flag: boolean;
+}
+
+export const DEFAULT_REGION_FORMAT: RegionFormat = { display: DEFAULT_REGION_DISPLAY, flag: false };
+
+// The flag of the code's country, as a pair of regional indicator symbols ("CA-ON" → 🇨🇦), or
+// null for a country ISO 3166 doesn't list.
+export function flagEmoji(code: string): string | null {
+  const country = code.slice(0, 2);
+  if (!/^[A-Z]{2}$/.test(country) || !countries.has(country)) return null;
+  return String.fromCodePoint(...[...country].map((c) => 0x1f1e6 + c.charCodeAt(0) - 65));
+}
+
+export interface RegionLabel {
+  label: string;
+  // Null unless the user asked for flags.
+  flag: string | null;
+}
+
+export function regionLabel(code: string, format: RegionFormat, locale = "en"): RegionLabel {
+  return { label: formatRegion(code, format.display, locale), flag: format.flag ? flagEmoji(code) : null };
+}

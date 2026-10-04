@@ -1,6 +1,7 @@
 import {
   DATE_FORMAT_LABELS,
   DATE_FORMATS,
+  flagEmoji,
   formatDateTime,
   formatRegion,
   REGION_DISPLAY_LABELS,
@@ -66,6 +67,17 @@ export default async function SettingsPage({ searchParams }: Props) {
               </label>
             ))}
           </div>
+          {/* Not "Country …": the region options' labels are matched by that prefix. */}
+          <label className="mt-3 flex items-center gap-3 rounded-md border border-border px-3 py-2 text-sm">
+            <input type="checkbox" name="regionFlag" defaultChecked={user.regionFlag} />
+            <span>
+              <span className="block font-medium">Show country flags</span>
+              <span className="block text-xs text-muted-fg">
+                <span aria-hidden="true">{flagEmoji("CA-ON")} </span>Ontario, Canada. Some systems, such as
+                Windows, show the country&apos;s letters instead of a flag.
+              </span>
+            </span>
+          </label>
         </fieldset>
         <fieldset className="mt-6">
           <legend className="text-sm font-medium">Show dates as</legend>
