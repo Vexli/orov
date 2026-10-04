@@ -674,7 +674,10 @@ The improvement backlog raised after Phases 1–3. Each item keeps its number fr
     - **Completed:** 2026-10-04
     - **Branch:** merged from `feature/csv-encoding`
     - **Notes:** `packages/core/csv/decode.ts` `decodeCsv(bytes, encoding?)`: UTF-16 by BOM (or by the zero bytes of BOM-less UTF-16, marked `guessed`), then strict UTF-8, else Windows-1252 (`guessed`). The panel reads `file.arrayBuffer()`, decodes in the browser, shows "Read as …" (a `status` named "<kind> file encoding") and a select to re-read the bytes as another encoding. **Beyond the note:** `parseCsv` detects the separator (comma, semicolon or tab) from the header row, because Excel's UTF-16 "Unicode Text" is tab-separated and its CSV uses semicolons in decimal-comma locales; and the dry run lists a *new* row's fields too, since it showed nothing for creates and there was no way to check names. Cells are NFC-normalized in `parseCsv`. Secondary hardening done: `initials()` takes whole graphemes (`Intl.Segmenter`); `docs/map-authoring.md` says why slugs stay ASCII. **Not done:** accent-insensitive search (`unaccent`), left until #2 rewrites `search.ts`; internationalized emails (low priority, only if an SSO provider sends them). Tests: 12 unit, 2 Playwright.
-- [ ] #18 Validate time zones
+- [x] #18 Validate time zones
+    - **Completed:** 2026-10-04
+    - **Branch:** merged from `feature/timezone-validation`
+    - **Notes:** `packages/core/time/zones.ts`: `canonicalTimeZone` (`resolvedOptions().timeZone`; refuses UTC offsets, which Intl accepts), `isTimeZone` (moved from `spaces/form.ts`), `timeZoneOptions` (adds `UTC`), and zod helpers `timeZoneSchema`/`optionalTimeZoneSchema`, used by the office form, the person form and the people CSV. Legacy names canonicalize as IANA says (`EST` → `America/Panama`, `GMT` → `UTC`). `components/admin/time-zone-list.tsx` renders the `<datalist>` only in the browser (via `useSyncExternalStore`), because Node's and the browser's zone lists differ. Existing bad values aren't migrated: a re-import shows them as row errors, and the form refuses to save them. Tests: 13 unit, 1 Playwright.
 - [ ] #19 Default time zone from the desk's office
 - [ ] #13 Phone number normalization
 - [ ] #1 Skip rows in a CSV import
