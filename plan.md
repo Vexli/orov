@@ -761,7 +761,7 @@ The improvement backlog raised after Phases 1–3. Each item keeps its number fr
 Built after #21 step 2, #22 and #29, at the project owner's direction; #30 still goes last. Numbered N1–N10 to keep them apart from the original items.
 
 - [ ] N1 Allow dual managers
-    - **Decided (2026-10-04):** two **equal** managers, not primary + dotted line. The reporting structure stops being a tree: needs a `person_manager(personId, managerId)` table (or a second column), cycle checks over both edges, an org chart that can draw a person under two managers (d3-org-chart needs a single parent, so likely a duplicated node or a different layout), and decisions for #11's default-manager rule, the CSV (`manager_email` holding two emails), bulk edit and the person card. Needs a design pass before building.
+    - **Decided (2026-10-04):** **equal** managers, **any number**. In the reporting chart a person appears under each of their managers (as the team tree shows multi-team people), with their own reports under the first only, so whole subtrees aren't duplicated; selecting them highlights every node. The people CSV's `manager_email` takes several emails separated by `;`. Storage moves to a `person_manager(personId, managerId, position)` table; cycle checks walk every edge; #11's default applies when there are none.
 - [x] N2 Directory and org chart use the full page width, with the person card floating over the content
     - **Completed:** 2026-10-04
     - **Branch:** merged from `feature/full-width-layout` (with N3 and N4)
@@ -792,7 +792,8 @@ Built after #21 step 2, #22 and #29, at the project owner's direction; #30 still
     - **Completed:** 2026-10-04
     - **Branch:** merged from `feature/office-without-desk`
     - **Notes:** Migration `0014` (`person.office_id` → `location`). Stored only without a desk: `savePersonIn` and the import planner drop it when a desk is set, and the planner refuses an office that isn't the desk's. `DirectoryPerson.office`, `officeSlugOf` (desk office, else assigned office) for the office filter, `locationSummary` badge shows the office instead of "Remote". `PersonRecord.officeSlug`; CSV `office` column after `desk`, in `KEPT_IF_ABSENT`. Time zone default (#19) falls back to the office's. Map overview: "N people work here without a desk". `deleteLocation` refuses an office with people in it. **Not handled:** archiving an office leaves its desk-less people pointing at it (they show the archived office's name); a follow-up could ask, as with desks. Tests: 5 unit, 2 DB, 1 Playwright.
-- [ ] N10 Seating planner: admins plan a seating chart by grouping (e.g. by team), lock individuals in place, and auto-regroup the rest (large; needs a design pass)
+- [ ] N10 Seating planner: admins plan a seating chart by grouping, lock individuals in place, and auto-regroup the rest
+    - **Decided (2026-10-04):** group by primary team, over the desks of one office (all its floors); locked people keep their desks; everyone else is placed so each team sits together (same floor and area, nearest desks). Computed and applied in one sitting: a preview of moves, then one transaction with an audit entry per person. No saved drafts.
 
 **G. Integrations (with Phases 4 and 5)**
 
