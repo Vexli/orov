@@ -3,6 +3,7 @@ import {
   compareByFamilyName,
   defaultTimeZone,
   identityProvider,
+  inheritedManager,
   PROFILE_PROVIDER_IDS,
   type Identities,
   type PersonForm,
@@ -181,10 +182,18 @@ export async function savePerson(
     });
     if (emailTaken) throw new ValidationError("Another person already uses this email.", "email");
 
-    if (input.managerId) {
-      const manager = await tx.query.person.findFirst({ where: eq(s.person.id, input.managerId), columns: { id: true } });
+    // No manager chosen: the primary team's lead (#11), unless that would close a loop.
+    let managerId = input.managerId;
+    if (managerId === null && input.primaryTeamId !== null) {
+      const teams = await tx.select({ id: s.team.id, parentTeamId: s.team.parentTeamId, leadId: s.team.leadId }).from(s.team);
+      const lead = inheritedManager(id ?? "", input.primaryTeamId, new Map(teams.map((t) => [t.id, t])));
+      if (lead && !(id && (await managerWouldLoop(tx, id, lead)))) managerId = lead;
+    }
+
+    if (managerId) {
+      const manager = await tx.query.person.findFirst({ where: eq(s.person.id, managerId), columns: { id: true } });
       if (!manager) throw new ValidationError("Choose an existing manager.", "managerId");
-      if (id && (await managerWouldLoop(tx, id, input.managerId))) {
+      if (id && (await managerWouldLoop(tx, id, managerId))) {
         throw new ValidationError("That manager reports (directly or not) to this person, which would create a loop.", "managerId");
       }
     }
@@ -232,7 +241,7 @@ export async function savePerson(
       ),
       startDate: input.startDate,
       active: input.active,
-      managerId: input.managerId,
+      managerId,
       assignedDeskId: input.assignedDeskId,
       updatedAt: new Date(),
     };

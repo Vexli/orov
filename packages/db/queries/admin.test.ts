@@ -221,6 +221,31 @@ describe("savePerson", () => {
     expect((await getPersonForEdit(t.db, deskless.id))?.homeTimezone).toBeNull();
   });
 
+  it("gives a new HR member with no manager the lead of HR", async () => {
+    const { id } = await savePerson(t.db, ACTOR, personInput({ teamIds: ["t_hr"], primaryTeamId: "t_hr" }));
+    expect((await getPersonForEdit(t.db, id))?.managerId).toBe("p_jane");
+    // Payroll has no lead of its own, so its members default to HR's.
+    const payroll = await savePerson(
+      t.db,
+      ACTOR,
+      personInput({ email: "pay@example.com", teamIds: ["t_payroll"], primaryTeamId: "t_payroll" }),
+    );
+    expect((await getPersonForEdit(t.db, payroll.id))?.managerId).toBe("p_jane");
+  });
+
+  it("doesn't make the lead their own manager, or replace a chosen one", async () => {
+    const jane = (await getPersonForEdit(t.db, "p_jane"))!;
+    await savePerson(t.db, ACTOR, { ...jane, managerId: null }, "p_jane");
+    expect((await getPersonForEdit(t.db, "p_jane"))?.managerId).toBeNull();
+
+    const { id } = await savePerson(
+      t.db,
+      ACTOR,
+      personInput({ teamIds: ["t_hr"], primaryTeamId: "t_hr", managerId: "p_max" }),
+    );
+    expect((await getPersonForEdit(t.db, id))?.managerId).toBe("p_max");
+  });
+
   it("stores the given and family names, and the database builds the full name", async () => {
     const { id } = await savePerson(t.db, ACTOR, personInput({ givenName: "Mary Ann", familyName: "Smith" }));
     const row = await t.db.query.person.findFirst({ where: eq(s.person.id, id) });

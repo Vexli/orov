@@ -46,7 +46,7 @@ export default async function EditPersonPage({ params }: { params: Promise<{ id:
           managers={people.filter((p) => !excluded.has(p.id)).map((p) => ({ id: p.id, name: p.name }))}
           desks={desks}
           floors={floors}
-          teams={teams.map((t) => ({ id: t.id, name: t.name }))}
+          teams={teams.map((t) => ({ id: t.id, name: t.name, parentTeamId: t.parentTeamId, leadId: t.leadId }))}
         />
       </div>
     </div>

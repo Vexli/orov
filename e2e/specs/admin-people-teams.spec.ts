@@ -97,6 +97,20 @@ test.describe("admin people and teams", () => {
     await expect(report.getByRole("link", { name: "Sam Ortiz" })).toHaveAttribute("href", "/admin/people/p_sam");
   });
 
+  test("a new person with no manager gets their primary team's lead", async ({ page, context }) => {
+    await signInAs(context, "jane@example.com");
+    await page.goto("/admin/people/new");
+    await page.getByLabel("Given name").fill("Ama");
+    await page.getByLabel("Family name").fill("Ito");
+    await page.getByLabel("Email").fill("ama@example.com");
+    await page.getByLabel("Member of HR").check();
+    await page.getByLabel("Primary team HR").check();
+    await expect(page.getByLabel("Manager").locator("option").first()).toHaveText("Default: Jane Park, lead of HR");
+    await page.getByRole("button", { name: "Create person" }).click();
+    await expect(page).toHaveURL(/\/admin\/people$/);
+    await expect(page.getByRole("row", { name: /Ama Ito/ })).toContainText("Jane Park");
+  });
+
   test("a duplicate email is refused next to the field", async ({ page, context }) => {
     await signInAs(context, "jane@example.com");
     await page.goto("/admin/people/new");

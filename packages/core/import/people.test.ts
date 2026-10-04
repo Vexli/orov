@@ -29,7 +29,13 @@ function person(overrides: Partial<PersonRecord> & { email: string }): PersonRec
 function snapshot(people: PersonRecord[] = [], extra: Partial<PeopleSnapshot> = {}): PeopleSnapshot {
   return {
     people: new Map(people.map((p) => [p.email, p])),
-    teamSlugs: new Set(["hr", "eng"]),
+    teamSlugs: new Set(["hr", "eng", "payroll"]),
+    // HR is led by Jane; Payroll, under HR, has no lead of its own.
+    teams: new Map([
+      ["hr", { parentTeamId: null, leadId: "jane@x.com" }],
+      ["payroll", { parentTeamId: "hr", leadId: null }],
+      ["eng", { parentTeamId: null, leadId: null }],
+    ]),
     desks: new Map([
       ["SF-2-014", { assignable: true, ownerEmail: null, timezone: "America/Los_Angeles" }],
       ["SF-2-015", { assignable: true, ownerEmail: null, timezone: "America/Los_Angeles" }],
@@ -255,6 +261,36 @@ describe("planPeopleImport", () => {
         ["create", undefined],
       ]);
       expect(plan.canApply).toBe(true);
+    });
+  });
+
+  describe("default manager", () => {
+    const jane = person({ email: "jane@x.com", givenName: "Jane" });
+
+    it("gives a blank manager the primary team's lead, and shows it in the dry run", () => {
+      const plan = run("ama@x.com,Ama,,,US,,,,,,,payroll,payroll\n", snapshot([jane]));
+      expect(plan.rows[0]?.record?.managerEmail).toBe("jane@x.com");
+      expect(plan.rows[0]?.changes).toContainEqual({ field: "managerEmail", before: null, after: "jane@x.com" });
+    });
+
+    it("never replaces a manager given in the file", () => {
+      const max = person({ email: "max@x.com" });
+      const plan = run("ama@x.com,Ama,,,US,,,,,max@x.com,,hr,hr\n", snapshot([jane, max]));
+      expect(plan.rows[0]?.record?.managerEmail).toBe("max@x.com");
+    });
+
+    it("doesn't make the lead their own manager", () => {
+      const plan = run("jane@x.com,Jane,,,US,,,,,,,hr,hr\n", snapshot([jane]));
+      expect(plan.rows[0]?.record?.managerEmail).toBeNull();
+    });
+
+    it("leaves the manager blank when the default would close a loop", () => {
+      // Jane, the lead, reports to Ama in this file, so Ama can't default to Jane.
+      const plan = run("jane@x.com,Jane,,,US,,,,,ama@x.com,,,\nama@x.com,Ama,,,US,,,,,,,hr,hr\n", snapshot([jane]));
+      expect(plan.rows.map((r) => [r.action, r.record?.managerEmail])).toEqual([
+        ["update", "ama@x.com"],
+        ["create", null],
+      ]);
     });
   });
 });

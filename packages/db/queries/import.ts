@@ -100,9 +100,19 @@ async function loadPeopleSnapshot(db: Executor): Promise<PeopleSnapshot> {
     });
   }
 
+  // Team leads aren't in the spreadsheet, so they come from the database by team slug.
+  const leads = await db
+    .select({ slug: s.team.slug, email: s.person.email })
+    .from(s.team)
+    .innerJoin(s.person, eq(s.person.id, s.team.leadId));
+  const leadBySlug = new Map(leads.map((l) => [l.slug, l.email]));
+
   return {
     people: new Map(people.map((p) => [p.email, p])),
     teamSlugs: new Set(teams.map((t) => t.slug)),
+    teams: new Map(
+      teams.map((t) => [t.slug, { parentTeamId: t.parentSlug, leadId: leadBySlug.get(t.slug) ?? null }]),
+    ),
     desks,
   };
 }
