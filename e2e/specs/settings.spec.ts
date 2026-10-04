@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { resetE2eDatabase } from "../support/database";
-import { signInAs } from "../support/session";
+import { signInAs, switchUser } from "../support/session";
 
 // Each user picks how region codes appear (plan.md §7): ISO 3166 code, country name, region
 // name, or region and country name. The setting is theirs alone.
@@ -110,8 +110,7 @@ test.describe("date format setting", () => {
     await expect(when).toHaveText(/^\d\d\/\d\d\/\d{4} \d\d:\d\d E[DS]T$/);
 
     // Max's setting is still the default.
-    await context.clearCookies();
-    await signInAs(context, "max@example.com");
+    await switchUser(page, context, "max@example.com");
     await page.goto("/settings");
     await expect(page.getByRole("radio", { name: /Year-month-day/ })).toBeChecked();
   });
