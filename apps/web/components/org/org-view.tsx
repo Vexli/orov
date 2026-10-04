@@ -15,6 +15,7 @@ import {
 import { PersonCard } from "@/components/directory/person-card";
 import { orgParsers } from "@/lib/url-state";
 import { OrgChart } from "./org-chart";
+import { FLOATING_PANEL_GUTTER, FloatingPanel, ViewBar } from "../view-bar";
 import { OrgOutline } from "./org-outline";
 import { sortByName } from "@officeorg/core/people/names";
 
@@ -60,10 +61,10 @@ export function OrgView({ people, teams }: Props) {
   const label = `${TREE_LABEL[params.tree]} chart`;
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
-      <section aria-label="Org chart" className="min-w-0">
-        <h1 className="text-xl font-heading">Org chart</h1>
-        <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-2">
+    <>
+      {/* The chart's own controls, in the bar under the main menu (N4). */}
+      <ViewBar label="Org chart filters">
+        <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
           <div role="group" aria-label="Tree" className="flex gap-1">
             {(["reporting", "team"] as const).map((t) => (
               <button
@@ -91,7 +92,7 @@ export function OrgView({ people, teams }: Props) {
             ))}
           </div>
         </div>
-        <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
           <select
             aria-label="Highlight team"
             value={params.team ?? ""}
@@ -124,6 +125,10 @@ export function OrgView({ people, teams }: Props) {
             </p>
           ) : null}
         </div>
+      </ViewBar>
+      {/* Full width (N2); the card floats at the right while someone is selected. */}
+      <section aria-label="Org chart" className={`min-w-0 ${selectedPerson ? FLOATING_PANEL_GUTTER : ""}`}>
+        <h1 className="text-xl font-heading">Org chart</h1>
         <div className="mt-4">
           {params.view === "list" ? (
             <OrgOutline
@@ -145,29 +150,23 @@ export function OrgView({ people, teams }: Props) {
         </div>
       </section>
 
-      <div className="space-y-3 lg:sticky lg:top-6 lg:self-start">
-        {selectedPerson && !selectedId ? (
-          <p role="note" className="rounded-md bg-muted p-3 text-sm">
-            {displayName(selectedPerson)} isn&apos;t in any team, so they aren&apos;t in the team
-            tree.
-          </p>
-        ) : null}
-        {selectedPerson ? (
-          <>
-            <PersonCard
-              person={selectedPerson}
-              onSelectPerson={(id) => setParams({ person: id })}
-              onClose={() => setParams({ person: null })}
-            />
-            <ReportingLine chain={chain} onSelect={(id) => setParams({ person: id })} />
-          </>
-        ) : (
-          <p className="rounded-lg border border-dashed border-border p-5 text-sm text-muted-fg">
-            Select someone to see their card.
-          </p>
-        )}
-      </div>
-    </div>
+      {selectedPerson ? (
+        <FloatingPanel belowBar>
+          {!selectedId ? (
+            <p role="note" className="rounded-md bg-muted p-3 text-sm">
+              {displayName(selectedPerson)} isn&apos;t in any team, so they aren&apos;t in the team
+              tree.
+            </p>
+          ) : null}
+          <PersonCard
+            person={selectedPerson}
+            onSelectPerson={(id) => setParams({ person: id })}
+            onClose={() => setParams({ person: null })}
+          />
+          <ReportingLine chain={chain} onSelect={(id) => setParams({ person: id })} />
+        </FloatingPanel>
+      ) : null}
+    </>
   );
 }
 

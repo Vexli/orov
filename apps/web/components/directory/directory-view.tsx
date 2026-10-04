@@ -18,6 +18,7 @@ import {
 import { directoryParsers } from "@/lib/url-state";
 import { LocationLabel } from "./location-label";
 import { TeamChip } from "../team-chip";
+import { FLOATING_PANEL_GUTTER, FloatingPanel } from "../view-bar";
 import { PersonCard } from "./person-card";
 import { sortByName } from "@officeorg/core/people/names";
 
@@ -116,7 +117,8 @@ export function DirectoryView({ people, teams, locations }: Props) {
   const hasFilters = params.q !== "" || params.team !== null || params.loc !== null || params.desk;
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
+    // Full width (N2); the card floats at the right while someone is selected.
+    <div className={selected ? FLOATING_PANEL_GUTTER : undefined}>
       <section aria-label="People directory" className="min-w-0">
         <h1 className="text-xl font-heading">Directory</h1>
 
@@ -243,19 +245,15 @@ export function DirectoryView({ people, teams, locations }: Props) {
         </div>
       </section>
 
-      <div className="lg:sticky lg:top-6 lg:self-start">
-        {selected ? (
+      {selected ? (
+        <FloatingPanel>
           <PersonCard
             person={selected}
             onSelectPerson={(id) => setParams({ person: id })}
             onClose={() => setParams({ person: null })}
           />
-        ) : (
-          <p className="rounded-lg border border-dashed border-border p-5 text-sm text-muted-fg">
-            Select someone to see their card.
-          </p>
-        )}
-      </div>
+        </FloatingPanel>
+      ) : null}
     </div>
   );
 }
