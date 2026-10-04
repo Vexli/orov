@@ -30,6 +30,7 @@ function person(
 ): DirectoryPerson {
   return {
     identities: {},
+    phone: null,
     preferredName: null,
     email: `${overrides.id}@example.com`,
     title: null,

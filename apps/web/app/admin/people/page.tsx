@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { displayPhone } from "@officeorg/core";
 import { getDb } from "@officeorg/db/client";
 import { listPeopleForAdmin } from "@officeorg/db/queries/people";
 import { listTeamsForAdmin } from "@officeorg/db/queries/teams";
@@ -7,6 +8,9 @@ import { PeopleTable } from "@/components/admin/people-table";
 export default async function PeopleAdminPage() {
   const db = getDb();
   const [people, teams] = await Promise.all([listPeopleForAdmin(db), listTeamsForAdmin(db)]);
+  // Numbers stored before phones were validated, and that don't parse on their own. Saving the
+  // person (or re-importing them) normalizes or rejects each one.
+  const badPhones = people.filter((p) => p.phone && displayPhone(p.phone).uri === null);
 
   return (
     <div>
@@ -25,6 +29,28 @@ export default async function PeopleAdminPage() {
           New person
         </Link>
       </div>
+
+      {badPhones.length > 0 ? (
+        <section
+          aria-label="Phone numbers to fix"
+          className="mt-6 rounded-md border border-border bg-muted p-4 text-sm"
+        >
+          <p>
+            {badPhones.length === 1 ? "1 phone number isn't" : `${badPhones.length} phone numbers aren't`} in a
+            standard format. Open the person and save to fix it, or correct it in the spreadsheet.
+          </p>
+          <ul className="mt-2 space-y-1">
+            {badPhones.map((p) => (
+              <li key={p.id}>
+                <Link href={`/admin/people/${p.id}`} className="underline underline-offset-4">
+                  {p.name}
+                </Link>{" "}
+                <span className="font-mono text-xs text-muted-fg">{p.phone}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
 
       <PeopleTable
         people={people}

@@ -1,6 +1,7 @@
 import { asc, eq } from "drizzle-orm";
 import {
   DEFAULT_REGION_DISPLAY,
+  displayPhone,
   formatRegion,
   type DirectoryPerson,
   type DirectoryTeam,
@@ -55,6 +56,7 @@ export async function loadDirectory(
     homeRegion: row.homeRegion,
     homeRegionLabel: formatRegion(row.homeRegion, regionDisplay),
     homeTimezone: row.homeTimezone,
+    phone: row.phone ? displayPhone(row.phone) : null,
     manager: row.manager ? { id: row.manager.id, name: row.manager.name } : null,
     desk: row.assignedDesk
       ? {

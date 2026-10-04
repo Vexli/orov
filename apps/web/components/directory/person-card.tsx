@@ -95,6 +95,17 @@ export function PersonCard({ person, onSelectPerson, onClose }: Props) {
             </ul>
           )}
         </Field>
+        {person.phone ? (
+          <Field label="Phone">
+            {person.phone.uri ? (
+              <a href={person.phone.uri} className="underline underline-offset-4">
+                {person.phone.label}
+              </a>
+            ) : (
+              person.phone.label
+            )}
+          </Field>
+        ) : null}
         <Field label="Home timezone">{person.homeTimezone ?? "—"}</Field>
         {links.length > 0 ? (
           <Field label="Accounts">

@@ -1,4 +1,5 @@
 import type { Identities } from "../people/identities";
+import type { PhoneDisplay } from "../people/phone";
 
 // Shapes the directory works with. They're plain data, so the same filter runs on the server,
 // in tests, and in the browser.
@@ -22,6 +23,8 @@ export interface DirectoryPerson {
   // browser never needs the subdivision list.
   homeRegionLabel: string;
   homeTimezone: string | null;
+  // Formatted on the server, like homeRegionLabel, so the browser never loads the phone metadata.
+  phone: PhoneDisplay | null;
   manager: { id: string; name: string } | null;
   desk: {
     id: string;

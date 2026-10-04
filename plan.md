@@ -164,7 +164,7 @@ space         (id, floorId, areaId?, kind, svgElementId, name, capacity?,
                 kind: desk | meeting_room | phone_booth | kitchen | elevator | restroom | other
                 UNIQUE(floorId, svgElementId)
 
-person        (id, email UNIQUE, name, preferredName?, title?, photoUrl?, phone?,
+person        (id, email UNIQUE, name, preferredName?, title?, photoUrl?, phone? (E.164),
                homeRegion (ISO 3166 code), homeTimezone?,
                managerId → person?, assignedDeskId → space? UNIQUE (partial, non-null),
                startDate?, active bool, createdAt, updatedAt)
