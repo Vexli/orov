@@ -639,7 +639,10 @@ The improvement backlog raised after Phases 1–3. Each item keeps its number fr
 
 **A. Quick UI wins**
 
-- [ ] #8 Strike through inactive people in the admin list
+- [x] #8 Strike through inactive people in the admin list
+    - **Completed:** 2026-10-04
+    - **Branch:** merged from `feature/admin-inactive-strike`
+    - **Notes:** The name in `/admin/people` gets `line-through text-muted-fg` plus a visually hidden " (inactive)". Inactive people are not sorted last; #9's status filter (default: active) hides them instead. Tests: 1 Playwright.
 - [ ] #14 Click anywhere in a directory row to select it
 - [ ] #15 Desk code in the directory links to the map
 - [ ] #24 Team highlight lights up members in the team tree
