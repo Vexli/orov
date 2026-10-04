@@ -747,6 +747,23 @@ The improvement backlog raised after Phases 1–3. Each item keeps its number fr
 - [ ] #29 Encrypted JSON export and import of the organization
     - **Design (from the note):** purposes: moving between instances, admin-run backup and restore, sharing safely by email or drive. Admin-chosen passphrase, scrypt → AES-256-GCM with Node's `crypto` (no new dependency); minimum length and a strength hint; a lost passphrase means a lost file. File `officeorg-export.v1`: outer JSON `{ format, version: 1, kdf: { name: "scrypt", N, r, p, salt }, cipher: { name: "AES-256-GCM", iv }, ciphertext }`; plaintext has `meta` (exportedAt, exportedBy, app version, schema migration id, counts) and `locations`, `floors` (every `svg_asset` version), `areas`, `spaces`, `teams`, `people` (memberships with source, identities, manager and desk by id), `app_users`, `app_settings` (when it exists), `themes`, `brand_assets` (base64). Ids are kept. **Never included:** messaging tokens, secrets, sessions, presence data, the audit log. Export: `/admin/backup`, passphrase twice, POST to an admin-only `no-store` route, audited (new `organization` entity). Import: zod-validate, refuse newer schemas and migrate older ones, dry run per section (create/update/unchanged/conflict), modes restore/replace and merge (upsert by id; conflicts are emails or desk codes used by another id), one transaction reusing the invariant checks, admin roles in the file applied only on confirmation and the importing admin always keeps theirs. Raise the body limit for that route only. Tests: core round-trip, tamper, wrong passphrase, version checks; DB export → reset → import identical; Playwright. README "Backup and moving instances" (complements, doesn't replace, Postgres PITR). Built after the other schema-changing items so v1 includes their fields.
 
+**N. Second list (from the replaced `note.md`, 2026-10-04)**
+
+Built after #21 step 2, #22 and #29, at the project owner's direction; #30 still goes last. Numbered N1–N10 to keep them apart from the original items.
+
+- [ ] N1 Allow dual managers
+    - **Decided (2026-10-04):** two **equal** managers, not primary + dotted line. The reporting structure stops being a tree: needs a `person_manager(personId, managerId)` table (or a second column), cycle checks over both edges, an org chart that can draw a person under two managers (d3-org-chart needs a single parent, so likely a duplicated node or a different layout), and decisions for #11's default-manager rule, the CSV (`manager_email` holding two emails), bulk edit and the person card. Needs a design pass before building.
+- [ ] N2 Directory and org chart use the full page width, with the person card floating over the content
+- [ ] N3 Keep the main menu at the top while scrolling
+- [ ] N4 Map and org chart filters in a secondary bar between the main menu and the content
+- [ ] N5 People and teams sorted alphabetically in every dropdown
+- [ ] N6 Final date (admin view only)
+    - **Decided (2026-10-04):** a person's last working day: `person.endDate` beside `startDate`, in the admin form, admin list and people CSV; never sent to viewers.
+- [ ] N7 Flags as a standalone region display option (adjusts #28: a flag-only mode alongside the four text modes; the flag stays `aria-hidden`, so the accessible text needs a fallback)
+- [ ] N8 Don't draw area names on the map; use areas only to filter (adjusts #26: drop the area labels, keep room and point-of-interest labels)
+- [ ] N9 Assign a person to an office without a desk (a person → location link for remote-in-office or hot-desk staff; affects the map's office counts, the directory's office filter and #19's time zone default)
+- [ ] N10 Seating planner: admins plan a seating chart by grouping (e.g. by team), lock individuals in place, and auto-regroup the rest (large; needs a design pass)
+
 **G. Integrations (with Phases 4 and 5)**
 
 - [ ] #4–6 Provider-agnostic interfaces in `packages/integrations`
