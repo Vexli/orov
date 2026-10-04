@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { inheritedManager, inheritedTeams, reachesAncestor } from "./tree";
+import { inheritedManager, inheritedTeams, reachesAncestor, reachesAncestorAny } from "./tree";
 
 const parents = new Map<string, string | null>([
   ["a", "b"],
@@ -82,5 +82,24 @@ describe("inheritedTeams", () => {
   it("stops on a cycle in the data", () => {
     const loop = new Map([["a", "b"], ["b", "a"]]);
     expect(inheritedTeams(["a"], (id) => loop.get(id))).toEqual(["b"]);
+  });
+});
+
+describe("reachesAncestorAny", () => {
+  // Bob reports to Max and Ana; Ana reports to Jane; Max to nobody.
+  const parents = new Map<string, string[]>([
+    ["bob", ["max", "ana"]],
+    ["ana", ["jane"]],
+  ]);
+  const parentsOf = (id: string) => parents.get(id) ?? [];
+
+  it("follows every manager, not just the first", () => {
+    expect(reachesAncestorAny(parentsOf, ["bob"], "jane")).toBe(true);
+    expect(reachesAncestorAny(parentsOf, ["max"], "jane")).toBe(false);
+  });
+
+  it("stops on a cycle in the data", () => {
+    const loop = new Map([["a", ["b"]], ["b", ["a"]]]);
+    expect(reachesAncestorAny((id) => loop.get(id) ?? [], ["a"], "z")).toBe(false);
   });
 });

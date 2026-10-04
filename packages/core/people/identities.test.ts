@@ -79,7 +79,7 @@ describe("selfProfileSchema", () => {
       homeTimezone: null,
       identities: {},
       title: "CEO",
-      managerId: "p_bob",
+      managerIds: ["p_bob"],
       active: false,
     });
     expect(Object.keys(parsed).sort()).toEqual(["homeTimezone", "identities", "phone", "preferredName"]);

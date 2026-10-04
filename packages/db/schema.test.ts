@@ -183,17 +183,18 @@ describe("demo seed", () => {
     const bob = await t.db.query.person.findFirst({
       where: eq(s.person.id, "p_bob"),
       with: {
-        manager: { with: { manager: true } },
+        managers: { with: { manager: { with: { managers: { with: { manager: true } } } } } },
         assignedDesk: { with: { floor: { with: { location: true } } } },
       },
     });
-    expect(bob?.manager?.name).toBe("Max Osei");
-    expect(bob?.manager?.manager?.name).toBe("Jane Park");
+    const max = bob?.managers[0]?.manager;
+    expect(max?.name).toBe("Max Osei");
+    expect(max?.managers[0]?.manager.name).toBe("Jane Park");
     expect(bob?.assignedDesk?.name).toBe("SF-2-014");
     expect(bob?.assignedDesk?.floor.location.name).toBe("San Francisco");
 
     const jane = await t.db.query.person.findFirst({ where: eq(s.person.id, "p_jane") });
-    expect(jane).toMatchObject({ homeRegion: "CA-ON", managerId: null });
+    expect(jane).toMatchObject({ homeRegion: "CA-ON" });
     expect(jane?.assignedDeskId).toBe("sp_sf_2_003");
 
     const hrChildren = await t.db.query.team.findMany({

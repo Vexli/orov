@@ -233,7 +233,6 @@ export const person = pgTable(
     phone: text("phone"),
     homeRegion: text("home_region").notNull(),
     homeTimezone: text("home_timezone"),
-    managerId: text("manager_id").references((): AnyPgColumn => person.id),
     assignedDeskId: text("assigned_desk_id").references(() => space.id),
     // The office of someone without a desk (N9). Null with a desk, whose office it is.
     officeId: text("office_id").references(() => location.id),
@@ -248,9 +247,24 @@ export const person = pgTable(
     uniqueIndex("person_assigned_desk")
       .on(t.assignedDeskId)
       .where(sql`${t.assignedDeskId} is not null`),
-    index("person_manager").on(t.managerId),
     check("person_home_region_iso3166", regionShape(t.homeRegion)),
   ],
+);
+
+// Whom each person reports to (N1): any number of managers, all equal. `position` keeps the order
+// they were given in; the org chart draws someone's own node under the first.
+export const personManager = pgTable(
+  "person_manager",
+  {
+    personId: text("person_id")
+      .notNull()
+      .references((): AnyPgColumn => person.id, { onDelete: "cascade" }),
+    managerId: text("manager_id")
+      .notNull()
+      .references((): AnyPgColumn => person.id, { onDelete: "cascade" }),
+    position: integer("position").notNull().default(0),
+  },
+  (t) => [primaryKey({ columns: [t.personId, t.managerId] }), index("person_manager_manager").on(t.managerId)],
 );
 
 // Other accounts a person has, by provider id from packages/core/people/identities.ts: profile
@@ -485,16 +499,17 @@ export const spaceRelations = relations(space, ({ one }) => ({
 }));
 
 export const personRelations = relations(person, ({ one, many }) => ({
-  manager: one(person, {
-    fields: [person.managerId],
-    references: [person.id],
-    relationName: "manager",
-  }),
-  reports: many(person, { relationName: "manager" }),
+  managers: many(personManager, { relationName: "managers" }),
+  reports: many(personManager, { relationName: "reports" }),
   assignedDesk: one(space, { fields: [person.assignedDeskId], references: [space.id] }),
   office: one(location, { fields: [person.officeId], references: [location.id] }),
   teamMembers: many(teamMember),
   identities: many(personIdentity),
+}));
+
+export const personManagerRelations = relations(personManager, ({ one }) => ({
+  person: one(person, { fields: [personManager.personId], references: [person.id], relationName: "managers" }),
+  manager: one(person, { fields: [personManager.managerId], references: [person.id], relationName: "reports" }),
 }));
 
 export const personIdentityRelations = relations(personIdentity, ({ one }) => ({

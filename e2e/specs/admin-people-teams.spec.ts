@@ -196,6 +196,32 @@ test.describe("admin people and teams", () => {
     );
   });
 
+  test("someone can have two managers, and appears under both in the reporting chart", async ({
+    page,
+    context,
+  }) => {
+    await signInAs(context, "jane@example.com");
+    await page.goto("/admin/people/p_priya");
+    await expect(page.getByRole("list", { name: "Managers" }).getByRole("listitem")).toHaveText(["Max Osei×"]);
+    await page.getByRole("combobox", { name: /^Manager/ }).selectOption({ label: "Jane Park" });
+    await expect(page.getByRole("list", { name: "Managers" }).getByRole("listitem")).toHaveText([
+      "Max Osei×",
+      "Jane Park×",
+    ]);
+    await page.getByRole("button", { name: "Save person" }).click();
+    await expect(page).toHaveURL(/\/admin\/people$/);
+    await expect(page.getByRole("row", { name: /priya@example\.com/ })).toContainText("Max Osei, Jane Park");
+
+    await page.goto("/org?view=list&person=p_priya");
+    const outline = page.getByRole("navigation", { name: "Reporting lines chart" });
+    // One entry under Max and one under Jane, both shown as selected.
+    await expect(outline.getByRole("button", { name: /Priya Raman/ })).toHaveCount(2);
+    await expect(outline.locator('[aria-current="true"]')).toHaveCount(2);
+    const card = page.getByRole("complementary", { name: "Priya Raman details" });
+    await expect(card).toContainText("Managers");
+    await expect(card.getByRole("button", { name: "Jane Park" })).toBeVisible();
+  });
+
   test("a duplicate email is refused next to the field", async ({ page, context }) => {
     await signInAs(context, "jane@example.com");
     await page.goto("/admin/people/new");
@@ -294,7 +320,7 @@ test.describe("admin people and teams", () => {
     await bar.getByRole("button", { name: "Review change" }).click();
     const dialog = page.getByRole("dialog", { name: "Set manager: Bob Lindqvist for 2 people?" });
     await dialog.getByRole("button", { name: "Apply" }).click();
-    await expect(dialog.getByRole("alert")).toContainText(/^Max Osei: That manager reports/);
+    await expect(dialog.getByRole("alert")).toContainText(/^Max Osei: Bob Lindqvist reports/);
     await dialog.getByRole("button", { name: "Cancel" }).click();
     await expect(page.getByRole("row", { name: /priya@example\.com/ })).toContainText("Max Osei");
   });

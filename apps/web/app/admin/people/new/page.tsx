@@ -36,7 +36,7 @@ export default async function NewPersonPage() {
             startDate: null,
             endDate: null,
             active: true,
-            managerId: null,
+            managerIds: [],
             assignedDeskId: null,
             officeId: null,
             teamIds: [],

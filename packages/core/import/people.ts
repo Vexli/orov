@@ -1,6 +1,6 @@
 import type { PersonRecord } from "../records";
 import { diffPersonRecords } from "../records";
-import { inheritedManager, reachesAncestor, type TeamLeadInfo } from "../teams/tree";
+import { inheritedManager, reachesAncestorAny, type TeamLeadInfo } from "../teams/tree";
 import { defaultTimeZone } from "../time/zones";
 import type { CsvIssue } from "../csv/parse";
 import type { ValidPersonRow } from "../csv/people";
@@ -71,19 +71,19 @@ export function planPeopleImport(
   // close a reporting loop is dropped rather than reported, since the admin didn't ask for it.
   const inherited = new Set<string>();
   for (const [email, row] of desired) {
-    const { managerEmail, primaryTeamSlug } = row.record;
-    if (managerEmail !== null || primaryTeamSlug === null) continue;
+    const { managerEmails, primaryTeamSlug } = row.record;
+    if (managerEmails.length > 0 || primaryTeamSlug === null) continue;
     const lead = inheritedManager(email, primaryTeamSlug, snapshot.teams);
     if (lead === null || (!desired.has(lead) && !snapshot.people.has(lead))) continue;
-    desired.set(email, { ...row, record: { ...row.record, managerEmail: lead } });
+    desired.set(email, { ...row, record: { ...row.record, managerEmails: [lead] } });
     inherited.add(email);
   }
 
-  // Final manager of each person after this import. Anyone not in the file keeps their current manager.
-  const finalManager = (email: string): string | null => {
+  // Final managers of each person after this import. Anyone not in the file keeps theirs.
+  const finalManagers = (email: string): string[] => {
     const row = desired.get(email);
-    if (row) return row.record.managerEmail;
-    return snapshot.people.get(email)?.managerEmail ?? null;
+    if (row) return row.record.managerEmails;
+    return snapshot.people.get(email)?.managerEmails ?? [];
   };
 
   // Desk claims after this import: rows in the file win, everyone else keeps their desk.
@@ -97,8 +97,8 @@ export function planPeopleImport(
 
   for (const email of inherited) {
     const row = desired.get(email)!;
-    if (reachesAncestor(finalManager, row.record.managerEmail, email)) {
-      desired.set(email, { ...row, record: { ...row.record, managerEmail: null } });
+    if (reachesAncestorAny(finalManagers, row.record.managerEmails, email)) {
+      desired.set(email, { ...row, record: { ...row.record, managerEmails: [] } });
     }
   }
 
@@ -117,7 +117,7 @@ export function planPeopleImport(
   }
 
   for (const [email, row] of desired) {
-    const problem = validateReferences(row, snapshot, desired, finalManager, deskClaims, identityClaims, skippedLine);
+    const problem = validateReferences(row, snapshot, desired, finalManagers, deskClaims, identityClaims, skippedLine);
     if (problem) errors.set(email, problem);
     if (errors.has(email)) {
       planned.push({ line: row.line, key: email, action: "error", changes: [], message: errors.get(email), record: row.record });
@@ -149,7 +149,7 @@ function validateReferences(
   row: ValidPersonRow,
   snapshot: PeopleSnapshot,
   desired: Map<string, ValidPersonRow>,
-  finalManager: (email: string) => string | null,
+  finalManagers: (email: string) => string[],
   deskClaims: Map<string, string[]>,
   identityClaims: Map<string, string[]>,
   skippedLine: Map<string, number>,
@@ -160,17 +160,17 @@ function validateReferences(
     if (!snapshot.teamSlugs.has(slug)) return `unknown team "${slug}" (import teams first)`;
   }
 
-  if (rec.managerEmail !== null) {
-    if (rec.managerEmail === rec.email) return "manager_email cannot be the person themself";
-    if (!desired.has(rec.managerEmail) && !snapshot.people.has(rec.managerEmail)) {
-      const line = skippedLine.get(rec.managerEmail);
+  for (const manager of rec.managerEmails) {
+    if (manager === rec.email) return "manager_email cannot be the person themself";
+    if (!desired.has(manager) && !snapshot.people.has(manager)) {
+      const line = skippedLine.get(manager);
       return line !== undefined
-        ? `manager ${rec.managerEmail} is on line ${line}, which is skipped`
-        : `manager ${rec.managerEmail} is not in the file or the database`;
+        ? `manager ${manager} is on line ${line}, which is skipped`
+        : `manager ${manager} is not in the file or the database`;
     }
-    if (reachesAncestor(finalManager, rec.managerEmail, rec.email)) {
-      return `manager chain loops back to ${rec.email}`;
-    }
+  }
+  if (reachesAncestorAny(finalManagers, rec.managerEmails, rec.email)) {
+    return `manager chain loops back to ${rec.email}`;
   }
 
   if (rec.deskCode !== null) {
@@ -216,7 +216,7 @@ function emptyPerson(email: string): PersonRecord {
     startDate: null,
     endDate: null,
     active: true,
-    managerEmail: null,
+    managerEmails: [],
     deskCode: null,
     officeSlug: null,
     teamSlugs: [],

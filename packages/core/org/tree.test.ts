@@ -10,6 +10,8 @@ import {
   ORG_ROOT_ID,
   personNodeId,
   reportingTree,
+  reportNodeId,
+  standsFor,
   teamHighlightIds,
   teamTree,
   type OrgNode,
@@ -42,7 +44,7 @@ function person(
     homeRegionFlag: null,
     homeRegionFlagOnly: false,
     homeTimezone: null,
-    manager: null,
+    managers: [],
     desk: null,
     teams: [],
     ...overrides,
@@ -53,19 +55,19 @@ const jane = person({ id: "p_jane", name: "Jane Park", title: "CEO", teams: [tea
 const max = person({
   id: "p_max",
   name: "Max Ito",
-  manager: { id: "p_jane", name: "Jane Park" },
+  managers: [{ id: "p_jane", name: "Jane Park" }],
   teams: [team("t_hr")],
 });
 const bob = person({
   id: "p_bob",
   name: "Bob Lindqvist",
-  manager: { id: "p_max", name: "Max Ito" },
+  managers: [{ id: "p_max", name: "Max Ito" }],
   teams: [team("t_payroll"), team("t_hr", false)],
 });
 const priya = person({
   id: "p_priya",
   name: "Priya Shah",
-  manager: { id: "p_max", name: "Max Ito" },
+  managers: [{ id: "p_max", name: "Max Ito" }],
   teams: [team("t_recruiting")],
 });
 const people = [bob, jane, max, priya];
@@ -103,8 +105,8 @@ describe("reportingTree", () => {
   });
 
   it("cuts a manager cycle instead of producing a tree the chart can't draw", () => {
-    const a = person({ id: "p_a", name: "A", manager: { id: "p_b", name: "B" } });
-    const b = person({ id: "p_b", name: "B", manager: { id: "p_a", name: "A" } });
+    const a = person({ id: "p_a", name: "A", managers: [{ id: "p_b", name: "B" }] });
+    const b = person({ id: "p_b", name: "B", managers: [{ id: "p_a", name: "A" }] });
     const nodes = reportingTree([a, b]);
     expect(nodes.filter((n) => n.parentId === null)).toHaveLength(1);
     expect(nodes).toHaveLength(2);
@@ -115,7 +117,7 @@ describe("reportingTree", () => {
       id: "p_z",
       name: "Aaron Zed",
       preferredName: "Zed",
-      manager: { id: "p_max", name: "Max Ito" },
+      managers: [{ id: "p_max", name: "Max Ito" }],
     });
     const nodes = reportingTree([...people, zed]);
     const underMax = nodes.filter((n) => n.parentId === "p_max").map((n) => n.label);
@@ -167,6 +169,39 @@ describe("teamTree with inherited memberships", () => {
     const ids = teamTree(teams, [jane, priyaPlusHr]).map((n) => n.id);
     expect(ids).toContain(memberNodeId("t_recruiting", "p_priya"));
     expect(ids).not.toContain(memberNodeId("t_hr", "p_priya"));
+  });
+});
+
+describe("someone with several managers (N1)", () => {
+  // Priya reports to Max and to Jane.
+  const priya2 = person({
+    id: "p_priya",
+    name: "Priya Raman",
+    teams: [team("t_recruiting")],
+    managers: [
+      { id: "p_max", name: "Max Ito" },
+      { id: "p_jane", name: "Jane Park" },
+    ],
+  });
+  const nodes = reportingTree([jane, max, bob, priya2]);
+
+  it("appears under each manager, with their own node under the first", () => {
+    expect(nodes.find((n) => n.id === "p_priya")?.parentId).toBe("p_max");
+    expect(nodes.find((n) => n.id === reportNodeId("p_jane", "p_priya"))).toMatchObject({
+      parentId: "p_jane",
+      personId: "p_priya",
+    });
+  });
+
+  it("counts every one of their nodes as them", () => {
+    expect(standsFor(reportNodeId("p_jane", "p_priya"), "p_priya")).toBe(true);
+    expect(standsFor("p_priya", "p_priya")).toBe(true);
+    expect(standsFor("p_bob", "p_priya")).toBe(false);
+  });
+
+  it("lights every node of a highlighted team's member", () => {
+    const lit = teamHighlightIds("reporting", "t_recruiting", false, teams, [jane, max, bob, priya2]);
+    expect([...lit].sort()).toEqual(["p_jane>p_priya", "p_priya"]);
   });
 });
 
@@ -228,7 +263,7 @@ describe("teamHighlightIds", () => {
 
 describe("initiallyVisible", () => {
   it("shows the root and two levels below it", () => {
-    const deep = person({ id: "p_deep", name: "Deep", manager: { id: "p_bob", name: "Bob" } });
+    const deep = person({ id: "p_deep", name: "Deep", managers: [{ id: "p_bob", name: "Bob" }] });
     const visible = initiallyVisible(reportingTree([...people, deep]));
     expect([...visible].sort()).toEqual(["p_bob", "p_jane", "p_max", "p_priya"]);
   });
@@ -270,8 +305,8 @@ describe("managementChain", () => {
   });
 
   it("stops at a cycle", () => {
-    const a = person({ id: "p_a", name: "A", manager: { id: "p_b", name: "B" } });
-    const b = person({ id: "p_b", name: "B", manager: { id: "p_a", name: "A" } });
+    const a = person({ id: "p_a", name: "A", managers: [{ id: "p_b", name: "B" }] });
+    const b = person({ id: "p_b", name: "B", managers: [{ id: "p_a", name: "A" }] });
     expect(managementChain("p_a", [a, b]).map((l) => l.id)).toEqual(["p_b", "p_a"]);
   });
 

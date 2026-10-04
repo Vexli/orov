@@ -25,6 +25,7 @@ const SECTIONS = {
   spaces: s.space,
   teams: s.team,
   people: s.person,
+  personManagers: s.personManager,
   teamMembers: s.teamMember,
   personIdentities: s.personIdentity,
   appUsers: s.appUser,
@@ -52,7 +53,6 @@ export interface OrganizationExport {
 const DEFERRED: Partial<Record<SectionName, string[]>> = {
   floors: ["svgAssetId"],
   teams: ["parentTeamId", "leadId"],
-  people: ["managerId"],
 };
 
 // How a row is identified, for comparing a file with the database.
@@ -64,6 +64,7 @@ const KEY: Record<SectionName, string[]> = {
   spaces: ["id"],
   teams: ["id"],
   people: ["id"],
+  personManagers: ["personId", "managerId"],
   teamMembers: ["personId", "teamId"],
   personIdentities: ["personId", "provider"],
   appUsers: ["email"],
@@ -384,13 +385,14 @@ export async function applyImport(
 async function emptyOrganization(tx: Executor) {
   await tx.execute(sql`UPDATE floor SET svg_asset_id = NULL`);
   await tx.execute(sql`UPDATE team SET lead_id = NULL, parent_team_id = NULL`);
-  await tx.execute(sql`UPDATE person SET manager_id = NULL, assigned_desk_id = NULL`);
+  await tx.execute(sql`UPDATE person SET assigned_desk_id = NULL`);
   for (const table of [
     "room_status",
     "presence_day",
     "presence_signal",
     "messaging_user_token",
     "person_identity",
+    "person_manager",
     "team_member",
     "theme",
     "brand_asset",

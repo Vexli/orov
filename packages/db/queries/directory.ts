@@ -28,7 +28,10 @@ export async function loadDirectory(
   const rows = await db.query.person.findMany({
     where: eq(s.person.active, true),
     with: {
-      manager: { columns: { id: true, name: true } },
+      managers: {
+        orderBy: (pm, { asc }) => [asc(pm.position)],
+        with: { manager: { columns: { id: true, name: true } } },
+      },
       assignedDesk: {
         with: { floor: { with: { location: true } } },
       },
@@ -67,7 +70,7 @@ export async function loadDirectory(
       homeRegionFlagOnly: region.flagOnly,
       homeTimezone: row.homeTimezone,
       phone: row.phone ? displayPhone(row.phone) : null,
-      manager: row.manager ? { id: row.manager.id, name: row.manager.name } : null,
+      managers: row.managers.map((m) => ({ id: m.manager.id, name: m.manager.name })),
       desk: row.assignedDesk
         ? {
             id: row.assignedDesk.id,

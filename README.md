@@ -60,6 +60,7 @@ the phase-by-phase delivery plan with progress notes.
 - Admins can record a person's last working day, which only admins ever see
 - Someone without a desk of their own can still belong to an office: they count for it in the
   directory's office filter and the map's overview, and get its time zone
+- A person can report to several managers equally; the reporting chart shows them under each
 - Someone saved or imported without a manager reports to the lead of their primary team (for a
   lead, the lead of the team above)
 - Phone numbers are checked and stored in international form (`+14155550123`), shown on the

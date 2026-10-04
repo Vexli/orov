@@ -28,22 +28,36 @@ export function memberNodeId(teamId: string, personId: string): string {
   return `${teamId}:${personId}`;
 }
 
+// Someone with several managers (N1) appears under each: their own node under the first, and an
+// extra node per other manager, with this id. Their reports hang under their own node only, so
+// whole subtrees aren't drawn twice.
+export function reportNodeId(managerId: string, personId: string): string {
+  return `${managerId}>${personId}`;
+}
+
+// True when `nodeId` stands for the person `personNodeId` names in the reporting tree: their own
+// node, or one under another of their managers.
+export function standsFor(nodeId: string, personNodeId: string | null): boolean {
+  return personNodeId !== null && (nodeId === personNodeId || nodeId.endsWith(`>${personNodeId}`));
+}
+
+// The managers someone is drawn under: those in the directory (an inactive manager is left out).
+function managersInDirectory(person: DirectoryPerson, byId: Map<string, DirectoryPerson>) {
+  return person.managers.filter((m) => byId.has(m.id));
+}
+
 export function reportingTree(people: DirectoryPerson[]): OrgNode[] {
   const byId = new Map(people.map((p) => [p.id, p]));
   // A manager who isn't in the list (inactive, so left out of the directory) ends the chain.
-  const parents = acyclicParents([...byId.keys()], (id) => {
-    const manager = byId.get(id)?.manager;
-    return manager && byId.has(manager.id) ? manager.id : null;
-  });
-  const nodes = sortByLabel(people).map<OrgNode>((p) => ({
-    id: p.id,
-    parentId: parents.get(p.id) ?? null,
-    kind: "person",
-    personId: p.id,
-    teamId: null,
-    label: displayName(p),
-    detail: p.title,
-  }));
+  const parents = acyclicParents([...byId.keys()], (id) => managersInDirectory(byId.get(id)!, byId)[0]?.id ?? null);
+  const nodes: OrgNode[] = [];
+  for (const p of sortByLabel(people)) {
+    const own = { kind: "person" as const, personId: p.id, teamId: null, label: displayName(p), detail: p.title };
+    nodes.push({ id: p.id, parentId: parents.get(p.id) ?? null, ...own });
+    for (const manager of managersInDirectory(p, byId).slice(1)) {
+      nodes.push({ id: reportNodeId(manager.id, p.id), parentId: manager.id, ...own });
+    }
+  }
   return withSingleRoot(nodes, "Organization");
 }
 
@@ -123,7 +137,14 @@ export function teamHighlightIds(
     }
     return lit;
   }
-  return new Set(people.filter((p) => explicitTeams(p).some((t) => scope.has(t.id))).map((p) => p.id));
+  // Every node a member has: their own, and one under each of their other managers.
+  const lit = new Set<string>();
+  for (const p of people) {
+    if (!explicitTeams(p).some((t) => scope.has(t.id))) continue;
+    lit.add(p.id);
+    for (const m of p.managers.slice(1)) lit.add(reportNodeId(m.id, p.id));
+  }
+  return lit;
 }
 
 // The nodes that start out visible: the root and the two levels below it.
@@ -208,6 +229,7 @@ export interface ChainLink {
 }
 
 // Who someone reports to, from the top down, ending with the person (U3: Jane → Max → Bob).
+// With several managers it follows the first, as the chart's own nodes do; the card lists all.
 // Stops at a manager missing from the directory, and at a cycle in the data.
 export function managementChain(personId: string, people: DirectoryPerson[]): ChainLink[] {
   const byId = new Map(people.map((p) => [p.id, p]));
@@ -217,7 +239,7 @@ export function managementChain(personId: string, people: DirectoryPerson[]): Ch
   while (current && !seen.has(current.id)) {
     seen.add(current.id);
     chain.push({ id: current.id, name: displayName(current), inDirectory: true });
-    const manager = current.manager;
+    const manager = current.managers[0];
     if (!manager) break;
     current = byId.get(manager.id);
     if (!current) chain.push({ id: manager.id, name: manager.name, inDirectory: false });

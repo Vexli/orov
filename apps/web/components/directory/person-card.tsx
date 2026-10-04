@@ -64,17 +64,19 @@ export function PersonCard({ person, onSelectPerson, onClose }: Props) {
             "No desk assigned"
           )}
         </Field>
-        <Field label="Manager">
-          {person.manager ? (
-            <button
-              type="button"
-              onClick={() => onSelectPerson(person.manager!.id)}
-              className="underline underline-offset-4"
-            >
-              {person.manager.name}
-            </button>
-          ) : (
+        <Field label={person.managers.length > 1 ? "Managers" : "Manager"}>
+          {person.managers.length === 0 ? (
             "—"
+          ) : (
+            <ul className="flex flex-wrap gap-x-3">
+              {person.managers.map((m) => (
+                <li key={m.id}>
+                  <button type="button" onClick={() => onSelectPerson(m.id)} className="underline underline-offset-4">
+                    {m.name}
+                  </button>
+                </li>
+              ))}
+            </ul>
           )}
         </Field>
         <Field label="Teams">

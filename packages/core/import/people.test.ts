@@ -18,7 +18,7 @@ function person(overrides: Partial<PersonRecord> & { email: string }): PersonRec
     startDate: null,
     endDate: null,
     active: true,
-    managerEmail: null,
+    managerEmails: [],
     deskCode: null,
     officeSlug: null,
     teamSlugs: [],
@@ -89,7 +89,7 @@ describe("planPeopleImport", () => {
   });
 
   it("rejects a manager cycle that closes through an existing person", () => {
-    const existingB = person({ email: "b@x.com", managerEmail: "a@x.com" });
+    const existingB = person({ email: "b@x.com", managerEmails: ["a@x.com"] });
     // a -> b -> a, where b's manager already is a in the database.
     const plan = run("a@x.com,A,,,US,,,,,b@x.com,,,\n", snapshot([existingB]));
     expect(plan.rows[0]?.message).toMatch(/loops back to a@x.com/);
@@ -126,10 +126,10 @@ describe("planPeopleImport", () => {
   });
 
   it("clears a manager when the cell is blank, since the file is the full state", () => {
-    const existing = person({ email: "bob@x.com", managerEmail: "max@x.com" });
+    const existing = person({ email: "bob@x.com", managerEmails: ["max@x.com"] });
     const max = person({ email: "max@x.com" });
     const plan = run("bob@x.com,bob,,,US,,,,,,,,\n", snapshot([existing, max]));
-    expect(plan.rows[0]?.changes).toEqual([{ field: "managerEmail", before: "max@x.com", after: null }]);
+    expect(plan.rows[0]?.changes).toEqual([{ field: "managerEmails", before: ["max@x.com"], after: [] }]);
   });
 
   it("carries parse issues into the plan as error rows", () => {
@@ -272,27 +272,27 @@ describe("planPeopleImport", () => {
 
     it("gives a blank manager the primary team's lead, and shows it in the dry run", () => {
       const plan = run("ama@x.com,Ama,,,US,,,,,,,payroll,payroll\n", snapshot([jane]));
-      expect(plan.rows[0]?.record?.managerEmail).toBe("jane@x.com");
-      expect(plan.rows[0]?.changes).toContainEqual({ field: "managerEmail", before: null, after: "jane@x.com" });
+      expect(plan.rows[0]?.record?.managerEmails).toEqual(["jane@x.com"]);
+      expect(plan.rows[0]?.changes).toContainEqual({ field: "managerEmails", before: [], after: ["jane@x.com"] });
     });
 
     it("never replaces a manager given in the file", () => {
       const max = person({ email: "max@x.com" });
       const plan = run("ama@x.com,Ama,,,US,,,,,max@x.com,,hr,hr\n", snapshot([jane, max]));
-      expect(plan.rows[0]?.record?.managerEmail).toBe("max@x.com");
+      expect(plan.rows[0]?.record?.managerEmails).toEqual(["max@x.com"]);
     });
 
     it("doesn't make the lead their own manager", () => {
       const plan = run("jane@x.com,Jane,,,US,,,,,,,hr,hr\n", snapshot([jane]));
-      expect(plan.rows[0]?.record?.managerEmail).toBeNull();
+      expect(plan.rows[0]?.record?.managerEmails).toEqual([]);
     });
 
     it("leaves the manager blank when the default would close a loop", () => {
       // Jane, the lead, reports to Ama in this file, so Ama can't default to Jane.
       const plan = run("jane@x.com,Jane,,,US,,,,,ama@x.com,,,\nama@x.com,Ama,,,US,,,,,,,hr,hr\n", snapshot([jane]));
-      expect(plan.rows.map((r) => [r.action, r.record?.managerEmail])).toEqual([
-        ["update", "ama@x.com"],
-        ["create", null],
+      expect(plan.rows.map((r) => [r.action, r.record?.managerEmails])).toEqual([
+        ["update", ["ama@x.com"]],
+        ["create", []],
       ]);
     });
   });
@@ -334,6 +334,24 @@ describe("planPeopleImport", () => {
 
     it("doesn't store an office that matches the desk's: the desk already says it", () => {
       expect(plan("kim@x.com,Kim,US,SF-2-014,sf\n").rows[0]?.record?.officeSlug).toBeNull();
+    });
+  });
+
+  describe("several managers (N1)", () => {
+    it("reads several managers separated by semicolons", () => {
+      const max = person({ email: "max@x.com" });
+      const jane = person({ email: "jane@x.com" });
+      const plan = run("bob@x.com,Bob,,,US,,,,,MAX@x.com; jane@x.com,,,\n", snapshot([max, jane]));
+      expect(plan.rows[0]?.record?.managerEmails).toEqual(["max@x.com", "jane@x.com"]);
+    });
+
+    it("finds a loop through any of them", () => {
+      // Ana reports to Bob; Bob can't report to Max and Ana.
+      const ana = person({ email: "ana@x.com", managerEmails: ["bob@x.com"] });
+      const bob = person({ email: "bob@x.com" });
+      const max = person({ email: "max@x.com" });
+      const plan = run("bob@x.com,Bob,,,US,,,,,max@x.com;ana@x.com,,,\n", snapshot([ana, bob, max]));
+      expect(plan.rows[0]?.message).toBe("manager chain loops back to bob@x.com");
     });
   });
 });

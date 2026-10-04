@@ -25,7 +25,7 @@ const person = (id: string, teamIds: string[]): DirectoryPerson => ({
   homeRegionFlag: null,
   homeRegionFlagOnly: false,
   homeTimezone: null,
-  manager: null,
+  managers: [],
   desk: null,
   teams: teamIds.map((t) => ({ id: t, name: t, slug: t, isPrimary: false, inherited: false })),
 });

@@ -7,7 +7,8 @@ import type { PersonForm } from "./form";
 export const bulkPatchSchema = z
   .object({
     active: z.boolean().optional(),
-    // null: no manager chosen, so each person gets their primary team's lead (#11).
+    // Makes this the one manager of each person; null clears them, so each person gets their
+    // primary team's lead (#11).
     managerId: z.string().nullable().optional(),
     addTeamIds: z.array(z.string()).optional(),
     removeTeamIds: z.array(z.string()).optional(),
@@ -29,7 +30,7 @@ export function applyBulkPatch(form: PersonForm, patch: BulkPatch): PersonForm {
   return {
     ...form,
     active: patch.active ?? form.active,
-    managerId: patch.managerId !== undefined ? patch.managerId : form.managerId,
+    managerIds: patch.managerId === undefined ? form.managerIds : patch.managerId === null ? [] : [patch.managerId],
     teamIds,
     primaryTeamId,
     // Desks aren't part of a bulk change; never swap one by accident.

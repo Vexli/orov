@@ -76,7 +76,11 @@ export const personCsvRowSchema = z.object({
     .pipe(z.union([z.literal(""), z.iso.date("end_date must be YYYY-MM-DD")]))
     .transform(blankToNull),
   active: boolish,
-  manager_email: z.string().transform((v) => (v === "" ? null : v.toLowerCase())).pipe(z.email("manager_email is not a valid address").nullable()),
+  // One or more managers, separated by semicolons (N1).
+  manager_email: z
+    .string()
+    .transform((v) => [...new Set(v.split(";").map((s) => s.trim().toLowerCase()).filter(Boolean))])
+    .pipe(z.array(z.email("manager_email is not a valid address"))),
   desk: z.string().transform(blankToNull),
   office: z.string().transform((v) => (v === "" ? null : v.toLowerCase())),
   teams: z
@@ -177,7 +181,7 @@ export function validatePersonRow(
       startDate: v.start_date,
       endDate: v.end_date,
       active: v.active,
-      managerEmail: v.manager_email,
+      managerEmails: v.manager_email,
       deskCode: v.desk,
       officeSlug: v.office,
       teamSlugs,
@@ -200,7 +204,7 @@ export function peopleToCsv(people: PersonRecord[]): string {
     p.startDate ?? "",
     p.endDate ?? "",
     p.active ? "true" : "false",
-    p.managerEmail ?? "",
+    p.managerEmails.join(";"),
     p.deskCode ?? "",
     p.officeSlug ?? "",
     [...p.teamSlugs].sort().join(";"),

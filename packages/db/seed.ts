@@ -96,7 +96,6 @@ export async function seedDemoData(db: Database): Promise<void> {
         title: "HR Business Partner",
         homeRegion: "US-CA",
         homeTimezone: "America/Los_Angeles",
-        managerId: "p_jane",
         assignedDeskId: "sp_sf_2_010",
         startDate: "2021-06-14",
       },
@@ -109,7 +108,6 @@ export async function seedDemoData(db: Database): Promise<void> {
         homeRegion: "US-CA",
         phone: "+14155550123",
         homeTimezone: "America/Los_Angeles",
-        managerId: "p_max",
         assignedDeskId: "sp_sf_2_014",
         startDate: "2023-01-09",
       },
@@ -121,7 +119,6 @@ export async function seedDemoData(db: Database): Promise<void> {
         title: "Recruiter",
         homeRegion: "IN-KA",
         homeTimezone: "Asia/Kolkata",
-        managerId: "p_max",
         startDate: "2024-05-20",
       },
       {
@@ -132,10 +129,17 @@ export async function seedDemoData(db: Database): Promise<void> {
         title: "Recruiter",
         homeRegion: "US",
         homeTimezone: "America/Los_Angeles",
-        managerId: "p_max",
         assignedDeskId: "sp_sf_3_001",
         startDate: "2025-02-03",
       },
+    ]);
+
+    // Bob, Priya and Sam report to Max, and Max to Jane (U3).
+    await tx.insert(s.personManager).values([
+      { personId: "p_max", managerId: "p_jane", position: 0 },
+      { personId: "p_bob", managerId: "p_max", position: 0 },
+      { personId: "p_priya", managerId: "p_max", position: 0 },
+      { personId: "p_sam", managerId: "p_max", position: 0 },
     ]);
 
     await tx.insert(s.team).values([

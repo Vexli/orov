@@ -46,13 +46,17 @@ export function PersonFormEditor({ id, initial, managers, desks, floors, teams, 
   const defaultManager = managers.find((m) => m.id === defaultManagerId) ?? null;
   const leadOf = defaultManagerId ? teams.find((t) => t.leadId === defaultManagerId) : undefined;
 
+  // True when the managers are just the old primary team's default, which then follows the team.
+  const isDefault = (ids: string[], primaryTeamId: string | null) =>
+    ids.length === 1 && ids[0] === defaultManagerFor(primaryTeamId);
+
   // Choosing another primary team moves the manager along, but only if they were the old team's
-  // default; a manager the admin picked stays.
+  // default; managers the admin picked stay.
   function setPrimaryTeam(primaryTeamId: string | null) {
     setValues((v) => ({
       ...v,
       primaryTeamId,
-      managerId: v.managerId !== null && v.managerId === defaultManagerFor(v.primaryTeamId) ? null : v.managerId,
+      managerIds: isDefault(v.managerIds, v.primaryTeamId) ? [] : v.managerIds,
     }));
   }
 
@@ -79,9 +83,9 @@ export function PersonFormEditor({ id, initial, managers, desks, floors, teams, 
     setValues((v) => {
       const teamIds = on ? [...v.teamIds, teamId] : v.teamIds.filter((t) => t !== teamId);
       const primaryTeamId = v.primaryTeamId && teamIds.includes(v.primaryTeamId) ? v.primaryTeamId : null;
-      const managerId =
-        primaryTeamId !== v.primaryTeamId && v.managerId === defaultManagerFor(v.primaryTeamId) ? null : v.managerId;
-      return { ...v, teamIds, primaryTeamId, managerId };
+      const managerIds =
+        primaryTeamId !== v.primaryTeamId && isDefault(v.managerIds, v.primaryTeamId) ? [] : v.managerIds;
+      return { ...v, teamIds, primaryTeamId, managerIds };
     });
   }
 
@@ -208,21 +212,45 @@ export function PersonFormEditor({ id, initial, managers, desks, floors, teams, 
           Active
         </label>
 
+        {/* Everyone this person reports to, equally (N1). The select adds one more. */}
+        {values.managerIds.length > 0 ? (
+          <ul aria-label="Managers" className="flex flex-wrap gap-2 text-sm">
+            {values.managerIds.map((managerId) => (
+              <li key={managerId} className="flex items-center gap-1 rounded-md border border-border px-2 py-1">
+                {managers.find((m) => m.id === managerId)?.name ?? managerId}
+                <button
+                  type="button"
+                  aria-label={`Remove ${managers.find((m) => m.id === managerId)?.name ?? managerId} as a manager`}
+                  className="text-muted-fg hover:text-fg"
+                  onClick={() => set("managerIds", values.managerIds.filter((m) => m !== managerId))}
+                >
+                  ×
+                </button>
+              </li>
+            ))}
+          </ul>
+        ) : null}
         <label className="block text-sm font-medium">
           Manager
-          <select className={inputClass} value={values.managerId ?? ""} onChange={(e) => set("managerId", e.target.value || null)}>
+          <select
+            className={inputClass}
+            value=""
+            onChange={(e) => e.target.value && set("managerIds", [...values.managerIds, e.target.value])}
+          >
             <option value="">
-              {defaultManager
-                ? `Default: ${defaultManager.name}${leadOf ? `, lead of ${leadOf.name}` : ""}`
-                : "No manager"}
+              {values.managerIds.length > 0
+                ? "Add another manager…"
+                : defaultManager
+                  ? `Default: ${defaultManager.name}${leadOf ? `, lead of ${leadOf.name}` : ""}`
+                  : "No manager"}
             </option>
-            {sortByName(managers).map((m) => (
+            {sortByName(managers.filter((m) => !values.managerIds.includes(m.id))).map((m) => (
               <option key={m.id} value={m.id}>
                 {m.name}
               </option>
             ))}
           </select>
-          {fieldError("managerId")}
+          {fieldError("managerIds")}
         </label>
 
         <SeatPicker
