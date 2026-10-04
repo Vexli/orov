@@ -51,7 +51,9 @@ Rules:
   kept as "other". Add `-<n>` when a floor has more than one (`poi-restroom-2`).
 - **Every id is unique** within the file. Duplicates are rejected.
 - **Names come from the slug** the first time a room or area appears (`huddle-a` → "Huddle A").
-  Uploading the drawing again never renames a room or area that already exists. The map shows
+  Uploading the drawing again never renames a room or area that already exists. To give one a
+  better name ("Fjord" for `room-huddle-a`), rename it on the floor's admin page; the drawing
+  doesn't change. The map shows
   the name centred in the room's shape (an area's in its top-left corner), shrunk to fit, and
   cut short with "…" if the shape is too small.
 

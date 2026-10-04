@@ -161,3 +161,38 @@ test.describe("an office's own name for its floors (#16)", () => {
     await expect(page.getByLabel("Preset")).toHaveValue("-1");
   });
 });
+
+test.describe("renaming rooms (#21)", () => {
+  test.beforeEach(async ({ context }) => {
+    await resetE2eDatabase();
+    await signInAs(context, "jane@example.com");
+  });
+
+  test("a renamed room shows its new name on the map, its card, the list and in search", async ({ page }) => {
+    await page.goto("/admin/floors/fl_sf_2");
+    const names = page.getByRole("region", { name: "Room and area names" });
+    await page.getByLabel("Name of room-huddle-a").fill("Fjord");
+    await page.getByLabel("Seats in Huddle A").fill("6");
+    await page.getByLabel("Name of room-huddle-a").press("Enter");
+    await expect(page.getByLabel("Name of room-huddle-a")).toHaveValue("Fjord");
+    await expect(names.getByRole("button", { name: "Saved" })).toBeVisible();
+
+    await page.goto("/map?loc=sf&floor=2");
+    await expect(page.locator('[data-floor-map] [data-label="room-huddle-a"]')).toHaveText("Fjord");
+    await page.locator("[data-floor-map] #room-huddle-a").click();
+    await expect(page.getByRole("complementary", { name: /Fjord/ })).toBeVisible();
+
+    await page.goto("/map?loc=sf&floor=2&view=list");
+    await expect(page.getByRole("button", { name: /Fjord/ })).toBeVisible();
+
+    const results = await (await page.request.get("/api/search?q=fjord")).json();
+    expect(results.rooms.map((r: { name: string }) => r.name)).toEqual(["Fjord"]);
+  });
+
+  test("a name can't be blank", async ({ page }) => {
+    await page.goto("/admin/floors/fl_sf_2");
+    await page.getByLabel("Name of room-boardroom").fill(" ");
+    await page.getByLabel("Name of room-boardroom").press("Enter");
+    await expect(page.getByText("Name is required")).toBeVisible();
+  });
+});
