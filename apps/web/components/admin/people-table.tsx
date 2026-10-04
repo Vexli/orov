@@ -5,10 +5,11 @@ import { useMemo } from "react";
 import { useQueryStates } from "nuqs";
 import { filterAdminPeople, type AdminPersonRow } from "@officeorg/core/admin/filter";
 import { adminPeopleParsers } from "@/lib/url-state";
+import { TeamChip } from "../team-chip";
 
 export interface PeopleTableRow extends AdminPersonRow {
   id: string;
-  teams: { id: string; name: string; isPrimary: boolean }[];
+  teams: { id: string; name: string; isPrimary: boolean; inherited: boolean }[];
 }
 
 interface Props {
@@ -133,14 +134,7 @@ export function PeopleTable({ people, teams }: Props) {
                 <td className="py-2 pr-3">
                   {p.teams.length === 0
                     ? "—"
-                    : p.teams.map((t) => (
-                        <span
-                          key={t.id}
-                          className={`mr-1 inline-block rounded px-1.5 py-0.5 text-xs ${t.isPrimary ? "bg-primary text-primary-fg" : "bg-muted"}`}
-                        >
-                          {t.name}
-                        </span>
-                      ))}
+                    : p.teams.map((t) => <TeamChip key={t.id} team={t} className="mr-1" />)}
                 </td>
                 <td className="py-2 pr-3">{p.managerName ?? "—"}</td>
                 <td className="py-2 pr-3 font-mono text-xs">{p.deskName ?? "—"}</td>

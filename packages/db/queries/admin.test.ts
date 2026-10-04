@@ -7,7 +7,7 @@ import { startTestDatabase, type TestDatabase } from "../test-utils";
 import { listAudit } from "./audit";
 import { ValidationError } from "./errors";
 import { listDeskOptions, listPickerFloors } from "./spaces";
-import { deleteTeam, getTeamForEdit, saveTeam } from "./teams";
+import { deleteTeam, getTeamForEdit, listTeamsForAdmin, saveTeam } from "./teams";
 import { getPersonForEdit, listPeopleForAdmin, savePerson, setPersonActive } from "./people";
 
 let t: TestDatabase;
@@ -294,6 +294,45 @@ describe("savePerson", () => {
     const sam = await t.db.query.person.findFirst({ where: eq(s.person.id, "p_sam") });
     expect(sam?.active).toBe(false);
     expect((await listAudit(t.db, { entity: "person" }))[0]).toMatchObject({ action: "update", entityId: "p_sam" });
+  });
+});
+
+describe("inherited team memberships", () => {
+  const membershipsOf = async (personId: string) =>
+    (await t.db.select().from(s.teamMember).where(eq(s.teamMember.personId, personId)))
+      .map((m) => `${m.teamId}:${m.source}`)
+      .sort();
+
+  it("makes a member of a sub-team an inherited member of the teams above", async () => {
+    expect(await membershipsOf("p_priya")).toEqual(["t_hr:inherited", "t_recruiting:explicit"]);
+    // Bob chose HR as well as Payroll, so his HR membership stays explicit.
+    expect(await membershipsOf("p_bob")).toEqual(["t_hr:explicit", "t_payroll:explicit"]);
+  });
+
+  it("removes the inherited membership with the last sub-team one, but keeps an explicit one", async () => {
+    const priya = (await getPersonForEdit(t.db, "p_priya"))!;
+    expect(priya.teamIds).toEqual(["t_recruiting"]);
+    await savePerson(t.db, ACTOR, { ...priya, teamIds: [], primaryTeamId: null }, "p_priya");
+    expect(await membershipsOf("p_priya")).toEqual([]);
+
+    const bob = (await getPersonForEdit(t.db, "p_bob"))!;
+    await savePerson(t.db, ACTOR, { ...bob, teamIds: ["t_hr"], primaryTeamId: "t_hr" }, "p_bob");
+    expect(await membershipsOf("p_bob")).toEqual(["t_hr:explicit"]);
+  });
+
+  it("moves inherited memberships when a team moves", async () => {
+    const { id: finance } = await saveTeam(t.db, ACTOR, teamInput({ slug: "finance", name: "Finance" }));
+    const payroll = (await getTeamForEdit(t.db, "t_payroll"))!;
+    await saveTeam(t.db, ACTOR, { ...payroll, parentTeamId: finance }, "t_payroll");
+    expect(await membershipsOf("p_bob")).toEqual(
+      [`${finance}:inherited`, "t_hr:explicit", "t_payroll:explicit"].sort(),
+    );
+  });
+
+  it("counts inherited members in the teams list", async () => {
+    const hr = (await listTeamsForAdmin(t.db)).find((team) => team.id === "t_hr");
+    // Jane, Max and Bob chose HR; Priya and Sam are in it through Recruiting.
+    expect(hr?.memberCount).toBe(5);
   });
 });
 

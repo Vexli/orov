@@ -24,7 +24,7 @@ const person = (id: string, teamIds: string[]): DirectoryPerson => ({
   homeTimezone: null,
   manager: null,
   desk: null,
-  teams: teamIds.map((t) => ({ id: t, name: t, slug: t, isPrimary: false })),
+  teams: teamIds.map((t) => ({ id: t, name: t, slug: t, isPrimary: false, inherited: false })),
 });
 
 const seat = (personId: string, floorSlug: string): MapSeat => ({

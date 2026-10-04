@@ -3,6 +3,7 @@ import type { TeamForm, TeamRecord } from "@officeorg/core";
 import type { Database, Executor } from "../client";
 import * as s from "../schema";
 import { recordAudit } from "./audit";
+import { syncInheritedMemberships } from "./memberships";
 import { ValidationError } from "./errors";
 
 // True if walking up the parent chain from `teamId` returns to `teamId`. Same UNION guard as
@@ -141,6 +142,9 @@ export async function saveTeam(
     const teamId = id
       ? (await tx.update(s.team).set(values).where(eq(s.team.id, id)).returning({ id: s.team.id }))[0]!.id
       : (await tx.insert(s.team).values(values).returning({ id: s.team.id }))[0]!.id;
+
+    // Moving a team under another moves its members' inherited memberships too.
+    await syncInheritedMemberships(tx);
 
     const after = await loadTeamRecord(tx, teamId);
     await recordAudit(tx, actorEmail, {

@@ -49,6 +49,8 @@ the phase-by-phase delivery plan with progress notes.
   taken desk swaps it, after the admin confirms
 - Links to a person's other accounts (GitHub, GitLab, LinkedIn, a website) on their card, set in
   the admin form or the people CSV. An account can belong to only one person
+- A member of a sub-team is also a member of the teams above it (shown as "through a sub-team"),
+  so team member counts include everyone under a team
 - Someone saved or imported without a manager reports to the lead of their primary team (for a
   lead, the lead of the team above)
 - Phone numbers are checked and stored in international form (`+14155550123`), shown on the

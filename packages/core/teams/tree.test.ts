@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { inheritedManager, reachesAncestor } from "./tree";
+import { inheritedManager, inheritedTeams, reachesAncestor } from "./tree";
 
 const parents = new Map<string, string | null>([
   ["a", "b"],
@@ -55,5 +55,32 @@ describe("inheritedManager", () => {
       ["b", { parentTeamId: "a", leadId: "x" }],
     ]);
     expect(inheritedManager("x", "a", loop)).toBeNull();
+  });
+});
+
+describe("inheritedTeams", () => {
+  const parents = new Map<string, string | null>([
+    ["hr", null],
+    ["payroll", "hr"],
+    ["payroll-ops", "payroll"],
+    ["recruiting", "hr"],
+    ["eng", null],
+  ]);
+  const parentOf = (id: string) => parents.get(id);
+
+  it.each([
+    [["payroll-ops"], ["hr", "payroll"]],
+    [["payroll", "recruiting"], ["hr"]],
+    // HR is chosen as well, so it isn't inherited.
+    [["payroll", "hr"], []],
+    [["eng"], []],
+    [[], []],
+  ])("%j → %j", (teamIds, expected) => {
+    expect(inheritedTeams(teamIds, parentOf)).toEqual(expected);
+  });
+
+  it("stops on a cycle in the data", () => {
+    const loop = new Map([["a", "b"], ["b", "a"]]);
+    expect(inheritedTeams(["a"], (id) => loop.get(id))).toEqual(["b"]);
   });
 });

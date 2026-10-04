@@ -54,7 +54,7 @@ const people: DirectoryPerson[] = [
     homeRegion: "CA-ON",
     homeRegionLabel: "Ontario, Canada",
     desk: { id: "sp_3", name: "SF-2-003", ...sf },
-    teams: [{ id: "t_hr", name: "HR", slug: "hr", isPrimary: true }],
+    teams: [{ id: "t_hr", name: "HR", slug: "hr", isPrimary: true, inherited: false }],
   }),
   person({
     id: "p_bob",
@@ -63,8 +63,8 @@ const people: DirectoryPerson[] = [
     title: "Payroll Analyst",
     desk: { id: "sp_14", name: "SF-2-014", ...sf },
     teams: [
-      { id: "t_payroll", name: "Payroll", slug: "payroll", isPrimary: true },
-      { id: "t_hr", name: "HR", slug: "hr", isPrimary: false },
+      { id: "t_payroll", name: "Payroll", slug: "payroll", isPrimary: true, inherited: false },
+      { id: "t_hr", name: "HR", slug: "hr", isPrimary: false, inherited: false },
     ],
   }),
   person({
@@ -73,13 +73,13 @@ const people: DirectoryPerson[] = [
     homeRegion: "IN",
     homeRegionLabel: "India",
     title: "Recruiter",
-    teams: [{ id: "t_recruiting", name: "Recruiting", slug: "recruiting", isPrimary: true }],
+    teams: [{ id: "t_recruiting", name: "Recruiting", slug: "recruiting", isPrimary: true, inherited: false }],
   }),
   person({
     id: "p_sam",
     name: "Sam Lee",
     title: "Engineer",
-    teams: [{ id: "t_eng", name: "Engineering", slug: "eng", isPrimary: true }],
+    teams: [{ id: "t_eng", name: "Engineering", slug: "eng", isPrimary: true, inherited: false }],
   }),
 ];
 
@@ -107,6 +107,16 @@ describe("filterDirectory", () => {
   it("includes sub-team members by default (U2)", () => {
     const hrTree = filterDirectory(people, { ...EMPTY_FILTERS, teamId: "t_hr" }, teams);
     expect(names(hrTree)).toEqual(["p_jane", "p_bob", "p_priya"]);
+  });
+
+  it("matches explicit memberships, so an inherited one doesn't defeat turning sub-teams off", () => {
+    const priyaInHr = people.map((p) =>
+      p.id === "p_priya"
+        ? { ...p, teams: [...p.teams, { id: "t_hr", name: "HR", slug: "hr", isPrimary: false, inherited: true }] }
+        : p,
+    );
+    const hrOnly = filterDirectory(priyaInHr, { ...EMPTY_FILTERS, teamId: "t_hr", includeSubteams: false }, teams);
+    expect(names(hrOnly)).toEqual(["p_jane", "p_bob"]);
   });
 
   it("matches the team directly when sub-teams are turned off", () => {

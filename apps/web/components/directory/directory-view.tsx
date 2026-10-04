@@ -17,6 +17,7 @@ import {
 } from "@officeorg/core/directory/filter";
 import { directoryParsers } from "@/lib/url-state";
 import { LocationLabel } from "./location-label";
+import { TeamChip } from "../team-chip";
 import { PersonCard } from "./person-card";
 
 interface Props {
@@ -62,11 +63,8 @@ const columns = [
     cell: (info) => (
       <ul className="flex flex-wrap gap-1">
         {info.row.original.teams.map((t) => (
-          <li
-            key={t.id}
-            className={`rounded px-1.5 py-0.5 text-xs ${t.isPrimary ? "bg-primary text-primary-fg" : "bg-muted"}`}
-          >
-            {t.name}
+          <li key={t.id}>
+            <TeamChip team={t} />
           </li>
         ))}
       </ul>

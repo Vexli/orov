@@ -39,6 +39,13 @@ export function teamScope(
   return scope;
 }
 
+// The teams someone was put in, leaving out the ones inherited from a sub-team (#23). Filters and
+// highlights match on these: the "Include sub-teams" option already reaches the rest, and
+// matching inherited ones too would make that option do nothing.
+export function explicitTeams<T extends { inherited?: boolean }>(person: { teams: T[] }): T[] {
+  return person.teams.filter((t) => !t.inherited);
+}
+
 // Every whitespace-separated token of `q` appears somewhere in the fields, ignoring case.
 // A blank query matches everything.
 export function matchesQuery(fields: readonly (string | null | undefined)[], q: string): boolean {
@@ -56,7 +63,7 @@ export function filterDirectory(
   const scope = filters.teamId ? teamScope(filters.teamId, filters.includeSubteams, teams) : null;
 
   return people.filter((p) => {
-    if (scope && !p.teams.some((t) => scope.has(t.id))) return false;
+    if (scope && !explicitTeams(p).some((t) => scope.has(t.id))) return false;
     if (filters.locationSlug && p.desk?.locationSlug !== filters.locationSlug) return false;
     if (filters.hasDesk && !p.desk) return false;
     return matchesQuery([p.name, p.preferredName, p.email, p.title, p.desk?.name], filters.q);

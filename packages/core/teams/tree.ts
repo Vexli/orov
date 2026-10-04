@@ -42,3 +42,23 @@ export function inheritedManager(
   }
   return null;
 }
+
+// The teams above `teamIds` that aren't in it: a member of Payroll (under HR) is also an inherited
+// member of HR (#23). Cycle-safe.
+export function inheritedTeams(
+  teamIds: readonly string[],
+  parentOf: (teamId: string) => string | null | undefined,
+): string[] {
+  const explicit = new Set(teamIds);
+  const inherited = new Set<string>();
+  for (const teamId of teamIds) {
+    const seen = new Set<string>([teamId]);
+    let parent = parentOf(teamId) ?? null;
+    while (parent !== null && !seen.has(parent)) {
+      seen.add(parent);
+      if (!explicit.has(parent)) inherited.add(parent);
+      parent = parentOf(parent) ?? null;
+    }
+  }
+  return [...inherited].sort();
+}
