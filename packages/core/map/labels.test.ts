@@ -1,0 +1,47 @@
+import { describe, expect, it } from "vitest";
+import { labelLayout } from "./labels";
+
+const box = (width: number, height: number) => ({ x: 100, y: 200, width, height });
+
+describe("labelLayout", () => {
+  it("centres a room's name at up to 18 units", () => {
+    expect(labelLayout(box(300, 200), "Boardroom", "room")).toEqual({
+      x: 250,
+      y: 300,
+      fontSize: 18,
+      text: "Boardroom",
+      truncated: false,
+      anchor: "middle",
+    });
+  });
+
+  it("shrinks a name to fit a narrow room", () => {
+    const layout = labelLayout(box(70, 100), "Phone 1", "room")!;
+    expect(layout.fontSize).toBeLessThan(18);
+    expect(layout.fontSize * 0.6 * "Phone 1".length).toBeLessThanOrEqual(63);
+    expect(layout.truncated).toBe(false);
+  });
+
+  it("cuts a name short with an ellipsis rather than going below 9 units", () => {
+    const layout = labelLayout(box(80, 100), "Interview Room North", "room")!;
+    expect(layout.fontSize).toBe(9);
+    expect(layout.truncated).toBe(true);
+    expect(layout.text.endsWith("…")).toBe(true);
+    expect([...layout.text].length * 9 * 0.6).toBeLessThanOrEqual(80 * 0.9);
+  });
+
+  it("leaves out a label that can't fit", () => {
+    expect(labelLayout(box(12, 100), "Elevator", "room")).toBeNull();
+    expect(labelLayout(box(200, 20), "Elevator", "room")).toBeNull();
+    expect(labelLayout(box(200, 100), "", "room")).toBeNull();
+  });
+
+  it("puts an area's name in its top-left corner", () => {
+    expect(labelLayout(box(600, 400), "South Wing", "area")).toMatchObject({
+      x: 112,
+      y: 228,
+      fontSize: 16,
+      anchor: "start",
+    });
+  });
+});

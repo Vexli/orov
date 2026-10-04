@@ -4,7 +4,6 @@
 
   <g id="area-west-wing">
     <rect x="30" y="30" width="600" height="740" fill="none"/>
-    <text x="50" y="70" fill="currentColor">West Wing</text>
     <rect id="desk-3-001" x="60" y="110" width="90" height="56" rx="4"/>
     <rect id="desk-3-002" x="170" y="110" width="90" height="56" rx="4"/>
     <rect id="desk-3-003" x="280" y="110" width="90" height="56" rx="4"/>
@@ -14,13 +13,9 @@
     <rect id="desk-3-007" x="280" y="250" width="90" height="56" rx="4"/>
     <rect id="desk-3-008" x="390" y="250" width="90" height="56" rx="4"/>
     <rect id="room-phone-2" x="60" y="420" width="120" height="100" rx="4"/>
-    <text x="76" y="476" fill="currentColor" font-size="14">Phone 2</text>
   </g>
 
   <rect id="room-workshop" x="680" y="60" width="460" height="300" rx="4"/>
-  <text x="700" y="216" fill="currentColor">Workshop</text>
   <rect id="poi-kitchen" x="680" y="420" width="220" height="160" rx="4"/>
-  <text x="700" y="506" fill="currentColor">Kitchen</text>
   <rect id="poi-elevator" x="940" y="420" width="120" height="100" rx="4"/>
-  <text x="956" y="476" fill="currentColor" font-size="14">Elevator</text>
 </svg>

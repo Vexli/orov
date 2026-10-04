@@ -17,7 +17,12 @@ Two sample floors that follow every rule here live in
 ## Element ids
 
 Give an element an id with one of these prefixes and OfficeOrg treats it as part of the map.
-Anything without one of these prefixes is **decoration**: walls, labels, furniture, plants.
+Anything without one of these prefixes is **decoration**: walls, furniture, plants, signs.
+
+**Don't write room, point-of-interest or area names into the drawing.** OfficeOrg draws each
+room's, phone booth's, kitchen's, elevator's, restroom's and area's name itself, from its name in
+the app, so a renamed room needs no new drawing and the names follow the theme. A name drawn in
+the SVG as well would show twice. Other text is fine as decoration, such as a "Reception" sign.
 
 | Prefix             | What it is                          | Example           | Becomes                      |
 | ------------------ | ----------------------------------- | ----------------- | ---------------------------- |
@@ -43,7 +48,9 @@ Rules:
   kept as "other". Add `-<n>` when a floor has more than one (`poi-restroom-2`).
 - **Every id is unique** within the file. Duplicates are rejected.
 - **Names come from the slug** the first time a room or area appears (`huddle-a` → "Huddle A").
-  Uploading the drawing again never renames a room or area that already exists.
+  Uploading the drawing again never renames a room or area that already exists. The map shows
+  the name centred in the room's shape (an area's in its top-left corner), shrunk to fit, and
+  cut short with "…" if the shape is too small.
 
 The prefix can go on any shape (`rect`, `path`, `polygon`, `circle`) or on a group `<g>`. For a
 desk drawn as several shapes (a desk and a chair), group them and put the id on the group.
@@ -71,7 +78,7 @@ OfficeOrg colors desks and rooms itself: the selected person, the highlighted te
 the room status. It overrides the fill and stroke of every `desk-`, `room-` and `poi-` element,
 so the colors you pick for those don't matter.
 
-For decoration, **use `currentColor`** for walls, outlines and labels (`stroke="currentColor"`,
+For decoration, **use `currentColor`** for walls, outlines and any text (`stroke="currentColor"`,
 `fill="currentColor"`). OfficeOrg sets that color from the active theme, so the drawing works in
 light and dark mode and follows the organization's brand. Fixed colors work too, but they won't
 adapt.
@@ -128,6 +135,7 @@ its history stays attached to it.
 - [ ] Every meeting room is `room-<slug>`, and phone booths are `room-phone-<n>`
 - [ ] Desks and rooms in an area are nested inside the `area-<slug>` group
 - [ ] Each area group has an outline shape
-- [ ] Walls and labels use `currentColor`
+- [ ] No text labels for rooms, points of interest or areas (the app draws their names)
+- [ ] Walls and other decoration use `currentColor`
 - [ ] No two elements share an id
 - [ ] Exported with ids switched on

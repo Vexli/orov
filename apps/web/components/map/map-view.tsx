@@ -17,7 +17,7 @@ import { displayName, personInitials } from "@officeorg/core/directory/filter";
 import { PersonCard } from "@/components/directory/person-card";
 import { mapParsers } from "@/lib/url-state";
 import { FloorList, KIND_LABEL } from "./floor-list";
-import { FloorMap, type Avatar, type RoomCue } from "./floor-map";
+import { FloorMap, type Avatar, type MapLabel, type RoomCue } from "./floor-map";
 
 interface Props {
   map: MapData;
@@ -138,6 +138,28 @@ export function MapView({ map, people, teams }: Props) {
     [floor, focusArea],
   );
 
+  // Every room, point of interest and area gets its name from the database; desks show avatars
+  // instead. Spaces and areas outside an open area are dimmed with the rest of the drawing.
+  const labels = useMemo<MapLabel[]>(
+    () => [
+      ...(floor?.areas ?? []).map((a) => ({
+        svgElementId: a.svgElementId,
+        name: a.name,
+        kind: "area" as const,
+        dimmed: focusArea !== null && a.id !== focusArea.id,
+      })),
+      ...(floor?.spaces ?? [])
+        .filter((sp) => sp.kind !== "desk")
+        .map((sp) => ({
+          svgElementId: sp.svgElementId,
+          name: sp.name,
+          kind: "room" as const,
+          dimmed: focusArea !== null && sp.areaId !== focusArea.id,
+        })),
+    ],
+    [floor, focusArea],
+  );
+
   const stateCss = useMemo(
     () =>
       mapStateCss({
@@ -253,6 +275,7 @@ export function MapView({ map, people, teams }: Props) {
               stateCss={stateCss}
               avatars={avatars}
               roomCues={roomCues}
+              labels={labels}
               label={`Floor plan of ${floor.locationName}, ${floor.name}`}
               onSelect={select}
               focusAreaId={focusArea?.svgElementId ?? null}

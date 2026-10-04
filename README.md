@@ -29,13 +29,13 @@ the phase-by-phase delivery plan with progress notes.
   `admin` roles
 - Directory with search, team and location filters, a person card, and selection kept in the URL.
   People have a given name and a family name, and lists sort by family name
-- Floor map: the floor drawing with an avatar at each occupied desk, zoom and pan, and a card
-  for the person, desk or room you click. Switch offices and floors, open an area such as the
-  South Wing as a zoomed view, and see each floor's headcount, desks and rooms. The map follows
-  a selected person to their floor, and highlights a team's seats (with its sub-teams, unless
-  you untick them) with a count per floor. A desk code in the directory or on a person card
-  links to the map. A List toggle shows the same desks and rooms as a table for keyboard and
-  screen reader users
+- Floor map: the floor drawing with an avatar at each occupied desk and each room's name, zoom
+  and pan, and a card for the person, desk or room you click. Switch offices and floors, open an
+  area such as the South Wing as a zoomed view, and see each floor's headcount, desks and rooms.
+  The map follows a selected person to their floor, and highlights a team's seats (with its sub-
+  teams, unless you untick them) with a count per floor. A desk code in the directory or on a
+  person card links to the map. A List toggle shows the same desks and rooms as a table for
+  keyboard and screen reader users
 - Org chart: the reporting tree (who reports to whom) and the team tree (teams, their sub-teams
   and members), with expand and collapse, zoom, and the person card for whoever you click. The
   chart centers on the selected person and opens their direct reports, shows their reporting
