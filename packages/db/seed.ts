@@ -142,6 +142,11 @@ export async function seedDemoData(db: Database): Promise<void> {
       { personId: "p_sam", teamId: "t_recruiting", isPrimary: true },
     ]);
 
+    await tx.insert(s.personIdentity).values([
+      { personId: "p_bob", provider: "github", value: "bob-lindqvist" },
+      { personId: "p_bob", provider: "linkedin", value: "bob-lindqvist" },
+    ]);
+
     // Everyone in the seed has signed in before. Jane is the admin, so the admin pages work on
     // first run.
     await tx.insert(s.appUser).values([

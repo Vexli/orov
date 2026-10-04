@@ -19,6 +19,7 @@ function person(overrides: Partial<PersonRecord> & { email: string }): PersonRec
     deskCode: null,
     teamSlugs: [],
     primaryTeamSlug: null,
+    identities: {},
     ...overrides,
   };
 }
@@ -124,5 +125,53 @@ describe("planPeopleImport", () => {
     const plan = run("bad-email,Bad,,,US,,,,,,,,\n", snapshot());
     expect(plan.rows[0]).toMatchObject({ action: "error", line: 2 });
     expect(plan.canApply).toBe(false);
+  });
+
+  describe("identities", () => {
+    const run2 = (body: string, snap: PeopleSnapshot) => {
+      const parsed = parsePeopleCsv(`${HEADER},github\n${body}`);
+      return planPeopleImport(parsed.rows, parsed.issues, snap);
+    };
+
+    it("shows an identity change under the provider's name", () => {
+      const existing = person({ email: "bob@x.com", name: "Bob", identities: { github: "old" } });
+      const plan = run2("bob@x.com,Bob,,,US,,,,,,,,,new\n", snapshot([existing]));
+      expect(plan.rows[0]?.changes).toEqual([{ field: "github", before: "old", after: "new" }]);
+    });
+
+    it("clears an identity when the cell is blank", () => {
+      const existing = person({ email: "bob@x.com", name: "Bob", identities: { github: "bob" } });
+      const plan = run2("bob@x.com,Bob,,,US,,,,,,,,,\n", snapshot([existing]));
+      expect(plan.rows[0]?.changes).toEqual([{ field: "github", before: "bob", after: null }]);
+    });
+
+    it("rejects an account another person in the file also claims", () => {
+      const plan = run2("a@x.com,A,,,US,,,,,,,,,same\nb@x.com,B,,,US,,,,,,,,,same\n", snapshot());
+      expect(plan.rows.map((r) => r.action)).toEqual(["error", "error"]);
+      expect(plan.rows[0]?.message).toBe('github "same" also belongs to b@x.com');
+    });
+
+    it("rejects an account held by someone outside the file", () => {
+      const holder = person({ email: "c@x.com", identities: { github: "same" } });
+      const plan = run2("a@x.com,A,,,US,,,,,,,,,same\n", snapshot([holder]));
+      expect(plan.rows[0]?.message).toBe('github "same" also belongs to c@x.com');
+    });
+
+    it("keeps accounts whose column the file doesn't have", () => {
+      const existing = person({ email: "bob@x.com", name: "Bob", identities: { github: "bob", linkedin: "bob-l" } });
+      // Only a github column: LinkedIn is kept, GitHub is cleared by the blank cell.
+      const plan = run2("bob@x.com,Bob,,,US,,,,,,,,,\n", snapshot([existing]));
+      expect(plan.rows[0]?.changes).toEqual([{ field: "github", before: "bob", after: null }]);
+      expect(plan.rows[0]?.record?.identities).toEqual({ linkedin: "bob-l" });
+      // No identity columns at all: nothing changes.
+      expect(run("bob@x.com,Bob,,,US,,,,,,,,\n", snapshot([existing])).rows[0]?.action).toBe("unchanged");
+    });
+
+    it("lets two people in the file swap accounts", () => {
+      const a = person({ email: "a@x.com", name: "A", identities: { github: "one" } });
+      const b = person({ email: "b@x.com", name: "B", identities: { github: "two" } });
+      const plan = run2("a@x.com,A,,,US,,,,,,,,,two\nb@x.com,B,,,US,,,,,,,,,one\n", snapshot([a, b]));
+      expect(plan.rows.map((r) => r.action)).toEqual(["update", "update"]);
+    });
   });
 });

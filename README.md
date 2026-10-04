@@ -44,6 +44,8 @@ the phase-by-phase delivery plan with progress notes.
 - Admin pages to create, edit and deactivate people and teams, with checks that reject
   manager and parent-team cycles. Desks are assigned by clicking the floor drawing; choosing a
   taken desk swaps it, after the admin confirms
+- Links to a person's other accounts (GitHub, GitLab, LinkedIn, a website) on their card, set in
+  the admin form or the people CSV. An account can belong to only one person
 - CSV import with a dry-run diff before anything is written, CSV export, and an audit log of
   every admin change
 - ISO 3166 region codes (`US`, `US-CA`, `CA-ON`), and a per-user setting for how regions are
@@ -118,18 +120,18 @@ URL to register.
 
 ### Commands
 
-| Command               | What it does                                                           |
-| --------------------- | ---------------------------------------------------------------------- |
-| `pnpm dev`            | Start the web app in development mode on port 3000                     |
-| `pnpm build`          | Build every workspace package that has a build step                    |
-| `pnpm lint`           | ESLint across the repo                                                 |
-| `pnpm typecheck`      | TypeScript checks for every package and the e2e suite                  |
-| `pnpm test`           | Unit tests (`packages/core`) and database tests (`packages/db`)        |
-| `pnpm test:e2e`       | Build the app and run the Playwright suite on port 3100                |
-| `pnpm db:up` / `down` | Start or stop the Postgres container                                   |
-| `pnpm db:migrate`     | Apply pending migrations                                               |
-| `pnpm db:seed`        | Reset the database and load the demo data (refuses to run in production) |
-| `pnpm db:generate`    | Generate a migration after changing `packages/db/schema.ts`            |
+| Command               | What it does                                                                                          |
+| --------------------- | ----------------------------------------------------------------------------------------------------- |
+| `pnpm dev`            | Start the web app in development mode on port 3000                                                    |
+| `pnpm build`          | Build every workspace package that has a build step                                                   |
+| `pnpm lint`           | ESLint across the repo                                                                                |
+| `pnpm typecheck`      | TypeScript checks for every package and the e2e suite                                                 |
+| `pnpm test`           | Unit tests (`packages/core`) and database tests (`packages/db`)                                       |
+| `pnpm test:e2e`       | Build the app and run the Playwright suite on port 3100                                               |
+| `pnpm db:up` / `down` | Start or stop the Postgres container                                                                  |
+| `pnpm db:migrate`     | Apply pending migrations                                                                              |
+| `pnpm db:seed`        | Reset the database and load the demo data (refuses to run in production)                              |
+| `pnpm db:generate`    | Generate a migration after changing `packages/db/schema.ts`                                           |
 | `pnpm theme:defaults` | Regenerate `apps/web/app/theme-defaults.css` and `theme/default.tokens.json` from the theme slot list |
 
 ### Testing

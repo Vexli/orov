@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import type { PersonForm } from "@officeorg/core";
+import { PROFILE_PROVIDERS } from "@officeorg/core/people/identities";
 import type { DeskOption, PickerFloor } from "@officeorg/db/queries/spaces";
 import { savePersonAction, type SaveState } from "@/app/admin/people/actions";
 import { SeatPicker } from "./seat-picker";
@@ -149,6 +150,28 @@ export function PersonFormEditor({ id, initial, managers, desks, floors, teams }
           error={fieldError("assignedDeskId")}
         />
       </div>
+
+      <fieldset className="md:col-span-2">
+        <legend className="text-sm font-medium">Other accounts</legend>
+        <p className="mt-1 text-xs text-muted-fg">Shown as links on the person card. Leave blank for none.</p>
+        <div className="mt-2 grid gap-4 sm:grid-cols-2">
+          {PROFILE_PROVIDERS.map((provider) => (
+            <label key={provider.id} className="block text-sm font-medium">
+              {provider.label}
+              <input
+                className={inputClass}
+                aria-describedby={`identity-${provider.id}-hint`}
+                value={values.identities[provider.id] ?? ""}
+                onChange={(e) => set("identities", { ...values.identities, [provider.id]: e.target.value })}
+              />
+              <span id={`identity-${provider.id}-hint`} className="mt-1 block text-xs font-normal text-muted-fg">
+                {provider.inputHint}
+              </span>
+              {fieldError(`identities.${provider.id}`)}
+            </label>
+          ))}
+        </div>
+      </fieldset>
 
       <fieldset className="md:col-span-2">
         <legend className="text-sm font-medium">Teams and primary team</legend>

@@ -1,3 +1,5 @@
+import type { Identities } from "./people/identities";
+
 // Flat, spreadsheet-shaped views of people and teams. References are by email and slug,
 // never by database id, so a CSV row and a database row compare directly.
 
@@ -15,6 +17,9 @@ export interface PersonRecord {
   deskCode: string | null;
   teamSlugs: string[];
   primaryTeamSlug: string | null;
+  // Profile accounts only (github, linkedin, …), by provider id. Messaging ids are not
+  // spreadsheet data: a match job writes them.
+  identities: Identities;
 }
 
 export interface TeamRecord {
@@ -66,6 +71,20 @@ export const PERSON_FIELDS = [
   "teamSlugs",
   "primaryTeamSlug",
 ] as const satisfies readonly (keyof PersonRecord)[];
+
+// PERSON_FIELDS plus one change per identity provider, named by the provider id.
+export function diffPersonRecords(before: PersonRecord, after: PersonRecord): FieldChange[] {
+  const changes = diffRecords(before, after, PERSON_FIELDS);
+  const providers = [
+    ...new Set([...Object.keys(before.identities), ...Object.keys(after.identities)]),
+  ].sort();
+  for (const provider of providers) {
+    const a = before.identities[provider] ?? null;
+    const b = after.identities[provider] ?? null;
+    if (a !== b) changes.push({ field: provider, before: a, after: b });
+  }
+  return changes;
+}
 
 export const TEAM_FIELDS = [
   "name",

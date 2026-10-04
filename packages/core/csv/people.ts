@@ -1,5 +1,6 @@
 import { stringify } from "csv-stringify/sync";
 import { z } from "zod";
+import { parseIdentity, PROFILE_PROVIDER_IDS, type Identities } from "../people/identities";
 import type { PersonRecord } from "../records";
 import { regionCodeSchema } from "../regions/iso3166";
 import { parseCsv, type CsvIssue, type CsvRecord } from "./parse";
@@ -18,6 +19,11 @@ export const PEOPLE_CSV_HEADERS = [
   "desk",
   "teams",
   "primary_team",
+  // One column per profile provider in people/identities.ts. Keep the two lists in step.
+  "github",
+  "gitlab",
+  "linkedin",
+  "website",
 ] as const;
 
 const REQUIRED = ["email", "name", "home_region"];
@@ -64,6 +70,10 @@ export const personCsvRowSchema = z.object({
 export interface ValidPersonRow {
   line: number;
   record: PersonRecord;
+  // Identity providers whose column the file doesn't have. The import keeps the person's current
+  // account for these instead of clearing it, so a spreadsheet from before the column existed
+  // doesn't wipe accounts set in the app. A blank cell in a column that is there still clears.
+  keepIdentities?: string[];
 }
 
 export interface PeopleCsvResult {
@@ -76,11 +86,13 @@ export function parsePeopleCsv(text: string): PeopleCsvResult {
   const parsed = parseCsv(text, { columns: PEOPLE_CSV_HEADERS, required: REQUIRED, aliases: ALIASES });
   if (parsed.fatal) return { rows: [], issues: [], fatal: parsed.fatal };
 
+  const absent = PROFILE_PROVIDER_IDS.filter((p) => !parsed.headers?.includes(p));
+  const keep = absent.length > 0 ? { keepIdentities: absent } : {};
   const rows: ValidPersonRow[] = [];
   const issues: CsvIssue[] = [];
   for (const row of parsed.records) {
     const result = validatePersonRow(row);
-    if (result.ok) rows.push({ line: row.line, record: result.record });
+    if (result.ok) rows.push({ line: row.line, record: result.record, ...keep });
     else issues.push({ line: row.line, message: result.message });
   }
   return { rows, issues };
@@ -99,6 +111,12 @@ export function validatePersonRow(
   if (primary !== null && !teamSlugs.includes(primary)) {
     return { ok: false, message: `primary_team "${primary}" must also appear in teams` };
   }
+  const identities: Identities = {};
+  for (const provider of PROFILE_PROVIDER_IDS) {
+    const result = parseIdentity(provider, row.values[provider]);
+    if (!result.ok) return { ok: false, message: `${provider}: ${result.message}` };
+    if (result.value !== null) identities[provider] = result.value;
+  }
   return {
     ok: true,
     record: {
@@ -115,6 +133,7 @@ export function validatePersonRow(
       deskCode: v.desk,
       teamSlugs,
       primaryTeamSlug: primary,
+      identities,
     },
   };
 }
@@ -134,6 +153,7 @@ export function peopleToCsv(people: PersonRecord[]): string {
     p.deskCode ?? "",
     [...p.teamSlugs].sort().join(";"),
     p.primaryTeamSlug ?? "",
+    ...PROFILE_PROVIDER_IDS.map((provider) => p.identities[provider] ?? ""),
   ]);
   return stringify(data, { header: true, columns: [...PEOPLE_CSV_HEADERS] });
 }

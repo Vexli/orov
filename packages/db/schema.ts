@@ -225,6 +225,23 @@ export const person = pgTable(
   ],
 );
 
+// Other accounts a person has, by provider id from packages/core/people/identities.ts: profile
+// links (github, linkedin, …) and, later, messaging-tool ids. One account belongs to one person.
+export const personIdentity = pgTable(
+  "person_identity",
+  {
+    personId: text("person_id")
+      .notNull()
+      .references(() => person.id, { onDelete: "cascade" }),
+    provider: text("provider").notNull(),
+    value: text("value").notNull(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.personId, t.provider] }),
+    uniqueIndex("person_identity_provider_value").on(t.provider, t.value),
+  ],
+);
+
 export const team = pgTable(
   "team",
   {
@@ -432,6 +449,11 @@ export const personRelations = relations(person, ({ one, many }) => ({
   reports: many(person, { relationName: "manager" }),
   assignedDesk: one(space, { fields: [person.assignedDeskId], references: [space.id] }),
   teamMembers: many(teamMember),
+  identities: many(personIdentity),
+}));
+
+export const personIdentityRelations = relations(personIdentity, ({ one }) => ({
+  person: one(person, { fields: [personIdentity.personId], references: [person.id] }),
 }));
 
 export const teamRelations = relations(team, ({ one, many }) => ({

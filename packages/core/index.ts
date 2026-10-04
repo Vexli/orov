@@ -22,3 +22,4 @@ export * from "./map/team-seats";
 export * from "./org/tree";
 export * from "./org/html";
 export * from "./search/model";
+export * from "./people/identities";

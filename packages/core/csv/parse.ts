@@ -12,6 +12,9 @@ export interface CsvIssue {
 
 export interface ParsedCsv {
   records: CsvRecord[];
+  // The columns the header row named, after aliases. Lets a caller tell a blank cell from a
+  // column the file doesn't have.
+  headers?: string[];
   fatal?: string;
 }
 
@@ -28,6 +31,7 @@ interface CsvShape {
 // Header names are case-insensitive and trimmed. Unknown columns are ignored, so someone can
 // add a private column to the spreadsheet without breaking the import.
 export function parseCsv(text: string, shape: CsvShape): ParsedCsv {
+  let headers: string[] = [];
   try {
     const rows = parse(text, {
       bom: true,
@@ -45,6 +49,7 @@ export function parseCsv(text: string, shape: CsvShape): ParsedCsv {
         if (missing.length > 0) {
           throw new Error(`Missing required column(s): ${missing.join(", ")}`);
         }
+        headers = normalized;
         return normalized;
       },
     }) as { record: Record<string, string | undefined>; info: { lines: number } }[];
@@ -53,7 +58,7 @@ export function parseCsv(text: string, shape: CsvShape): ParsedCsv {
       line: info.lines,
       values: Object.fromEntries(shape.columns.map((key) => [key, (record[key] ?? "").trim()])),
     }));
-    return { records };
+    return { records, headers };
   } catch (error) {
     return { records: [], fatal: error instanceof Error ? error.message : String(error) };
   }

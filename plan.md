@@ -172,6 +172,10 @@ team          (id, slug UNIQUE, name, parentTeamId → team?, leadId → person?
                slackChannelId?, color?)
 team_member   (personId, teamId, isPrimary bool)   PK(personId, teamId)
                 partial UNIQUE(personId) WHERE isPrimary
+person_identity (personId → person ON DELETE CASCADE, provider, value)
+                PK(personId, provider), UNIQUE(provider, value)
+                provider: github | gitlab | linkedin | website (profile, admin-edited)
+                          | messaging ids from #4 (written by the match job)
 
 presence_signal (id, personId, date, status, source, sourceRef, note?, observedAt,
                  retractedAt?)

@@ -82,6 +82,25 @@ describe("people import", () => {
     expect((await personByEmail("max@example.com"))?.assignedDesk?.name).toBe("SF-2-014");
   });
 
+  it("sets, swaps and clears profile accounts", async () => {
+    // Bob has github bob-lindqvist. Max takes it, Bob takes a new one, and Bob's LinkedIn is cleared.
+    // The export ends each row with github,gitlab,linkedin,website.
+    const csv = (await exportPeopleCsv(t.db))
+      .replace(/^(bob@example\.com,.*),bob-lindqvist,,bob-lindqvist,$/m, "$1,bobl,,,")
+      .replace(/^(max@example\.com,.*),,,,$/m, "$1,https://github.com/Bob-Lindqvist,,,");
+    const dry = await planPeopleCsv(t.db, csv);
+    expect(dry.ok && dry.plan.rows.filter((r) => r.action === "update").map((r) => r.changes.map((c) => c.field))).toEqual([
+      ["github", "linkedin"],
+      ["github"],
+    ]);
+    await applyPeopleCsv(t.db, "jane@example.com", csv);
+    const rows = await t.db.select().from(s.personIdentity).orderBy(s.personIdentity.personId);
+    expect(rows).toEqual([
+      { personId: "p_bob", provider: "github", value: "bobl" },
+      { personId: "p_max", provider: "github", value: "bob-lindqvist" },
+    ]);
+  });
+
   it("writes nothing when any row is invalid", async () => {
     const before = await t.db.select().from(s.person);
     const csv = people(

@@ -43,6 +43,7 @@ function personInput(overrides: Partial<PersonForm>): PersonForm {
     assignedDeskId: null,
     teamIds: [],
     primaryTeamId: null,
+    identities: {},
     ...overrides,
   };
 }
@@ -201,6 +202,35 @@ describe("savePerson", () => {
     await savePerson(t.db, ACTOR, form!, "p_bob");
     const bob = await getPersonForEdit(t.db, "p_bob");
     expect(bob).toEqual(form);
+  });
+
+  it("saves, normalizes and clears profile accounts", async () => {
+    const form = (await getPersonForEdit(t.db, "p_max"))!;
+    await savePerson(t.db, ACTOR, { ...form, identities: { github: "maxo", gitlab: "max.o" } }, "p_max");
+    expect((await getPersonForEdit(t.db, "p_max"))?.identities).toEqual({ github: "maxo", gitlab: "max.o" });
+
+    await savePerson(t.db, ACTOR, { ...form, identities: { gitlab: "max.o" } }, "p_max");
+    expect((await getPersonForEdit(t.db, "p_max"))?.identities).toEqual({ gitlab: "max.o" });
+    const audit = (await listAudit(t.db, { entity: "person" }))[0];
+    expect(audit?.after).toMatchObject({ identities: { gitlab: "max.o" } });
+  });
+
+  it("rejects an account another person already has, naming them", async () => {
+    const form = (await getPersonForEdit(t.db, "p_max"))!;
+    await expectValidation(
+      savePerson(t.db, ACTOR, { ...form, identities: { github: "bob-lindqvist" } }, "p_max"),
+      /Bob Lindqvist already has this GitHub account/,
+      "identities.github",
+    );
+  });
+
+  it("keeps identities it doesn't manage, such as messaging ids", async () => {
+    await t.db.insert(s.personIdentity).values({ personId: "p_bob", provider: "slack", value: "U123" });
+    const form = (await getPersonForEdit(t.db, "p_bob"))!;
+    expect(form.identities).toEqual({ github: "bob-lindqvist", linkedin: "bob-lindqvist" });
+    await savePerson(t.db, ACTOR, { ...form, identities: {} }, "p_bob");
+    const rows = await t.db.select().from(s.personIdentity).where(eq(s.personIdentity.personId, "p_bob"));
+    expect(rows.map((r) => r.provider)).toEqual(["slack"]);
   });
 
   it("deactivates a person and keeps the row", async () => {
