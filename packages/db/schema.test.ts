@@ -117,14 +117,15 @@ describe("invariants enforced by the database", () => {
     );
   });
 
-  it("rejects a second signal with the same source, source_ref and date", async () => {
+  it("rejects a second signal with the same provider, source, source_ref and date", async () => {
     await seedDemoData(t.db);
     const signal = {
       id: "sig_1",
       personId: "p_bob",
       date: "2026-10-05",
       status: "wfh" as const,
-      source: "slack_message" as const,
+      source: "message" as const,
+      provider: "slack",
       sourceRef: "1728000000.000100",
       observedAt: new Date("2026-10-05T08:00:00Z"),
     };

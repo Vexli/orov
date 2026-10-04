@@ -3,10 +3,10 @@ import type { TeamRecord } from "../records";
 import { parseTeamsCsv } from "../csv/teams";
 import { planTeamsImport } from "./teams";
 
-const HEADER = "slug,name,parent_slug,slack_channel_id,color";
+const HEADER = "slug,name,parent_slug,chat_channel_id,color";
 
 function team(slug: string, parentSlug: string | null = null): TeamRecord {
-  return { slug, name: slug.toUpperCase(), parentSlug, slackChannelId: null, color: null };
+  return { slug, name: slug.toUpperCase(), parentSlug, chatChannelId: null, color: null };
 }
 
 function run(body: string, existing: TeamRecord[] = []) {

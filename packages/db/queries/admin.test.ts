@@ -54,7 +54,7 @@ function teamInput(overrides: Partial<TeamForm>): TeamForm {
     name: "New Team",
     parentTeamId: null,
     leadId: null,
-    slackChannelId: null,
+    chatChannelId: null,
     color: null,
     ...overrides,
   };

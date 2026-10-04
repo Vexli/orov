@@ -40,10 +40,11 @@ export const presenceStatus = pgEnum("presence_status", [
   "unknown",
 ]);
 
+// Vendor-neutral: which tool a signal came from is presence_signal.provider.
 export const presenceSource = pgEnum("presence_source", [
-  "slack_message",
-  "gcal_ooo",
-  "gcal_working_location",
+  "message",
+  "calendar_ooo",
+  "calendar_working_location",
   "manual",
 ]);
 
@@ -112,7 +113,8 @@ export const location = pgTable(
     name: text("name").notNull(),
     timezone: text("timezone").notNull(),
     region: text("region").notNull(),
-    googleBuildingId: text("google_building_id"),
+    // The building's id in the room or calendar provider (Google buildingId, Microsoft Graph place).
+    externalBuildingId: text("external_building_id"),
     sortOrder: integer("sort_order").notNull().default(0),
   },
   (t) => [check("location_region_iso3166", regionShape(t.region))],
@@ -184,7 +186,9 @@ export const space = pgTable(
     // Human-readable code, for example "SF-2-014". Shown on cards and in CSV imports.
     name: text("name").notNull(),
     capacity: integer("capacity"),
-    googleResourceEmail: text("google_resource_email").unique(),
+    // The room's id in the calendar provider: a Google resource email, a Microsoft Graph room
+    // address, or a booking tool's room id.
+    calendarResourceId: text("calendar_resource_id").unique(),
     archivedAt: timestamp("archived_at", { withTimezone: true }),
   },
   (t) => [
@@ -210,7 +214,6 @@ export const person = pgTable(
     homeTimezone: text("home_timezone"),
     managerId: text("manager_id").references((): AnyPgColumn => person.id),
     assignedDeskId: text("assigned_desk_id").references(() => space.id),
-    slackUserId: text("slack_user_id").unique(),
     startDate: date("start_date"),
     active: boolean("active").notNull().default(true),
     ...timestamps,
@@ -250,7 +253,8 @@ export const team = pgTable(
     name: text("name").notNull(),
     parentTeamId: text("parent_team_id").references((): AnyPgColumn => team.id),
     leadId: text("lead_id").references(() => person.id),
-    slackChannelId: text("slack_channel_id"),
+    // In the deployment's messaging provider (MESSAGING_PROVIDER), so no provider column.
+    chatChannelId: text("chat_channel_id"),
     color: text("color"),
   },
   (t) => [index("team_parent").on(t.parentTeamId)],
@@ -286,14 +290,16 @@ export const presenceSignal = pgTable(
     date: date("date").notNull(),
     status: presenceStatus("status").notNull(),
     source: presenceSource("source").notNull(),
+    // The tool the signal came from: "slack", "google", "microsoft", "manual", …
+    provider: text("provider").notNull(),
     sourceRef: text("source_ref").notNull(),
     note: text("note"),
     observedAt: timestamp("observed_at", { withTimezone: true }).notNull(),
     retractedAt: timestamp("retracted_at", { withTimezone: true }),
   },
-  // Idempotent upserts: the same Slack message or calendar event never produces two rows.
+  // Idempotent upserts: the same chat message or calendar event never produces two rows.
   (t) => [
-    uniqueIndex("presence_signal_source").on(t.source, t.sourceRef, t.date),
+    uniqueIndex("presence_signal_source").on(t.provider, t.source, t.sourceRef, t.date),
   ],
 );
 
@@ -332,16 +338,22 @@ export const roomStatus = pgTable("room_status", {
   checkedAt: timestamp("checked_at", { withTimezone: true }).notNull(),
 });
 
-export const slackUserToken = pgTable("slack_user_token", {
-  personId: text("person_id")
-    .primaryKey()
-    .references(() => person.id, { onDelete: "cascade" }),
-  encryptedToken: text("encrypted_token").notNull(),
-  scopes: text("scopes").notNull(),
-  createdAt: timestamp("created_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-});
+// A person's own token for a messaging provider, for actions taken as them (group DMs).
+export const messagingUserToken = pgTable(
+  "messaging_user_token",
+  {
+    personId: text("person_id")
+      .notNull()
+      .references(() => person.id, { onDelete: "cascade" }),
+    provider: text("provider").notNull(),
+    encryptedToken: text("encrypted_token").notNull(),
+    scopes: text("scopes").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [primaryKey({ columns: [t.personId, t.provider] })],
+);
 
 export const appUser = pgTable("app_user", {
   email: text("email").primaryKey(),

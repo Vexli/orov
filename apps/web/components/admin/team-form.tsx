@@ -103,8 +103,8 @@ export function TeamFormEditor({ id, initial, parents, leads }: Props) {
       </label>
       <div className="grid gap-5 sm:grid-cols-2">
         <label className="block text-sm font-medium">
-          Slack channel ID
-          <input className={inputClass} placeholder="C0123ABCD" value={values.slackChannelId ?? ""} onChange={(e) => set("slackChannelId", e.target.value || null)} />
+          Chat channel ID
+          <input className={inputClass} placeholder="C0123ABCD" value={values.chatChannelId ?? ""} onChange={(e) => set("chatChannelId", e.target.value || null)} />
         </label>
         <label className="block text-sm font-medium">
           Colour

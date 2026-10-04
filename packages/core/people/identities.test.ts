@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { identitiesInputSchema } from "./form";
 import { identityLinks, parseIdentity } from "./identities";
 
 describe("parseIdentity", () => {
@@ -49,7 +50,23 @@ describe("identityLinks", () => {
     ]);
   });
 
+  it("leaves out messaging ids, which have no public link", () => {
+    expect(identityLinks({ slack: "U123ABC" })).toEqual([]);
+  });
+
   it("ignores providers it doesn't know", () => {
     expect(identityLinks({ myspace: "tom" })).toEqual([]);
+  });
+});
+
+describe("identitiesInputSchema", () => {
+  it("normalizes profile accounts and drops blanks", () => {
+    expect(identitiesInputSchema.parse({ github: "@Octo", linkedin: "" })).toEqual({ github: "octo" });
+  });
+
+  it("refuses messaging ids, which only a match job writes", () => {
+    const result = identitiesInputSchema.safeParse({ slack: "U123ABC" });
+    expect(result.success).toBe(false);
+    expect(result.error?.issues[0]?.path).toEqual(["slack"]);
   });
 });

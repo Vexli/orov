@@ -150,26 +150,26 @@ e2e/  Playwright specs per user story
 
 ## 5. Data model
 
-The schema builds on the model in `report.md` and adds cache, audit, and integration tables. All ids are text (`p_…`, `t_…`; use `cuid2`) so they're safe to put in URLs.
+The schema builds on the model in `report.md` and adds cache, audit, and integration tables. All ids are text (`p_…`, `t_…`; use `cuid2`) so they're safe to put in URLs. Integration columns are vendor-neutral (Phase 7 #4–6): no column, enum value or CSV header names Slack or Google, so a Microsoft 365, Teams or room-booking adapter needs no schema change.
 
 ```
-location      (id, slug UNIQUE, name, timezone, region (ISO 3166 code), googleBuildingId?,
+location      (id, slug UNIQUE, name, timezone, region (ISO 3166 code), externalBuildingId?,
                sortOrder)
 floor         (id, locationId, slug, name, level int, svgAssetId, sortOrder)
                 UNIQUE(locationId, slug)
 svg_asset     (id, floorId, version int, sanitizedSvg text, sha256, uploadedBy, uploadedAt)
 area          (id, floorId, slug, name, svgElementId)          UNIQUE(floorId, svgElementId)
 space         (id, floorId, areaId?, kind, svgElementId, name, capacity?,
-               googleResourceEmail? UNIQUE, archivedAt?)
+               calendarResourceId? UNIQUE, archivedAt?)
                 kind: desk | meeting_room | phone_booth | kitchen | elevator | restroom | other
                 UNIQUE(floorId, svgElementId)
 
 person        (id, email UNIQUE, name, preferredName?, title?, photoUrl?, phone?,
                homeRegion (ISO 3166 code), homeTimezone?,
                managerId → person?, assignedDeskId → space? UNIQUE (partial, non-null),
-               slackUserId? UNIQUE, startDate?, active bool, createdAt, updatedAt)
+               startDate?, active bool, createdAt, updatedAt)
 team          (id, slug UNIQUE, name, parentTeamId → team?, leadId → person?,
-               slackChannelId?, color?)
+               chatChannelId?, color?)
 team_member   (personId, teamId, isPrimary bool)   PK(personId, teamId)
                 partial UNIQUE(personId) WHERE isPrimary
 person_identity (personId → person ON DELETE CASCADE, provider, value)
@@ -177,10 +177,11 @@ person_identity (personId → person ON DELETE CASCADE, provider, value)
                 provider: github | gitlab | linkedin | website (profile, admin-edited)
                           | messaging ids from #4 (written by the match job)
 
-presence_signal (id, personId, date, status, source, sourceRef, note?, observedAt,
+presence_signal (id, personId, date, status, source, provider, sourceRef, note?, observedAt,
                  retractedAt?)
-                 source: slack_message | gcal_ooo | gcal_working_location | manual
-                 UNIQUE(source, sourceRef, date)   -- idempotent upserts
+                 source: message | calendar_ooo | calendar_working_location | manual
+                 provider: slack | google | microsoft | manual | …
+                 UNIQUE(provider, source, sourceRef, date)   -- idempotent upserts
 presence_day    (personId, date, status, winningSignalId?, PK(personId, date))  -- derived
 presence_rule   (id, priority int, pattern text, matchType: keyword|regex,
                  status, dateScope: today|tomorrow|parse, enabled)
@@ -191,7 +192,8 @@ room_status     (spaceId PK, state: free|busy|soon, currentUntil?, nextStartsAt?
 app_setting     (key PK, value jsonb, updatedBy, updatedAt)
                  key presence.display: off | simple | detailed   -- default off (§8.5)
 
-slack_user_token (personId PK, encryptedToken, scopes, createdAt)   -- for group DMs
+messaging_user_token (personId, provider, encryptedToken, scopes, createdAt)   -- for group DMs
+                 PK(personId, provider)
 app_user        (email PK, role: viewer|admin,
                  regionDisplay: code|country|region|country_region   -- default country_region
                  lastSeenAt)
@@ -365,11 +367,11 @@ Presence display is **off by default**. An admin chooses the mode on the Presenc
 
 ### 8.6 Slack: identity and chat (U7)
 
-- **Matching** (`slack:match-users`, nightly, plus an admin button with a diff): call `users.lookupByEmail` for each person without a `slackUserId`. Unmatched people show up in an admin list for manual entry.
+- **Matching** (`slack:match-users`, nightly, plus an admin button with a diff): call `users.lookupByEmail` for each person without a `slack` row in `person_identity`. Unmatched people show up in an admin list for manual entry.
 - **1:1 chat:** a link to `slack://user?team=T&id=U`, with `https://app.slack.com/client/T/U` as the fallback. This needs no API call.
-- **Team chat:** `slack://channel?team=T&id=C` from `team.slackChannelId`.
+- **Team chat:** `slack://channel?team=T&id=C` from `team.chatChannelId`.
 - **Group DM (2–8 others):**
-    1. If the viewer has no `slack_user_token`, the first click sends them through **Connect Slack** (an OAuth v2 user flow with the user scopes `im:write` and `mpim:write`). The token is stored encrypted with AES-256-GCM using `TOKEN_ENC_KEY`.
+    1. If the viewer has no Slack row in `messaging_user_token`, the first click sends them through **Connect Slack** (an OAuth v2 user flow with the user scopes `im:write` and `mpim:write`). The token is stored encrypted with AES-256-GCM using `TOKEN_ENC_KEY`.
     2. `POST /api/slack/group-dm {personIds}` calls `conversations.open users=…` as the viewer and returns the channel id. The browser then navigates to the `slack://channel` deep link.
     3. Slack caps a group DM at 9 people including the viewer. Enforce that in the selection tray.
 

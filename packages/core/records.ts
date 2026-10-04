@@ -26,7 +26,7 @@ export interface TeamRecord {
   slug: string;
   name: string;
   parentSlug: string | null;
-  slackChannelId: string | null;
+  chatChannelId: string | null;
   color: string | null;
 }
 
@@ -89,6 +89,6 @@ export function diffPersonRecords(before: PersonRecord, after: PersonRecord): Fi
 export const TEAM_FIELDS = [
   "name",
   "parentSlug",
-  "slackChannelId",
+  "chatChannelId",
   "color",
 ] as const satisfies readonly (keyof TeamRecord)[];

@@ -44,7 +44,7 @@ function toTeamRecord(row: NonNullable<Awaited<ReturnType<typeof findTeamRow>>>)
     slug: row.slug,
     name: row.name,
     parentSlug: row.parent?.slug ?? null,
-    slackChannelId: row.slackChannelId,
+    chatChannelId: row.chatChannelId,
     color: row.color,
   };
 }
@@ -81,7 +81,7 @@ export async function listTeamsForAdmin(db: Executor) {
     parentName: row.parent?.name ?? null,
     leadId: row.lead?.id ?? null,
     leadName: row.lead?.name ?? null,
-    slackChannelId: row.slackChannelId,
+    chatChannelId: row.chatChannelId,
     color: row.color,
     memberCount: row.members.length,
     childCount: row.children.length,
@@ -96,7 +96,7 @@ export async function getTeamForEdit(db: Executor, id: string): Promise<TeamForm
     name: row.name,
     parentTeamId: row.parentTeamId,
     leadId: row.leadId,
-    slackChannelId: row.slackChannelId,
+    chatChannelId: row.chatChannelId,
     color: row.color,
   };
 }
@@ -135,7 +135,7 @@ export async function saveTeam(
       name: input.name,
       parentTeamId: input.parentTeamId,
       leadId: input.leadId,
-      slackChannelId: input.slackChannelId,
+      chatChannelId: input.chatChannelId,
       color: input.color,
     };
     const teamId = id
