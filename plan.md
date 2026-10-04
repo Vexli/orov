@@ -643,7 +643,10 @@ The improvement backlog raised after Phases 1–3. Each item keeps its number fr
     - **Completed:** 2026-10-04
     - **Branch:** merged from `feature/admin-inactive-strike`
     - **Notes:** The name in `/admin/people` gets `line-through text-muted-fg` plus a visually hidden " (inactive)". Inactive people are not sorted last; #9's status filter (default: active) hides them instead. Tests: 1 Playwright.
-- [ ] #14 Click anywhere in a directory row to select it
+- [x] #14 Click anywhere in a directory row to select it
+    - **Completed:** 2026-10-04
+    - **Branch:** merged from `feature/directory-row-click`
+    - **Notes:** `onClick` on the `<tr>` ignores clicks inside `a,button,input,select`, so #15's desk link navigates. Rows get `cursor-pointer` and `hover:bg-muted`; no `tabIndex`, the name button stays the keyboard route. The selected row has `aria-current="true"` instead of `aria-selected` (`selection.spec.ts` updated). Tests: 1 Playwright.
 - [x] #15 Desk code in the directory links to the map
     - **Completed:** 2026-10-04
     - **Branch:** merged from `feature/directory-desk-link`
