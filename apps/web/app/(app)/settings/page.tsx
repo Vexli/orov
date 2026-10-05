@@ -6,6 +6,8 @@ import {
   formatRegion,
   REGION_DISPLAY_LABELS,
   REGION_DISPLAYS,
+  UI_LOCALES,
+  uiLocaleLabel,
 } from "@orov/core";
 import { requireUser } from "@/lib/session";
 import { saveSettingsAction } from "./actions";
@@ -62,8 +64,8 @@ export default async function SettingsPage({ searchParams }: Props) {
                   <span className="block font-medium">{REGION_DISPLAY_LABELS[display]}</span>
                   <span className="block text-xs text-muted-fg">
                     {display === "flag"
-                      ? EXAMPLES.map((code) => `${flagEmoji(code)} (${formatRegion(code, "country")})`).join(" · ")
-                      : EXAMPLES.map((code) => formatRegion(code, display)).join(" · ")}
+                      ? EXAMPLES.map((code) => `${flagEmoji(code)} (${formatRegion(code, "country", user.locale)})`).join(" · ")
+                      : EXAMPLES.map((code) => formatRegion(code, display, user.locale)).join(" · ")}
                   </span>
                 </span>
               </label>
@@ -79,6 +81,24 @@ export default async function SettingsPage({ searchParams }: Props) {
                 Windows, show the country&apos;s letters instead of a flag.
               </span>
             </span>
+          </label>
+          <label className="mt-3 block text-sm">
+            <span className="block font-medium">Language for country names</span>
+            <span id="locale-hint" className="block text-xs text-muted-fg">
+              Region names stay as ISO 3166 publishes them, and the rest of the app is in English.
+            </span>
+            <select
+              name="locale"
+              defaultValue={user.locale}
+              aria-describedby="locale-hint"
+              className="mt-1 w-full rounded-md border border-border bg-transparent px-3 py-2 text-sm"
+            >
+              {UI_LOCALES.map((locale) => (
+                <option key={locale} value={locale}>
+                  {uiLocaleLabel(locale)}
+                </option>
+              ))}
+            </select>
           </label>
         </fieldset>
         <fieldset className="mt-6">

@@ -202,6 +202,7 @@ messaging_user_token (personId, provider, encryptedToken, scopes, createdAt)   -
                  PK(personId, provider)
 app_user        (email PK, role: viewer|admin,
                  regionDisplay: code|country|region|country_region   -- default country_region
+                 locale text   -- default en; language for country names (Phase 6)
                  lastSeenAt)
 audit_log       (id, actorEmail, entity, entityId, action, before jsonb, after jsonb, at)
 integration_run (id, job, startedAt, finishedAt?, ok bool, stats jsonb, error?)
@@ -308,6 +309,8 @@ Anything without one of these prefixes is decoration.
 - Filters and URL state use codes, never labels, so a shared link works the same for every viewer.
 
 **Country flags** (`app_user.regionFlag`, Phase 7 #28): a checkbox under the region display that puts the country's flag emoji in front of every region label, in any display mode. The flag travels separately from the label (`regionLabel` returns `{ label, flag }`), is `aria-hidden` in the UI, and the text label always stays, since Windows shows flag emoji as letter pairs.
+
+**Language** (`app_user.locale`, Phase 6): the language country names are shown in, from `UI_LOCALES` in `packages/core/regions/locales.ts` (default English). It's part of `RegionFormat`, so every label `regionLabel` builds follows it, and the region picker searches in it as well as in English. Subdivision names stay as ISO 3166-2 publishes them, so German reads "California, Vereinigte Staaten". The rest of the interface is English.
 
 **Date format** (`app_user.dateFormat`, Phase 7 #27): `iso` (default, `2026-10-04 14:30`), `dmy` (`04/10/2026 14:30`) or `mdy` (`10/04/2026 2:30 PM`), formatted on the server by `formatDateTime` in `packages/core/dates/format.ts`. Times are shown in the viewer's home time zone if they have a person row, else their browser's (a `tz` cookie), else UTC, and timestamps carry the zone's abbreviation. Date filters (the audit log's) are read in the same zone. CSV files always use ISO 8601 in UTC.
 

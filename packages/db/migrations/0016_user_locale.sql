@@ -1,0 +1,1 @@
+ALTER TABLE "app_user" ADD COLUMN "locale" text DEFAULT 'en' NOT NULL;

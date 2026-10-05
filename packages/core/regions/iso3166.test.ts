@@ -187,3 +187,17 @@ describe("searchRegions", () => {
     expect(searchRegions("a", 5)).toHaveLength(5);
   });
 });
+
+describe("place names in another language", () => {
+  it("translates country names, and keeps subdivision names as ISO publishes them", () => {
+    const de = { display: "country_region", flag: false, locale: "de" } as const;
+    expect(regionLabel("US-CA", de).label).toBe("California, Vereinigte Staaten");
+    expect(regionLabel("DE", de).label).toBe("Deutschland");
+    expect(regionLabel("DE", { display: "flag", flag: false, locale: "ja" }).label).toBe("ドイツ");
+  });
+
+  it("searches in the chosen language and in English", () => {
+    expect(searchRegions("deutschland", 5, "de")[0]).toEqual({ code: "DE", label: "Deutschland" });
+    expect(searchRegions("germany", 5, "de")[0]).toEqual({ code: "DE", label: "Deutschland" });
+  });
+});

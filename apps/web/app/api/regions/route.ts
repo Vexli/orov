@@ -8,6 +8,7 @@ export async function GET(request: NextRequest) {
   const user = await getCurrentUser();
   if (!user) return new Response("Unauthorized", { status: 401 });
 
-  const results = searchRegions(request.nextUrl.searchParams.get("q") ?? "");
-  return Response.json(results, { headers: { "Cache-Control": "private, max-age=3600" } });
+  // Labelled in the user's language; English names match too.
+  const results = searchRegions(request.nextUrl.searchParams.get("q") ?? "", 20, user.locale);
+  return Response.json(results, { headers: { "Cache-Control": "no-store" } });
 }

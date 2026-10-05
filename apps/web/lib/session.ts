@@ -1,7 +1,7 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { getDb } from "@orov/db/client";
-import { canonicalTimeZone, type DateFormat, type RegionDisplay, type RegionFormat } from "@orov/core";
+import { canonicalTimeZone, type DateFormat, type RegionDisplay, type RegionFormat, type UiLocale } from "@orov/core";
 import { findHomeTimeZone, getAppUser, type AppRole, type AppUser } from "@orov/db/queries/app-users";
 import { auth } from "./auth";
 import { TIME_ZONE_COOKIE } from "./time-zone-cookie";
@@ -15,6 +15,8 @@ export interface CurrentUser {
   regionFlag: boolean;
   // The user's own setting for how dates and times are shown (#27).
   dateFormat: DateFormat;
+  // The language for country names in region labels (Phase 6).
+  locale: UiLocale;
   // The zone their times are shown in: their home time zone if they're in the directory, else
   // their browser's (TimeZoneCookie), else UTC.
   timeZone: string;
@@ -22,7 +24,7 @@ export interface CurrentUser {
 
 // The user's region settings, in the shape the directory and map loaders take.
 export function regionFormatOf(user: CurrentUser): RegionFormat {
-  return { display: user.regionDisplay, flag: user.regionFlag };
+  return { display: user.regionDisplay, flag: user.regionFlag, locale: user.locale };
 }
 
 async function currentUser(email: string, user: AppUser): Promise<CurrentUser> {

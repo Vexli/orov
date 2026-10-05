@@ -408,6 +408,9 @@ export const appUser = pgTable("app_user", {
   regionFlag: boolean("region_flag").notNull().default(false),
   // How this user sees dates and times (#27).
   dateFormat: dateFormat("date_format").notNull().default("iso"),
+  // The language for country names in region labels (Phase 6). Plain text, checked against
+  // UI_LOCALES in the app, so a new language needs no migration.
+  locale: text("locale").notNull().default("en"),
   lastSeenAt: timestamp("last_seen_at", { withTimezone: true }),
 });
 
