@@ -243,6 +243,21 @@ family in `font.sans` or `font.mono`, such as `Acme Sans, sans-serif`. If a font
 generic family (`sans-serif`, `monospace`, `system-ui`, …), OrOv adds `sans-serif` to
 `font.sans` and `monospace` to `font.mono`, so text never falls back to a serif.
 
+## Map colors for one office
+
+An office can use its own colors for the [floor map slots](#floor-map-lightdark) (`map.*` and
+`room.*`), for example where a building's signage uses a different color for meeting rooms. Set
+them under **Admin → Offices & floors**, on the office's page, in **Map colors**: tick a slot for
+light or dark mode and pick a value. A slot set only for light mode uses that value in dark mode
+too, and a dark value is offered only when the active theme has dark mode.
+
+The overrides apply on that office's floors in the map and nowhere else: the main menu, the
+directory, the org chart and other offices keep the organization's theme. They're checked with
+the same [contrast](#contrast) rules as a theme, against the active theme's other values, and a
+failing check blocks saving unless you tick **Save even though … checks fail**. Applying a new
+theme later doesn't re-check them, so look at the office's report again after a theme change.
+**Use the organization's colors** removes the override.
+
 ## The default theme for a deployment
 
 Until an admin applies a theme, OrOv uses its own defaults, the values in

@@ -1,3 +1,4 @@
+import type { LocationTheme } from "../theme/location-override";
 import type { SpaceKind } from "../svg/parse";
 import type { TierLabels } from "../spaces/tier";
 import type { RoomDisplayState } from "./room-status";
@@ -64,8 +65,11 @@ export interface MapFloor {
   id: string;
   slug: string;
   name: string;
+  locationId: string;
   locationSlug: string;
   locationName: string;
+  // The office's own map colors (Phase 6), or null for the organization's theme.
+  locationTheme: LocationTheme | null;
   // Changes whenever the drawing does, so the browser can cache measurements per version.
   assetId: string;
   svg: string;

@@ -116,8 +116,10 @@ export async function loadMap(
       id: floor.id,
       slug: floor.slug,
       name: floor.name,
+      locationId: location.id,
       locationSlug: location.slug,
       locationName: location.name,
+      locationTheme: location.mapTheme ?? null,
       assetId: asset!.id,
       svg: asset!.sanitizedSvg,
       areas: areas.map((a) => ({

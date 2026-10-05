@@ -27,9 +27,11 @@ interface Props {
   map: MapData;
   people: DirectoryPerson[];
   teams: DirectoryTeam[];
+  // The office's own map colors as scoped CSS (Phase 6), built on the server; empty for none.
+  locationThemeCss?: string;
 }
 
-export function MapView({ map, people, teams }: Props) {
+export function MapView({ map, people, teams, locationThemeCss = "" }: Props) {
   // Selection is client-only state in the URL. Changing floors needs the server's drawing, so
   // those updates opt out of shallow routing where they're made.
   const [params, setParams] = useQueryStates(mapParsers, { history: "replace" });
@@ -252,7 +254,8 @@ export function MapView({ map, people, teams }: Props) {
           ))}
         </div>
       </ViewBar>
-    <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
+    <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]" data-location-theme={floor.locationId}>
+      {locationThemeCss ? <style>{locationThemeCss}</style> : null}
       <section aria-label={`${tier.singular} map`} className="min-w-0" aria-busy={navigating}>
         <h1 className="text-xl font-heading">
           {floor.locationName}, {floor.name}

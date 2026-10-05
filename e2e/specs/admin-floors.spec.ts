@@ -333,3 +333,50 @@ test.describe("seating planner (N10)", () => {
     );
   });
 });
+
+// Per-office map colors (Phase 6): a few map slots differ on that office's map only.
+test.describe("office map colors", () => {
+  test.beforeEach(async ({ context }) => {
+    await resetE2eDatabase();
+    await signInAs(context, "jane@example.com");
+  });
+
+  const fillOf = (page: Page, id: string) =>
+    page.locator(`[data-floor-map] #${id}`).evaluate((el) => getComputedStyle(el).fill);
+  const rootVar = (page: Page, name: string) =>
+    page.evaluate((n) => getComputedStyle(document.documentElement).getPropertyValue(n).trim(), name);
+
+  test("an office's selection color applies on its map and nowhere else", async ({ page }) => {
+    await page.goto("/admin/locations/loc_sf");
+    const colors = page.getByRole("region", { name: "Map colors" });
+    await colors.getByRole("checkbox", { name: "Set Focused seat (light)" }).check();
+    await colors.getByLabel("Focused seat (light)", { exact: true }).fill("#7c3aed");
+    await colors.getByRole("button", { name: "Save map colors" }).click();
+    await expect(colors.getByRole("status").filter({ hasText: "Map colors saved." })).toBeVisible();
+
+    await page.goto("/map?person=p_bob");
+    await expect.poll(() => fillOf(page, "desk-2-014")).toBe("rgb(124, 58, 237)");
+    // The page's own theme is untouched.
+    expect(await rootVar(page, "--map-selection")).toBe("#f59e0b");
+
+    await page.goto("/admin/locations/loc_sf");
+    await page.getByRole("button", { name: "Use the organization's colors" }).click();
+    await expect(page.getByRole("status")).toContainText("organization's map colors again");
+    await page.goto("/map?person=p_bob");
+    await expect.poll(() => fillOf(page, "desk-2-014")).toBe("rgb(245, 158, 11)");
+  });
+
+  test("a color that fails contrast blocks saving until the admin overrides it", async ({ page }) => {
+    await page.goto("/admin/locations/loc_sf");
+    const colors = page.getByRole("region", { name: "Map colors" });
+    await colors.getByRole("checkbox", { name: "Set Meeting room busy now (light)" }).check();
+    await colors.getByLabel("Meeting room busy now (light)", { exact: true }).fill("#fca5a5");
+    await expect(colors.getByText(/checks? fails?/).first()).toBeVisible();
+    const save = colors.getByRole("button", { name: "Save map colors" });
+    await expect(save).toBeDisabled();
+
+    await colors.getByRole("checkbox", { name: /Save even though/ }).check();
+    await save.click();
+    await expect(colors.getByRole("status").filter({ hasText: "Map colors saved." })).toBeVisible();
+  });
+});
