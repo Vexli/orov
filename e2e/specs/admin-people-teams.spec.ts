@@ -44,7 +44,10 @@ test.describe("admin people and teams", () => {
     await expect(row).toContainText("Recruiting");
   });
 
-  test("a new person's blank time zone comes from their desk's office", async ({ page, context }) => {
+  test("a new person's blank time zone comes from their desk's office", async ({
+    page,
+    context,
+  }) => {
     await signInAs(context, "jane@example.com");
     await page.goto("/admin/people/new");
     await page.getByLabel("Given name").fill("Ama");
@@ -58,7 +61,10 @@ test.describe("admin people and teams", () => {
     await page.getByRole("button", { name: "Create person" }).click();
     await expect(page).toHaveURL(/\/admin\/people$/);
 
-    await page.getByRole("row", { name: /Ama Ito/ }).getByRole("link", { name: "Edit" }).click();
+    await page
+      .getByRole("row", { name: /Ama Ito/ })
+      .getByRole("link", { name: "Edit" })
+      .click();
     await expect(page.getByLabel("Home timezone")).toHaveValue("America/Los_Angeles");
   });
 
@@ -94,7 +100,10 @@ test.describe("admin people and teams", () => {
     await page.goto("/admin/people");
     const report = page.getByRole("region", { name: "Phone numbers to fix" });
     await expect(report).toContainText("1 phone number isn't in a standard format");
-    await expect(report.getByRole("link", { name: "Sam Ortiz" })).toHaveAttribute("href", "/admin/people/p_sam");
+    await expect(report.getByRole("link", { name: "Sam Ortiz" })).toHaveAttribute(
+      "href",
+      "/admin/people/p_sam",
+    );
   });
 
   test("a new person with no manager gets their primary team's lead", async ({ page, context }) => {
@@ -105,13 +114,18 @@ test.describe("admin people and teams", () => {
     await page.getByLabel("Email").fill("ama@example.com");
     await page.getByLabel("Member of HR").check();
     await page.getByLabel("Primary team HR").check();
-    await expect(page.getByLabel("Manager").locator("option").first()).toHaveText("Default: Jane Park, lead of HR");
+    await expect(page.getByLabel("Manager").locator("option").first()).toHaveText(
+      "Default: Jane Park, lead of HR",
+    );
     await page.getByRole("button", { name: "Create person" }).click();
     await expect(page).toHaveURL(/\/admin\/people$/);
     await expect(page.getByRole("row", { name: /Ama Ito/ })).toContainText("Jane Park");
   });
 
-  test("joining a sub-team makes someone a member of the teams above it", async ({ page, context }) => {
+  test("joining a sub-team makes someone a member of the teams above it", async ({
+    page,
+    context,
+  }) => {
     await signInAs(context, "jane@example.com");
     // Priya is in Recruiting, so she's in HR through it.
     await page.goto("/directory?person=p_priya");
@@ -131,7 +145,9 @@ test.describe("admin people and teams", () => {
     await expect(page.getByText("through Payroll")).toBeVisible();
     await page.getByRole("button", { name: "Save person" }).click();
     await expect(page).toHaveURL(/\/admin\/people$/);
-    await expect(page.getByRole("row", { name: /Priya Raman/ })).toContainText("HR (through a sub-team)");
+    await expect(page.getByRole("row", { name: /Priya Raman/ })).toContainText(
+      "HR (through a sub-team)",
+    );
   });
 
   test("people and teams are listed alphabetically in dropdowns", async ({ page, context }) => {
@@ -147,7 +163,12 @@ test.describe("admin people and teams", () => {
       "Sam Ortiz",
     ]);
     await page.goto("/admin/people");
-    await expect(page.getByLabel("Filter by team").locator("option")).toHaveText(["All teams", "HR", "Payroll", "Recruiting"]);
+    await expect(page.getByLabel("Filter by team").locator("option")).toHaveText([
+      "All teams",
+      "HR",
+      "Payroll",
+      "Recruiting",
+    ]);
   });
 
   test("an admin records a last day, which viewers never see", async ({ page, context }) => {
@@ -160,12 +181,16 @@ test.describe("admin people and teams", () => {
     await page.getByLabel("Last day").fill("2026-12-31");
     await page.getByRole("button", { name: "Save person" }).click();
     await expect(page).toHaveURL(/\/admin\/people$/);
-    await expect(page.getByRole("row", { name: /bob@example\.com/ })).toContainText("Last day 2026-12-31");
+    await expect(page.getByRole("row", { name: /bob@example\.com/ })).toContainText(
+      "Last day 2026-12-31",
+    );
 
     await switchUser(page, context, "max@example.com");
     for (const path of ["/directory?person=p_bob", "/org?person=p_bob", "/map?person=p_bob"]) {
       await page.goto(path);
-      await expect(page.getByRole("complementary", { name: "Bob Lindqvist details" })).toBeVisible();
+      await expect(
+        page.getByRole("complementary", { name: "Bob Lindqvist details" }),
+      ).toBeVisible();
       // Not in the page, nor in the data sent with it.
       expect(await page.content()).not.toContain("2026-12-31");
     }
@@ -181,7 +206,9 @@ test.describe("admin people and teams", () => {
     await page.getByRole("combobox", { name: /^Office/ }).selectOption({ label: "San Francisco" });
     await page.getByRole("button", { name: "Save person" }).click();
     await expect(page).toHaveURL(/\/admin\/people$/);
-    await expect(page.getByRole("row", { name: /priya@example\.com/ })).toContainText("San Francisco, no desk");
+    await expect(page.getByRole("row", { name: /priya@example\.com/ })).toContainText(
+      "San Francisco, no desk",
+    );
 
     await page.goto("/directory?person=p_priya");
     await expect(page.getByRole("complementary", { name: "Priya Raman details" })).toContainText(
@@ -202,7 +229,9 @@ test.describe("admin people and teams", () => {
   }) => {
     await signInAs(context, "jane@example.com");
     await page.goto("/admin/people/p_priya");
-    await expect(page.getByRole("list", { name: "Managers" }).getByRole("listitem")).toHaveText(["Max Osei×"]);
+    await expect(page.getByRole("list", { name: "Managers" }).getByRole("listitem")).toHaveText([
+      "Max Osei×",
+    ]);
     await page.getByRole("combobox", { name: /^Manager/ }).selectOption({ label: "Jane Park" });
     await expect(page.getByRole("list", { name: "Managers" }).getByRole("listitem")).toHaveText([
       "Max Osei×",
@@ -210,7 +239,9 @@ test.describe("admin people and teams", () => {
     ]);
     await page.getByRole("button", { name: "Save person" }).click();
     await expect(page).toHaveURL(/\/admin\/people$/);
-    await expect(page.getByRole("row", { name: /priya@example\.com/ })).toContainText("Max Osei, Jane Park");
+    await expect(page.getByRole("row", { name: /priya@example\.com/ })).toContainText(
+      "Max Osei, Jane Park",
+    );
 
     await page.goto("/org?view=list&person=p_priya");
     const outline = page.getByRole("navigation", { name: "Reporting lines chart" });
@@ -285,7 +316,10 @@ test.describe("admin people and teams", () => {
     await expect(page.getByLabel("Filter by desk")).toHaveValue("without");
   });
 
-  test("an admin deactivates several people at once after reviewing the change", async ({ page, context }) => {
+  test("an admin deactivates several people at once after reviewing the change", async ({
+    page,
+    context,
+  }) => {
     await signInAs(context, "jane@example.com");
     await page.goto("/admin/people");
     for (const name of ["Bob Lindqvist", "Priya Raman", "Sam Ortiz"]) {
@@ -297,7 +331,11 @@ test.describe("admin people and teams", () => {
     await bar.getByRole("button", { name: "Review change" }).click();
 
     const dialog = page.getByRole("dialog", { name: "Deactivate for 3 people?" });
-    await expect(dialog.getByRole("listitem")).toHaveText(["Bob Lindqvist", "Sam Ortiz", "Priya Raman"]);
+    await expect(dialog.getByRole("listitem")).toHaveText([
+      "Bob Lindqvist",
+      "Sam Ortiz",
+      "Priya Raman",
+    ]);
     await dialog.getByRole("button", { name: "Apply" }).click();
     await expect(page.getByRole("status", { name: "Bulk change result" })).toHaveText(
       "Deactivate · 3 people updated.",
@@ -347,7 +385,9 @@ test.describe("admin people and teams", () => {
 
     await zone.fill("Mars/Olympus");
     await page.getByRole("button", { name: "Save person" }).click();
-    await expect(page.getByText("Use an IANA time zone, such as America/Los_Angeles")).toBeVisible();
+    await expect(
+      page.getByText("Use an IANA time zone, such as America/Los_Angeles"),
+    ).toBeVisible();
 
     await zone.fill("america/new_york");
     await page.getByRole("button", { name: "Save person" }).click();
@@ -358,7 +398,45 @@ test.describe("admin people and teams", () => {
     );
   });
 
-  test("an admin sets profile accounts, and the person card links to them", async ({ page, context }) => {
+  test("the home region is chosen by name from suggestions, and a typed code still works", async ({
+    page,
+    context,
+  }) => {
+    await signInAs(context, "jane@example.com");
+    await page.goto("/admin/people/p_bob");
+    const region = page.getByRole("combobox", { name: "Home region" });
+
+    // The ISO list spells it "Karnātaka"; the search ignores accents.
+    await region.fill("karnataka");
+    const suggestions = page.getByRole("listbox", { name: "Suggestions" });
+    await expect(suggestions.getByRole("option").first()).toHaveText(/Karnātaka, India\s*IN-KA/);
+    await region.press("Enter");
+    await expect(region).toHaveValue("IN-KA");
+    await expect(suggestions).toBeHidden();
+    await expect(region).toHaveAccessibleDescription("Karnātaka, India");
+
+    // A code typed in full names itself too, and picking with the mouse works the same.
+    await region.fill("ca-on");
+    await expect(region).toHaveAccessibleDescription("Ontario, Canada");
+    await suggestions.getByRole("option", { name: /Ontario, Canada/ }).click();
+    await expect(region).toHaveValue("CA-ON");
+    await page.getByRole("button", { name: "Save person" }).click();
+    await expect(page).toHaveURL(/\/admin\/people$/);
+    await page.goto("/admin/people/p_bob");
+    await expect(page.getByRole("combobox", { name: "Home region" })).toHaveAccessibleDescription(
+      "Ontario, Canada",
+    );
+
+    // A name that isn't a region offers nothing, and the server still refuses it.
+    await region.fill("atlantis");
+    await page.getByRole("button", { name: "Save person" }).click();
+    await expect(page.getByText("Home region must be an ISO 3166 code, such as US or US-CA")).toBeVisible();
+  });
+
+  test("an admin sets profile accounts, and the person card links to them", async ({
+    page,
+    context,
+  }) => {
     await signInAs(context, "jane@example.com");
     await page.goto("/admin/people/p_max");
 

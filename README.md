@@ -73,7 +73,8 @@ which wait for Phases 4 and 5. None has been released to `main` yet. The parts t
   skipped. Files saved by Excel (Windows-1252 or UTF-16, separated by commas, semicolons or tabs)
   are detected. CSV export, and an audit log of every admin change, filterable by entity, date and
   admin, and exportable as CSV
-- ISO 3166 region codes (`US`, `US-CA`, `CA-ON`), and per-user settings for how regions are
+- ISO 3166 region codes (`US`, `US-CA`, `CA-ON`), picked in the admin forms by typing a country
+  or region name or the code, and per-user settings for how regions are
   displayed (optionally with the country's flag, or the flag alone) and how dates are written (ISO, day/month/year or month/day/year, in the user's own
   time zone)
 - A semantic theme layer: components are styled only through theme slots, never raw colors
@@ -206,7 +207,7 @@ packages/
     import/       dry-run import planning
     map/          floor map model and the generated state stylesheet
     org/          the org chart's reporting and team trees
-    regions/      ISO 3166 validation and display formatting
+    regions/      ISO 3166 validation, display formatting and name search
     search/       search result types and query normalization
     spaces/       office and floor form validation
     svg/          floor drawing sanitize, parse and diff

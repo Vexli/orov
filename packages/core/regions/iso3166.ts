@@ -138,3 +138,53 @@ export function regionLabel(code: string, format: RegionFormat, locale = "en"): 
   }
   return { label: formatRegion(code, format.display, locale), flag: format.flag ? flagEmoji(code) : null, flagOnly: false };
 }
+
+// One suggestion for the region picker (Phase 6): the code, and how it reads in full.
+export interface RegionOption {
+  code: string;
+  label: string;
+}
+
+// Lowercase without accents, so "karnataka" finds "Karnātaka" and "quebec" finds "Québec".
+function fold(text: string): string {
+  return text.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase();
+}
+
+interface RegionEntry extends RegionOption {
+  // The folded label and code, split into words a query term can be a prefix of.
+  words: string[];
+  // The subdivision's own name (or the country's, for a country), folded.
+  name: string;
+}
+
+const searchIndexes = new Map<string, RegionEntry[]>();
+
+function searchIndex(locale: string): RegionEntry[] {
+  let index = searchIndexes.get(locale);
+  if (index) return index;
+  const codes = [...countries.keys(), ...subdivisions.keys()].filter(isKnownRegion);
+  index = codes.map((code) => {
+    const label = formatRegion(code, "country_region", locale);
+    const name = fold(subdivisionName(code) ?? countryName(code, locale));
+    return { code, label, name, words: [fold(code), ...fold(label).split(/[^\p{L}\p{N}]+/u).filter(Boolean)] };
+  });
+  searchIndexes.set(locale, index);
+  return index;
+}
+
+// Region codes whose code or name matches every word of the query, as prefixes ("new y" finds
+// New York; "canada" finds Canada and each of its provinces). The exact code comes first, then
+// countries before subdivisions, then names that start with the query, then the rest.
+export function searchRegions(query: string, limit = 20, locale = "en"): RegionOption[] {
+  const folded = fold(query.trim());
+  const terms = folded.split(/[^\p{L}\p{N}-]+/u).filter(Boolean);
+  if (terms.length === 0) return [];
+  const rank = (e: RegionEntry) =>
+    (fold(e.code) === folded ? 0 : 4) + (e.code.length === 2 ? 0 : 2) + (e.name.startsWith(folded) ? 0 : 1);
+  return searchIndex(locale)
+    .filter((e) => terms.every((t) => e.words.some((w) => w.startsWith(t))))
+    .map((e) => ({ e, r: rank(e) }))
+    .sort((a, b) => a.r - b.r || a.e.label.localeCompare(b.e.label, locale))
+    .slice(0, limit)
+    .map(({ e }) => ({ code: e.code, label: e.label }));
+}

@@ -8,6 +8,7 @@ import {
   normalizeRegionCode,
   REGION_DISPLAYS,
   regionCodeSchema,
+  searchRegions,
   subdivisionName,
 } from "./iso3166";
 
@@ -147,5 +148,42 @@ describe("regionLabel", () => {
     });
     // A code without a country falls back to the code.
     expect(regionLabel("XX", { display: "flag", flag: false })).toEqual({ label: "XX", flag: null, flagOnly: false });
+  });
+});
+
+describe("searchRegions", () => {
+  const codes = (q: string, limit?: number) => searchRegions(q, limit).map((r) => r.code);
+
+  it("finds a subdivision by name, with its full label", () => {
+    expect(searchRegions("ontario")[0]).toEqual({ code: "CA-ON", label: "Ontario, Canada" });
+  });
+
+  it("puts an exact code first", () => {
+    expect(codes("us-ca")[0]).toBe("US-CA");
+    expect(codes("ca")[0]).toBe("CA");
+    expect(codes("US")[0]).toBe("US");
+  });
+
+  it("lists a country before its subdivisions", () => {
+    const found = codes("canada", 50);
+    expect(found[0]).toBe("CA");
+    expect(found).toContain("CA-ON");
+    expect(found).toContain("CA-QC");
+  });
+
+  it("matches every word as a prefix", () => {
+    expect(codes("new y")).toContain("US-NY");
+    expect(codes("york new")).toContain("US-NY");
+    expect(codes("new zzz")).toEqual([]);
+  });
+
+  it("ignores accents and case", () => {
+    expect(codes("karnataka")).toContain("IN-KA");
+    expect(codes("QUEBEC")).toContain("CA-QC");
+  });
+
+  it("returns nothing for a blank query and honors the limit", () => {
+    expect(searchRegions("  ")).toEqual([]);
+    expect(searchRegions("a", 5)).toHaveLength(5);
   });
 });
