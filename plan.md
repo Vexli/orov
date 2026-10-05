@@ -815,8 +815,10 @@ Built after #21 step 2, #22 and #29, at the project owner's direction; #30 still
 
 **H. Rebrand**
 
-- [ ] #30 Rename the project from OfficeOrg to OrOv
-    - **Depends on:** every other item; it touches nearly every file
+- [~] #30 Rename the project from OfficeOrg to OrOv
+    - **In Progress:** Started 2026-10-05
+    - **Branch:** `feature/rename-orov`
+    - **Depends on:** every other item; it touches nearly every file. Started with #3 and #4–6 still blocked, at the project owner's direction (2026-10-05), so Phases 4 and 5 are built under the new name.
     - **Design (from the note):** replace `OfficeOrg` → `OrOv` and `officeorg` → `orov` (and any `OFFICEORG_*` → `OROV_*`) across README, plan.md, docs, package names (`@orov/*`), `pnpm-workspace.yaml`, the Dockerfile, compose service and volume names, CI image and artifact names, `.env.example`, code comments and strings, and the database init script (`orov_dev`, `orov_test`, `orov_e2e`). Keep table names and type names. One commit with no logic changes. Acceptance: `pnpm install`, `pnpm dev` and the Docker build work with the new names; images tagged `orov-web` and `orov-worker`.
 
 ---
