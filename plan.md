@@ -627,7 +627,10 @@ The five spikes from §2 and `docs/spikes.md`.
 
 Feature branches merge into `phase/6-polish`, which branched from `dev` after Phase 7 (2026-10-05). Items that need outside access stay open: "Who's in today" needs presence (Phase 4), HRIS sync needs an HRIS, and live theme sync needs the Figma Variables REST API (Enterprise) or the Penpot API.
 
-- [ ] Mobile layout: map as full-screen sheet, directory first
+- [x] Mobile layout: map as full-screen sheet, directory first
+    - **Completed:** 2026-10-05
+    - **Branch:** merged from `feature/mobile-layout`
+    - **Notes:** Below `lg` (1024 px): `FloatingPanel` (directory, org chart) and the map's new `SelectionSheet` show the selected card as a sheet fixed to the bottom of the screen (max 45dvh, scrolls), and `FLOATING_PANEL_GUTTER` adds matching bottom padding; the map's office overview stays in the page. The main menu is one row at 390 px: account links fold into a `<details>` "Menu", and Search and Menu show icons below `sm` with their names kept as `sr-only` text. **Full screen** is a "Full screen" toggle (`aria-pressed`) in the map's zoom controls at every width: the map container becomes `fixed inset-0` (`data-full-screen`) with the drawing pinned to the top so the sheet covers empty space; Escape or the toggle leaves it, and the drawing is refitted either way. It's a CSS mode, not the Fullscreen API, so the sheet (z-50) sits above it (z-40) and it works on iPhones. The view bar (floor and area buttons) is hidden while full screen. "Directory first" needed nothing: `/` already lands on the directory. **Not done:** the directory table still scrolls sideways on a phone rather than becoming a list of cards; the admin pages weren't reworked for phones. Tests: 3 Playwright (`e2e/specs/mobile.spec.ts`); the full suite (139) passes at desktop width.
 - [x] Click-to-place seat editor in the app, so new desks don't need a Figma round-trip (done as Phase 7 #21 step 2, 2026-10-04)
 - [ ] "Who's in today" dashboard per location (shown only when presence display is on, §8.5)
 - [ ] Optional HRIS sync, which replaces CSV as the people source
