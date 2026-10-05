@@ -638,7 +638,11 @@ Feature branches merge into `phase/6-polish`, which branched from `dev` after Ph
 - [ ] "Who's in today" dashboard per location (shown only when presence display is on, §8.5)
 - [ ] Optional HRIS sync, which replaces CSV as the people source
 - [ ] Live theme sync from the Figma Variables REST API (Enterprise plans only) or the Penpot API
-- [ ] Per-location theme overrides
+- [x] Per-location theme overrides
+    - **Decided (2026-10-05):** map slots only, on that office's map only; the rest of the app keeps the organization's theme.
+    - **Completed:** 2026-10-05
+    - **Branch:** merged from `feature/location-theme`
+    - **Notes:** Migration `0017` adds `location.map_theme` (jsonb, null = none). `core/theme/location-override.ts`: `LOCATION_THEME_SLOTS` (the 8 map slots), `locationThemeSchema` (each value through `parseSlotValue`; blanks dropped; an empty override is null), `withLocationTheme` (a light-only slot keeps its value in dark; dark values are ignored for a light-only theme), `locationThemeReport` (the theme's contrast checks that involve an overridden slot), `emitLocationThemeCss` (re-parses every value and refuses an unsafe scope id). `setLocationMapTheme` writes with an audit entry (`location` update, before/after `mapTheme`). `loadMap` adds `locationId` and `locationTheme` to `MapFloor`; the map page emits the scoped `<style>` and `MapView` puts `data-location-theme` on its content grid, so the list view, cards and full-screen map are covered; the view bar isn't. Admin: "Map colors" on `/admin/locations/[id]`, a table of slots with a tick and a color (or opacity) input per mode, the Branding page's `ContrastReport` live, and "Save even though … checks fail". **Known gap:** applying a new organization theme doesn't re-check office overrides; `docs/theming.md` tells admins to re-check. The admin seat picker and drawing editor keep the organization's colors. Tests: 10 unit, 1 DB, 2 Playwright.
 - [x] Searchable ISO 3166 region picker in the admin person and location forms, in place of the free-text code
     - **Completed:** 2026-10-05
     - **Branch:** merged from `feature/region-picker`
