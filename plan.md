@@ -155,7 +155,8 @@ The schema builds on the model in `report.md` and adds cache, audit, and integra
 ```
 location      (id, slug UNIQUE, name, timezone, region (ISO 3166 code), externalBuildingId?,
                sortOrder, floorLabelSingular, floorLabelPlural,   -- default Floor/Floors (#16)
-               archivedAt?)                                       -- archives its floors too (#22)
+               archivedAt?,                                       -- archives its floors too (#22)
+               mapTheme? jsonb)                                   -- office's own map slots (Phase 6)
 floor         (id, locationId, slug, name, level int, svgAssetId, sortOrder)
                 UNIQUE(locationId, slug)
 svg_asset     (id, floorId, version int, sanitizedSvg text, sha256, uploadedBy, uploadedAt)
@@ -397,7 +398,7 @@ Presence display is **off by default**. An admin chooses the mode on the Presenc
 | ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Import**             | Upload a CSV for people, teams, or memberships. The people file's `home_region` column takes an ISO 3166 code (`US` or `US-CA`); files that still use the older `home_country` header import unchanged. Each row is validated with zod, then the admin sees a dry-run diff (create/update/error per row) and applies it. Rows can be skipped (one by one, or every row with an error); a row that depends on a skipped one (its manager, the other half of a desk swap, its parent team) becomes an error too, and Apply writes exactly what the dry run showed (Phase 7 #1). Managers are resolved by email in a second pass so the file order doesn't matter. |
 | **People / Teams**     | CRUD with cycle-safe manager and parent pickers, desk assignment through a seat picker (a mini map), team membership, and a primary-team flag.                                                                                                     |
-| **Locations / Floors** | Create, edit, and archive or delete (Phase 7 #22: archive hides an office or floor everywhere and keeps its history, after the admin confirms who loses a desk; only an office or floor that never had a drawing can be deleted). Each location has an ISO 3166 `region` code, validated like `home_region`), SVG upload with the diff from §6, and version history with rollback.                                                                                                                                                                         |
+| **Locations / Floors** | Create, edit, and archive or delete (Phase 7 #22: archive hides an office or floor everywhere and keeps its history, after the admin confirms who loses a desk; only an office or floor that never had a drawing can be deleted). Each location has an ISO 3166 `region` code, validated like `home_region`), SVG upload with the diff from §6, version history with rollback, and the office's own map colors (Phase 6, §9.1).                                                                                                                                                                         |
 | **Rooms**              | Google import diff, room ↔ svg id linking, and capacity overrides.                                                                                                                                                                                 |
 | **Presence**           | The display mode selector (`off` / `simple` / `detailed`, default `off`, §8.5) with a preview of each mode, and "Delete presence data". Below that, CRUD for rules, a "test this message" box, and the parsed-message log from §8.3.                                                                                                                                                                   |
 | **Integrations**       | The last run, status, and stats for each job from `integration_run`, with "run now" buttons. Unmatched Slack users are listed here.                                                                                                                |
@@ -445,7 +446,9 @@ Each slot supports a light value and an optional dark value, taken from the toke
 
 **Fonts and logos.** `next/font` works only at build time, so runtime brand fonts are uploaded WOFF2 files stored as `brand_asset` rows, served same-origin from `/api/brand-assets/[id]`, and declared with generated `@font-face`. SVG logos go through the same sanitize step as floor SVGs (§6). `appName` and the favicon feed Next.js `generateMetadata`.
 
-**Later (Phase 6).** Live sync from the Figma Variables REST API (Enterprise plans only) or the Penpot API, and per-location theme overrides. File upload covers every tool in v1.
+**Per-office map colors (Phase 6).** An office can override the map slots (`map.*`, `room.*`) for its own floors; the rest of the app keeps the active theme. Stored as `location.mapTheme` (values by mode, through the same value grammar), checked with the same contrast rules against the active theme, and emitted as custom properties scoped to `[data-location-theme="<location id>"]` around the map, which works because utilities read slots through `@theme inline`.
+
+**Later (Phase 6).** Live sync from the Figma Variables REST API (Enterprise plans only) or the Penpot API. File upload covers every tool in v1.
 
 ---
 
@@ -635,7 +638,11 @@ Feature branches merge into `phase/6-polish`, which branched from `dev` after Ph
 - [ ] "Who's in today" dashboard per location (shown only when presence display is on, §8.5)
 - [ ] Optional HRIS sync, which replaces CSV as the people source
 - [ ] Live theme sync from the Figma Variables REST API (Enterprise plans only) or the Penpot API
-- [ ] Per-location theme overrides
+- [x] Per-location theme overrides
+    - **Decided (2026-10-05):** map slots only, on that office's map only; the rest of the app keeps the organization's theme.
+    - **Completed:** 2026-10-05
+    - **Branch:** merged from `feature/location-theme`
+    - **Notes:** Migration `0017` adds `location.map_theme` (jsonb, null = none). `core/theme/location-override.ts`: `LOCATION_THEME_SLOTS` (the 8 map slots), `locationThemeSchema` (each value through `parseSlotValue`; blanks dropped; an empty override is null), `withLocationTheme` (a light-only slot keeps its value in dark; dark values are ignored for a light-only theme), `locationThemeReport` (the theme's contrast checks that involve an overridden slot), `emitLocationThemeCss` (re-parses every value and refuses an unsafe scope id). `setLocationMapTheme` writes with an audit entry (`location` update, before/after `mapTheme`). `loadMap` adds `locationId` and `locationTheme` to `MapFloor`; the map page emits the scoped `<style>` and `MapView` puts `data-location-theme` on its content grid, so the list view, cards and full-screen map are covered; the view bar isn't. Admin: "Map colors" on `/admin/locations/[id]`, a table of slots with a tick and a color (or opacity) input per mode, the Branding page's `ContrastReport` live, and "Save even though … checks fail". **Known gap:** applying a new organization theme doesn't re-check office overrides; `docs/theming.md` tells admins to re-check. The admin seat picker and drawing editor keep the organization's colors. Tests: 10 unit, 1 DB, 2 Playwright.
 - [x] Searchable ISO 3166 region picker in the admin person and location forms, in place of the free-text code
     - **Completed:** 2026-10-05
     - **Branch:** merged from `feature/region-picker`

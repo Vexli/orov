@@ -12,7 +12,11 @@ import {
   saveLocation,
   setFloorArchived,
   setLocationArchived,
+  setLocationMapTheme,
 } from "@orov/db/queries/floors";
+import type { ContrastCheck } from "@orov/core/theme/contrast";
+import { locationThemeReport, locationThemeSchema } from "@orov/core/theme/location-override";
+import { getCurrentTheme } from "@/lib/theme";
 import { requireAdmin } from "@/lib/session";
 
 export type SpaceSaveState =
@@ -100,4 +104,34 @@ export async function deleteAction(target: Target): Promise<ArchiveState> {
       ? deleteFloor(getDb(), user.email, String(target.id))
       : deleteLocation(getDb(), user.email, String(target.id)),
   );
+}
+
+export type MapThemeState =
+  | { ok: true }
+  | { ok: false; error: string; failures?: ContrastCheck[] };
+
+// An office's own map colors (Phase 6). The same contrast rules as the Branding page, checked
+// against the active theme here rather than trusted from the browser; failures block saving
+// unless the admin overrides them. Null input clears the override.
+export async function saveLocationMapThemeAction(
+  id: string,
+  input: unknown,
+  overrideContrast: boolean,
+): Promise<MapThemeState> {
+  const user = await requireAdmin();
+  const parsed = input === null ? { success: true as const, data: null } : locationThemeSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? "Check the colors" };
+  const failures = locationThemeReport((await getCurrentTheme()).values, parsed.data).filter((c) => !c.pass);
+  if (failures.length > 0 && !overrideContrast) {
+    return { ok: false, error: "Some contrast checks fail.", failures };
+  }
+  try {
+    await setLocationMapTheme(getDb(), user.email, id, parsed.data);
+  } catch (error) {
+    if (error instanceof ValidationError) return { ok: false, error: error.message };
+    throw error;
+  }
+  revalidatePath("/admin/locations");
+  revalidatePath("/map");
+  return { ok: true };
 }

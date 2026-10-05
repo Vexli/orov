@@ -3,6 +3,7 @@ import { eq } from "drizzle-orm";
 import { seedDemoData } from "../seed";
 import * as s from "../schema";
 import { startTestDatabase, type TestDatabase } from "../test-utils";
+import { setLocationMapTheme } from "./floors";
 import { loadMap } from "./map";
 
 let t: TestDatabase;
@@ -92,5 +93,25 @@ describe("loadMap", () => {
     const map = await loadMap(t.db, { loc: null, floor: null });
     expect(map.floor).toBeNull();
     expect(map.locations[0]!.floors.every((f) => !f.hasDrawing)).toBe(true);
+  });
+});
+
+describe("an office's own map colors", () => {
+  it("are saved with an audit entry, sent with the office's floors, and cleared with null", async () => {
+    const override = { light: { "map.selection": "#7c3aed" }, dark: {} };
+    await setLocationMapTheme(t.db, "jane@example.com", "loc_sf", override);
+
+    const map = await loadMap(t.db, { loc: "sf", floor: "2" });
+    expect(map.floor).toMatchObject({ locationId: "loc_sf", locationTheme: override });
+    const [entry] = await t.db.select().from(s.auditLog).where(eq(s.auditLog.entityId, "loc_sf"));
+    expect(entry).toMatchObject({
+      entity: "location",
+      action: "update",
+      before: { mapTheme: null },
+      after: { mapTheme: override },
+    });
+
+    await setLocationMapTheme(t.db, "jane@example.com", "loc_sf", null);
+    expect((await loadMap(t.db, { loc: "sf", floor: "2" })).floor!.locationTheme).toBeNull();
   });
 });

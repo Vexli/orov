@@ -86,7 +86,9 @@ which wait for Phases 4 and 5. None has been released to `main` yet. The parts t
   removed on the drawing itself in the browser, and the result is reviewed and saved as a new
   version, like an upload. A floor or office can be archived (hidden everywhere, history kept),
   or deleted if it never had a drawing. A seating planner rearranges an office so each team sits
-  together, keeping anyone locked in place, and shows every move before applying it Uploading a floor drawing (SVG)
+  together, keeping anyone locked in place, and shows every move before applying it. An office can
+  have its own map colors (selection, team highlight, room status, map background), checked for
+  contrast like a theme and used only on its own floors. Uploading a floor drawing (SVG)
   sanitizes it, shows what it
   adds, moves and removes before anything is saved, and keeps every version for rollback. How to
   draw one is in [`docs/map-authoring.md`](docs/map-authoring.md)

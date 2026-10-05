@@ -5,14 +5,28 @@ import { loadDirectory } from "@orov/db/queries/directory";
 import { loadMap } from "@orov/db/queries/map";
 import { loadMapParams } from "@/lib/url-state";
 import { regionFormatOf, requireUser } from "@/lib/session";
+import { getCurrentTheme } from "@/lib/theme";
+import { emitLocationThemeCss } from "@orov/core/theme/location-override";
 
 export default async function MapPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
   const user = await requireUser();
   const { loc, floor, person } = loadMapParams(await searchParams);
   const db = getDb();
-  const [map, directory] = await Promise.all([
+  const [map, directory, theme] = await Promise.all([
     loadMap(db, { loc, floor, person }, regionFormatOf(user)),
     loadDirectory(db, regionFormatOf(user)),
+    getCurrentTheme(),
   ]);
-  return <MapView map={map} people={directory.people} teams={directory.teams} />;
+  const shown = map.floor;
+  const locationThemeCss = shown
+    ? emitLocationThemeCss(shown.locationId, theme.values, shown.locationTheme)
+    : "";
+  return (
+    <MapView
+      map={map}
+      people={directory.people}
+      teams={directory.teams}
+      locationThemeCss={locationThemeCss}
+    />
+  );
 }
