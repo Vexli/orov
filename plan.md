@@ -622,13 +622,17 @@ The five spikes from §2 and `docs/spikes.md`.
 
 ### Phase 6: Polish (ongoing)
 
+Feature branches merge into `phase/6-polish`, which branched from `dev` after Phase 7 (2026-10-05). Items that need outside access stay open: "Who's in today" needs presence (Phase 4), HRIS sync needs an HRIS, and live theme sync needs the Figma Variables REST API (Enterprise) or the Penpot API.
+
 - [ ] Mobile layout: map as full-screen sheet, directory first
 - [x] Click-to-place seat editor in the app, so new desks don't need a Figma round-trip (done as Phase 7 #21 step 2, 2026-10-04)
 - [ ] "Who's in today" dashboard per location (shown only when presence display is on, §8.5)
 - [ ] Optional HRIS sync, which replaces CSV as the people source
 - [ ] Live theme sync from the Figma Variables REST API (Enterprise plans only) or the Penpot API
 - [ ] Per-location theme overrides
-- [ ] Searchable ISO 3166 region picker in the admin person and location forms, in place of the free-text code
+- [~] Searchable ISO 3166 region picker in the admin person and location forms, in place of the free-text code
+    - **In Progress:** Started 2026-10-05
+    - **Branch:** `feature/region-picker`
 - [ ] A UI locale setting (§7.1), so country names in region labels follow the user's language
 
 **Total: about 7.5–9 weeks for one engineer, or about 4.5–5.5 weeks for two.** Two engineers can split phases 2 and 3, and phases 4 and 5, in parallel. Phase 5.5 depends only on Phase 1's token layer, so it can run alongside any later phase.
