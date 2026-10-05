@@ -31,10 +31,11 @@ which wait for Phases 4 and 5. None has been released to `main` yet. The parts t
 - Directory with search, team and location filters, a person card, and selection kept in the URL.
   The directory, map and org chart use the full width of the window, with the main menu staying
   at the top, the map's and org chart's controls in a bar just below it, and the selected
-  person's card floating at the right.
+  person's card floating at the right. On a phone the main menu fits one row (account links
+  move into a menu) and the card slides up from the bottom of the screen.
   People have a given name and a family name, and lists sort by family name
 - Floor map: the floor drawing with an avatar at each occupied desk and each room's name, zoom
-  and pan, and a card for the person, desk or room you click. Switch offices and floors, open an
+  and pan (and a full-screen mode, for pinch-zooming on a phone), and a card for the person, desk or room you click. Switch offices and floors, open an
   area such as the South Wing as a zoomed view, and see each floor's headcount, desks and rooms.
   The map follows a selected person to their floor, and highlights a team's seats (with its
   sub-teams, unless you untick them) with a count per floor. A desk code in the directory or on
