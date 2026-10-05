@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useTransition } from "react";
+import { useCallback, useEffect, useMemo, useTransition, type ReactNode } from "react";
 import { useQueryStates } from "nuqs";
 import type {
   DirectoryPerson,
@@ -300,17 +300,21 @@ export function MapView({ map, people, teams }: Props) {
           </p>
         ) : null}
         {selectedPerson ? (
-          <PersonCard
-            person={selectedPerson}
-            onSelectPerson={(id) => setParams({ person: id, space: null })}
-            onClose={() => setParams({ person: null })}
-          />
+          <SelectionSheet>
+            <PersonCard
+              person={selectedPerson}
+              onSelectPerson={(id) => setParams({ person: id, space: null })}
+              onClose={() => setParams({ person: null })}
+            />
+          </SelectionSheet>
         ) : selectedSpace ? (
-          <SpaceCard
-            space={selectedSpace}
-            areaName={floor.areas.find((a) => a.id === selectedSpace.areaId)?.name ?? null}
-            onClose={() => setParams({ space: null })}
-          />
+          <SelectionSheet>
+            <SpaceCard
+              space={selectedSpace}
+              areaName={floor.areas.find((a) => a.id === selectedSpace.areaId)?.name ?? null}
+              onClose={() => setParams({ space: null })}
+            />
+          </SelectionSheet>
         ) : (
           <OfficeOverview
             location={map.locations.find((l) => l.slug === floor.locationSlug)!}
@@ -323,6 +327,20 @@ export function MapView({ map, people, teams }: Props) {
       </div>
     </div>
     </>
+  );
+}
+
+// The selected person's or room's card: in the side column on wide screens, and a sheet along
+// the bottom of the screen on narrow ones, as in the other views (FloatingPanel). The office
+// overview stays in the page.
+function SelectionSheet({ children }: { children: ReactNode }) {
+  return (
+    <div
+      data-sheet=""
+      className="fixed inset-x-0 bottom-0 z-50 max-h-[45dvh] overflow-y-auto rounded-t-xl border-t border-border bg-bg p-3 shadow-lg lg:static lg:max-h-none lg:overflow-visible lg:rounded-none lg:border-0 lg:bg-transparent lg:p-0 lg:shadow-none"
+    >
+      {children}
+    </div>
   );
 }
 

@@ -155,10 +155,15 @@ export function CommandPalette() {
         type="button"
         onClick={open}
         aria-keyshortcuts="Meta+K Control+K"
-        className="flex items-center gap-3 rounded-md border border-border px-3 py-1 text-sm text-muted-fg hover:text-fg"
+        className="flex items-center gap-3 rounded-md border border-border px-2 py-1 text-sm text-muted-fg hover:text-fg sm:px-3"
       >
-        Search
-        <kbd className="rounded bg-muted px-1.5 font-sans text-xs">⌘K</kbd>
+        {/* On a phone, an icon: the header has to fit in one row there. */}
+        <svg aria-hidden="true" viewBox="0 0 16 16" className="size-4 sm:hidden" fill="none" stroke="currentColor" strokeWidth={1.75}>
+          <circle cx="7" cy="7" r="4.5" />
+          <path d="m10.5 10.5 3.5 3.5" strokeLinecap="round" />
+        </svg>
+        <span className="sr-only sm:not-sr-only">Search</span>
+        <kbd className="hidden rounded bg-muted px-1.5 font-sans text-xs sm:inline">⌘K</kbd>
       </button>
       <dialog
         ref={dialogRef}
