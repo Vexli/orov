@@ -108,6 +108,7 @@ test.describe("floor drawings (U11)", () => {
     await page.getByLabel("Slug").fill("nyc");
     await page.getByLabel("Time zone").fill("America/New_York");
     await page.getByLabel("Region").fill("us-ny");
+    await expect(page.getByLabel("Region")).toHaveAccessibleDescription("New York, United States");
     await page.getByRole("button", { name: "Create office" }).click();
 
     const office = page.getByRole("region", { name: "New York" });
