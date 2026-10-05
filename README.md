@@ -268,7 +268,8 @@ own backups and point-in-time recovery; it doesn't replace them.
 
 The project was called OfficeOrg until 2026-10-05. Packages are now `@orov/*` and the images
 `orov-web` and `orov-worker`. A deployment needs no other change: the app reads the database
-named in `DATABASE_URL`, and no table or setting carries the old name.
+named in `DATABASE_URL`, and no table or setting carries the old name. Backup files
+written before the rename (format `officeorg-export`) still import.
 
 A local checkout from before the rename has its database in the old Compose project, which still
 holds port 5432 and uses the `officeorg` user. Stop it, start the new one and point the env files

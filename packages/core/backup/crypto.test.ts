@@ -29,10 +29,18 @@ describe("encryptExport / decryptExport", () => {
     expect(() => decryptExport(tampered, PASS)).toThrow(ExportFileError);
   });
 
+  it("reads files written under the old OfficeOrg format id", () => {
+    const file = { ...encryptExport(DATA, PASS), format: "officeorg-export" };
+    expect(decryptExport(JSON.stringify(file), PASS)).toBe(DATA);
+  });
+
   it("refuses a short passphrase, other files and other versions", () => {
     expect(() => encryptExport(DATA, "short")).toThrow(/at least 12/);
     expect(() => decryptExport("not json", PASS)).toThrow(/isn't JSON/);
     expect(() => decryptExport("{}", PASS)).toThrow(/isn't an OrOv export/);
+    expect(() => decryptExport(JSON.stringify({ ...encryptExport(DATA, PASS), format: "other-export" }), PASS)).toThrow(
+      /isn't an OrOv export/,
+    );
     const file = encryptExport(DATA, PASS);
     expect(() => decryptExport(JSON.stringify({ ...file, version: 2 }), PASS)).toThrow(/version 2/);
     expect(() => decryptExport(JSON.stringify({ ...file, kdf: { ...file.kdf, N: 2 ** 30 } }), PASS)).toThrow(
