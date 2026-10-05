@@ -1,9 +1,9 @@
-import { createDb } from "@officeorg/db/client";
-import { resetDatabase } from "@officeorg/db/reset";
-import { seedDemoData } from "@officeorg/db/seed";
+import { createDb } from "@orov/db/client";
+import { resetDatabase } from "@orov/db/reset";
+import { seedDemoData } from "@orov/db/seed";
 
 export const E2E_DATABASE_URL =
-  process.env.E2E_DATABASE_URL ?? "postgres://officeorg:officeorg@localhost:5432/officeorg_e2e";
+  process.env.E2E_DATABASE_URL ?? "postgres://orov:orov@localhost:5432/orov_e2e";
 
 // Every spec starts from the same demo data. Specs write (create people, apply imports), so a
 // shared database would make the order of files matter.

@@ -1,12 +1,12 @@
 import { and, eq, inArray, isNotNull, isNull } from "drizzle-orm";
 import {
-  DEFAULT_REGION_DISPLAY,
-  formatRegion,
+  DEFAULT_REGION_FORMAT,
+  regionLabel,
   roomDisplayState,
   type MapData,
   type MapSeat,
-  type RegionDisplay,
-} from "@officeorg/core";
+  type RegionFormat,
+} from "@orov/core";
 import type { Executor } from "../client";
 import * as s from "../schema";
 
@@ -25,9 +25,11 @@ export interface MapTarget {
 export async function loadMap(
   db: Executor,
   target: MapTarget,
-  regionDisplay: RegionDisplay = DEFAULT_REGION_DISPLAY,
+  regionFormat: RegionFormat = DEFAULT_REGION_FORMAT,
 ): Promise<MapData> {
+  // Archived offices (#22) are left out, as their floors are.
   const locationRows = await db.query.location.findMany({
+    where: (l, { isNull }) => isNull(l.archivedAt),
     orderBy: (l, { asc }) => [asc(l.sortOrder), asc(l.name)],
     with: {
       floors: {
@@ -44,19 +46,25 @@ export async function loadMap(
   const count = (floorId: string, kinds: string[]) =>
     counts.filter((c) => c.floorId === floorId && kinds.includes(c.kind)).length;
 
-  const locations = locationRows.map((l) => ({
-    slug: l.slug,
-    name: l.name,
-    regionLabel: formatRegion(l.region, regionDisplay),
-    floors: l.floors.map((f) => ({
-      slug: f.slug,
-      name: f.name,
-      level: f.level,
-      hasDrawing: f.svgAssetId !== null,
-      deskCount: count(f.id, ["desk"]),
-      roomCount: count(f.id, ["meeting_room", "phone_booth"]),
-    })),
-  }));
+  const locations = locationRows.map((l) => {
+    const region = regionLabel(l.region, regionFormat);
+    return {
+      slug: l.slug,
+      name: l.name,
+      regionLabel: region.label,
+      regionFlag: region.flag,
+      regionFlagOnly: region.flagOnly,
+      floorLabels: { singular: l.floorLabelSingular, plural: l.floorLabelPlural },
+      floors: l.floors.map((f) => ({
+        slug: f.slug,
+        name: f.name,
+        level: f.level,
+        hasDrawing: f.svgAssetId !== null,
+        deskCount: count(f.id, ["desk"]),
+        roomCount: count(f.id, ["meeting_room", "phone_booth"]),
+      })),
+    };
+  });
 
   const drawn = locationRows.flatMap((l) =>
     l.floors.filter((f) => f.svgAssetId).map((f) => ({ l, f })),

@@ -138,7 +138,7 @@ describe("devAuthAllowed", () => {
     );
     expect(devAuthAllowed({ NODE_ENV: "development", AUTH_URL: "http://[::1]:3000" })).toBe(true);
     expect(
-      devAuthAllowed({ NODE_ENV: "development", AUTH_URL: "http://officeorg.localhost:3000" }),
+      devAuthAllowed({ NODE_ENV: "development", AUTH_URL: "http://orov.localhost:3000" }),
     ).toBe(true);
   });
 

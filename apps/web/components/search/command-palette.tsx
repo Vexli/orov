@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { EMPTY_SEARCH, type SearchResults } from "@officeorg/core/search/model";
+import { EMPTY_SEARCH, type SearchResults } from "@orov/core/search/model";
 import { isViewPath } from "@/components/view-tabs";
 
 interface Option {

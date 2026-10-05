@@ -4,7 +4,6 @@
 
   <g id="area-north-wing">
     <rect x="30" y="30" width="680" height="410" fill="none"/>
-    <text x="50" y="70" fill="currentColor">North Wing</text>
     <rect id="desk-2-010" x="60" y="110" width="90" height="56" rx="4"/>
     <rect id="desk-2-011" x="170" y="110" width="90" height="56" rx="4"/>
     <rect id="desk-2-012" x="280" y="110" width="90" height="56" rx="4"/>
@@ -16,7 +15,6 @@
 
   <g id="area-south-wing">
     <rect x="30" y="460" width="680" height="310" fill="none"/>
-    <text x="50" y="500" fill="currentColor">South Wing</text>
     <rect id="desk-2-001" x="60" y="540" width="90" height="56" rx="4"/>
     <rect id="desk-2-002" x="170" y="540" width="90" height="56" rx="4"/>
     <rect id="desk-2-003" x="280" y="540" width="90" height="56" rx="4"/>
@@ -24,17 +22,11 @@
     <rect id="desk-2-005" x="170" y="660" width="90" height="56" rx="4"/>
     <rect id="desk-2-006" x="280" y="660" width="90" height="56" rx="4"/>
     <rect id="room-huddle-a" x="440" y="540" width="230" height="176" rx="4"/>
-    <text x="460" y="636" fill="currentColor">Huddle A</text>
   </g>
 
   <rect id="room-boardroom" x="760" y="60" width="380" height="220" rx="4"/>
-  <text x="780" y="176" fill="currentColor">Boardroom</text>
   <rect id="room-phone-1" x="760" y="320" width="120" height="100" rx="4"/>
-  <text x="776" y="376" fill="currentColor" font-size="14">Phone 1</text>
   <rect id="poi-kitchen" x="920" y="320" width="220" height="160" rx="4"/>
-  <text x="940" y="406" fill="currentColor">Kitchen</text>
   <rect id="poi-elevator" x="760" y="540" width="120" height="100" rx="4"/>
-  <text x="776" y="596" fill="currentColor" font-size="14">Elevator</text>
   <rect id="poi-restroom" x="920" y="540" width="220" height="100" rx="4"/>
-  <text x="940" y="596" fill="currentColor">Restrooms</text>
 </svg>

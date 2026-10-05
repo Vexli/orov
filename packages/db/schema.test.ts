@@ -56,7 +56,7 @@ describe("migrations", () => {
 describe("invariants enforced by the database", () => {
   it("accepts ISO 3166 country and subdivision codes, and rejects other shapes", async () => {
     const insert = (id: string, homeRegion: string) =>
-      t.db.insert(s.person).values({ id, email: `${id}@x.com`, name: id, homeRegion });
+      t.db.insert(s.person).values({ id, email: `${id}@x.com`, givenName: id, homeRegion });
     await insert("p_country", "US");
     await insert("p_subdivision", "GB-SCT");
     await insert("p_numeric", "FR-75C");
@@ -87,20 +87,20 @@ describe("invariants enforced by the database", () => {
       });
     await t.db
       .insert(s.person)
-      .values({ id: "p1", email: "a@x.com", name: "A", homeRegion: "US", assignedDeskId: "sp" });
+      .values({ id: "p1", email: "a@x.com", givenName: "A", homeRegion: "US", assignedDeskId: "sp" });
 
     await expectUniqueViolation(
       t.db
         .insert(s.person)
-        .values({ id: "p2", email: "b@x.com", name: "B", homeRegion: "US", assignedDeskId: "sp" }),
+        .values({ id: "p2", email: "b@x.com", givenName: "B", homeRegion: "US", assignedDeskId: "sp" }),
       "person_assigned_desk",
     );
   });
 
   it("allows many people with no desk", async () => {
     await t.db.insert(s.person).values([
-      { id: "p1", email: "a@x.com", name: "A", homeRegion: "US" },
-      { id: "p2", email: "b@x.com", name: "B", homeRegion: "US" },
+      { id: "p1", email: "a@x.com", givenName: "A", homeRegion: "US" },
+      { id: "p2", email: "b@x.com", givenName: "B", homeRegion: "US" },
     ]);
     const rows = await t.db.select().from(s.person);
     expect(rows).toHaveLength(2);
@@ -117,14 +117,15 @@ describe("invariants enforced by the database", () => {
     );
   });
 
-  it("rejects a second signal with the same source, source_ref and date", async () => {
+  it("rejects a second signal with the same provider, source, source_ref and date", async () => {
     await seedDemoData(t.db);
     const signal = {
       id: "sig_1",
       personId: "p_bob",
       date: "2026-10-05",
       status: "wfh" as const,
-      source: "slack_message" as const,
+      source: "message" as const,
+      provider: "slack",
       sourceRef: "1728000000.000100",
       observedAt: new Date("2026-10-05T08:00:00Z"),
     };
@@ -182,17 +183,18 @@ describe("demo seed", () => {
     const bob = await t.db.query.person.findFirst({
       where: eq(s.person.id, "p_bob"),
       with: {
-        manager: { with: { manager: true } },
+        managers: { with: { manager: { with: { managers: { with: { manager: true } } } } } },
         assignedDesk: { with: { floor: { with: { location: true } } } },
       },
     });
-    expect(bob?.manager?.name).toBe("Max Osei");
-    expect(bob?.manager?.manager?.name).toBe("Jane Park");
+    const max = bob?.managers[0]?.manager;
+    expect(max?.name).toBe("Max Osei");
+    expect(max?.managers[0]?.manager.name).toBe("Jane Park");
     expect(bob?.assignedDesk?.name).toBe("SF-2-014");
     expect(bob?.assignedDesk?.floor.location.name).toBe("San Francisco");
 
     const jane = await t.db.query.person.findFirst({ where: eq(s.person.id, "p_jane") });
-    expect(jane).toMatchObject({ homeRegion: "CA-ON", managerId: null });
+    expect(jane).toMatchObject({ homeRegion: "CA-ON" });
     expect(jane?.assignedDeskId).toBe("sp_sf_2_003");
 
     const hrChildren = await t.db.query.team.findMany({

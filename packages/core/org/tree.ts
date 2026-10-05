@@ -1,4 +1,4 @@
-import { displayName, teamScope } from "../directory/filter";
+import { displayName, explicitTeams, teamScope } from "../directory/filter";
 import type { DirectoryPerson, DirectoryTeam } from "../directory/model";
 
 // The org chart's two trees (plan.md §7): who reports to whom, and which teams sit inside which.
@@ -28,22 +28,36 @@ export function memberNodeId(teamId: string, personId: string): string {
   return `${teamId}:${personId}`;
 }
 
+// Someone with several managers (N1) appears under each: their own node under the first, and an
+// extra node per other manager, with this id. Their reports hang under their own node only, so
+// whole subtrees aren't drawn twice.
+export function reportNodeId(managerId: string, personId: string): string {
+  return `${managerId}>${personId}`;
+}
+
+// True when `nodeId` stands for the person `personNodeId` names in the reporting tree: their own
+// node, or one under another of their managers.
+export function standsFor(nodeId: string, personNodeId: string | null): boolean {
+  return personNodeId !== null && (nodeId === personNodeId || nodeId.endsWith(`>${personNodeId}`));
+}
+
+// The managers someone is drawn under: those in the directory (an inactive manager is left out).
+function managersInDirectory(person: DirectoryPerson, byId: Map<string, DirectoryPerson>) {
+  return person.managers.filter((m) => byId.has(m.id));
+}
+
 export function reportingTree(people: DirectoryPerson[]): OrgNode[] {
   const byId = new Map(people.map((p) => [p.id, p]));
   // A manager who isn't in the list (inactive, so left out of the directory) ends the chain.
-  const parents = acyclicParents([...byId.keys()], (id) => {
-    const manager = byId.get(id)?.manager;
-    return manager && byId.has(manager.id) ? manager.id : null;
-  });
-  const nodes = sortByLabel(people).map<OrgNode>((p) => ({
-    id: p.id,
-    parentId: parents.get(p.id) ?? null,
-    kind: "person",
-    personId: p.id,
-    teamId: null,
-    label: displayName(p),
-    detail: p.title,
-  }));
+  const parents = acyclicParents([...byId.keys()], (id) => managersInDirectory(byId.get(id)!, byId)[0]?.id ?? null);
+  const nodes: OrgNode[] = [];
+  for (const p of sortByLabel(people)) {
+    const own = { kind: "person" as const, personId: p.id, teamId: null, label: displayName(p), detail: p.title };
+    nodes.push({ id: p.id, parentId: parents.get(p.id) ?? null, ...own });
+    for (const manager of managersInDirectory(p, byId).slice(1)) {
+      nodes.push({ id: reportNodeId(manager.id, p.id), parentId: manager.id, ...own });
+    }
+  }
   return withSingleRoot(nodes, "Organization");
 }
 
@@ -58,7 +72,9 @@ export function teamTree(teams: DirectoryTeam[], people: DirectoryPerson[]): Org
   const sortedPeople = sortByLabel(people);
   const nodes: OrgNode[] = [];
   for (const team of [...teams].sort((a, b) => a.name.localeCompare(b.name))) {
-    const members = sortedPeople.filter((p) => p.teams.some((t) => t.id === team.id));
+    // Explicit memberships only: an inherited one would list the person again under every team
+    // above their own.
+    const members = sortedPeople.filter((p) => explicitTeams(p).some((t) => t.id === team.id));
     nodes.push({
       id: team.id,
       parentId: parents.get(team.id) ?? null,
@@ -98,12 +114,14 @@ export function personNodeId(
   person: Pick<DirectoryPerson, "id" | "teams">,
 ): string | null {
   if (kind === "reporting") return person.id;
-  const team = person.teams.find((t) => t.isPrimary) ?? person.teams[0];
+  const teams = explicitTeams(person);
+  const team = teams.find((t) => t.isPrimary) ?? teams[0];
   return team ? memberNodeId(team.id, person.id) : null;
 }
 
 // The nodes a highlighted team lights up, with the same scope as the directory's team filter:
-// its members in the reporting tree, or the team itself (and its sub-teams) in the team tree.
+// its members in the reporting tree. In the team tree, the team itself (and its sub-teams) and
+// the member nodes under them; a person's membership of a team outside the scope stays unlit.
 export function teamHighlightIds(
   kind: OrgTreeKind,
   teamId: string,
@@ -112,8 +130,21 @@ export function teamHighlightIds(
   people: DirectoryPerson[],
 ): Set<string> {
   const scope = teamScope(teamId, includeSubteams, teams);
-  if (kind === "team") return new Set([...scope].filter((id) => teams.some((t) => t.id === id)));
-  return new Set(people.filter((p) => p.teams.some((t) => scope.has(t.id))).map((p) => p.id));
+  if (kind === "team") {
+    const lit = new Set([...scope].filter((id) => teams.some((t) => t.id === id)));
+    for (const p of people) {
+      for (const t of explicitTeams(p)) if (lit.has(t.id)) lit.add(memberNodeId(t.id, p.id));
+    }
+    return lit;
+  }
+  // Every node a member has: their own, and one under each of their other managers.
+  const lit = new Set<string>();
+  for (const p of people) {
+    if (!explicitTeams(p).some((t) => scope.has(t.id))) continue;
+    lit.add(p.id);
+    for (const m of p.managers.slice(1)) lit.add(reportNodeId(m.id, p.id));
+  }
+  return lit;
 }
 
 // The nodes that start out visible: the root and the two levels below it.
@@ -198,6 +229,7 @@ export interface ChainLink {
 }
 
 // Who someone reports to, from the top down, ending with the person (U3: Jane → Max → Bob).
+// With several managers it follows the first, as the chart's own nodes do; the card lists all.
 // Stops at a manager missing from the directory, and at a cycle in the data.
 export function managementChain(personId: string, people: DirectoryPerson[]): ChainLink[] {
   const byId = new Map(people.map((p) => [p.id, p]));
@@ -207,7 +239,7 @@ export function managementChain(personId: string, people: DirectoryPerson[]): Ch
   while (current && !seen.has(current.id)) {
     seen.add(current.id);
     chain.push({ id: current.id, name: displayName(current), inDirectory: true });
-    const manager = current.manager;
+    const manager = current.managers[0];
     if (!manager) break;
     current = byId.get(manager.id);
     if (!current) chain.push({ id: manager.id, name: manager.name, inDirectory: false });

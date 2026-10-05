@@ -1,6 +1,7 @@
 import type { PersonRecord } from "../records";
-import { diffRecords, PERSON_FIELDS } from "../records";
-import { reachesAncestor } from "../teams/tree";
+import { diffPersonRecords } from "../records";
+import { inheritedManager, reachesAncestorAny, type TeamLeadInfo } from "../teams/tree";
+import { defaultTimeZone } from "../time/zones";
 import type { CsvIssue } from "../csv/parse";
 import type { ValidPersonRow } from "../csv/people";
 import { summarize, type ImportPlan, type PlannedRow } from "./plan";
@@ -9,6 +10,10 @@ import { summarize, type ImportPlan, type PlannedRow } from "./plan";
 export interface PeopleSnapshot {
   people: Map<string, PersonRecord>;
   teamSlugs: Set<string>;
+  // By slug, with parents as slugs and leads as emails, for the default manager (#11).
+  teams: Map<string, TeamLeadInfo>;
+  // Offices by slug, for someone in one without a desk (N9).
+  offices: Map<string, { timezone: string }>;
   desks: Map<string, DeskInfo>;
 }
 
@@ -16,22 +21,37 @@ export interface DeskInfo {
   // False when the space isn't a desk, or its floor or space is archived.
   assignable: boolean;
   ownerEmail: string | null;
+  // The desk's office's time zone, the default for a blank home_timezone.
+  timezone: string;
+  officeSlug: string;
 }
 
+// `skip` holds the line numbers the admin left out. They're removed before anything else is
+// checked, so the other rows are validated against the world without them: a row whose manager
+// or parent is on a skipped line becomes an error rather than being written half-broken.
 export function planPeopleImport(
   rows: ValidPersonRow[],
   parseIssues: CsvIssue[],
   snapshot: PeopleSnapshot,
+  skip: ReadonlySet<number> = new Set(),
 ): ImportPlan<PersonRecord> {
   const planned: PlannedRow<PersonRecord>[] = [];
   const errors = new Map<string, string>(); // email -> message, for rows that will not be applied
   const desired = new Map<string, ValidPersonRow>();
+  const skippedLine = new Map<string, number>(); // email -> line, for messages about dependencies
 
   for (const issue of parseIssues) {
-    planned.push({ line: issue.line, key: `line ${issue.line}`, action: "error", changes: [], message: issue.message });
+    const action = skip.has(issue.line) ? "skipped" : "error";
+    planned.push({ line: issue.line, key: `line ${issue.line}`, action, changes: [], message: issue.message });
   }
 
-  for (const row of rows) {
+  for (const original of rows) {
+    if (skip.has(original.line)) {
+      planned.push({ line: original.line, key: original.record.email, action: "skipped", changes: [] });
+      if (!skippedLine.has(original.record.email)) skippedLine.set(original.record.email, original.line);
+      continue;
+    }
+    const row = withDeskTimeZone(withKeptValues(original, snapshot), snapshot);
     const email = row.record.email;
     const prior = desired.get(email);
     if (prior) {
@@ -47,11 +67,23 @@ export function planPeopleImport(
     desired.set(email, row);
   }
 
-  // Final manager of each person after this import. Anyone not in the file keeps their current manager.
-  const finalManager = (email: string): string | null => {
+  // A blank manager_email means the default: the primary team's lead (#11). A default that would
+  // close a reporting loop is dropped rather than reported, since the admin didn't ask for it.
+  const inherited = new Set<string>();
+  for (const [email, row] of desired) {
+    const { managerEmails, primaryTeamSlug } = row.record;
+    if (managerEmails.length > 0 || primaryTeamSlug === null) continue;
+    const lead = inheritedManager(email, primaryTeamSlug, snapshot.teams);
+    if (lead === null || (!desired.has(lead) && !snapshot.people.has(lead))) continue;
+    desired.set(email, { ...row, record: { ...row.record, managerEmails: [lead] } });
+    inherited.add(email);
+  }
+
+  // Final managers of each person after this import. Anyone not in the file keeps theirs.
+  const finalManagers = (email: string): string[] => {
     const row = desired.get(email);
-    if (row) return row.record.managerEmail;
-    return snapshot.people.get(email)?.managerEmail ?? null;
+    if (row) return row.record.managerEmails;
+    return snapshot.people.get(email)?.managerEmails ?? [];
   };
 
   // Desk claims after this import: rows in the file win, everyone else keeps their desk.
@@ -63,22 +95,44 @@ export function planPeopleImport(
     if (!desired.has(email) && person.deskCode) pushTo(deskClaims, person.deskCode, email);
   }
 
+  for (const email of inherited) {
+    const row = desired.get(email)!;
+    if (reachesAncestorAny(finalManagers, row.record.managerEmails, email)) {
+      desired.set(email, { ...row, record: { ...row.record, managerEmails: [] } });
+    }
+  }
+
+  // Accounts after this import, keyed "provider value", claimed the same way as desks.
+  const identityClaims = new Map<string, string[]>();
   for (const [email, row] of desired) {
-    const rec = row.record;
-    const problem = validateReferences(row, snapshot, desired, finalManager, deskClaims);
+    for (const [provider, value] of Object.entries(row.record.identities)) {
+      pushTo(identityClaims, identityKey(provider, value), email);
+    }
+  }
+  for (const [email, person] of snapshot.people) {
+    if (desired.has(email)) continue;
+    for (const [provider, value] of Object.entries(person.identities)) {
+      pushTo(identityClaims, identityKey(provider, value), email);
+    }
+  }
+
+  for (const [email, row] of desired) {
+    const problem = validateReferences(row, snapshot, desired, finalManagers, deskClaims, identityClaims, skippedLine);
     if (problem) errors.set(email, problem);
     if (errors.has(email)) {
-      planned.push({ line: row.line, key: email, action: "error", changes: [], message: errors.get(email), record: rec });
+      planned.push({ line: row.line, key: email, action: "error", changes: [], message: errors.get(email), record: row.record });
       continue;
     }
+    // A desk sets the office, so a (matching) office given with one isn't stored (N9).
+    const rec = row.record.deskCode ? { ...row.record, officeSlug: null } : row.record;
 
     const existing = snapshot.people.get(email);
     if (!existing) {
-      const changes = diffRecords(emptyPerson(email), rec, PERSON_FIELDS);
+      const changes = diffPersonRecords(emptyPerson(email), rec);
       planned.push({ line: row.line, key: email, action: "create", changes, record: rec });
       continue;
     }
-    const changes = diffRecords(existing, rec, PERSON_FIELDS);
+    const changes = diffPersonRecords(existing, rec);
     planned.push({
       line: row.line,
       key: email,
@@ -95,8 +149,10 @@ function validateReferences(
   row: ValidPersonRow,
   snapshot: PeopleSnapshot,
   desired: Map<string, ValidPersonRow>,
-  finalManager: (email: string) => string | null,
+  finalManagers: (email: string) => string[],
   deskClaims: Map<string, string[]>,
+  identityClaims: Map<string, string[]>,
+  skippedLine: Map<string, number>,
 ): string | null {
   const rec = row.record;
 
@@ -104,14 +160,17 @@ function validateReferences(
     if (!snapshot.teamSlugs.has(slug)) return `unknown team "${slug}" (import teams first)`;
   }
 
-  if (rec.managerEmail !== null) {
-    if (rec.managerEmail === rec.email) return "manager_email cannot be the person themself";
-    if (!desired.has(rec.managerEmail) && !snapshot.people.has(rec.managerEmail)) {
-      return `manager ${rec.managerEmail} is not in the file or the database`;
+  for (const manager of rec.managerEmails) {
+    if (manager === rec.email) return "manager_email cannot be the person themself";
+    if (!desired.has(manager) && !snapshot.people.has(manager)) {
+      const line = skippedLine.get(manager);
+      return line !== undefined
+        ? `manager ${manager} is on line ${line}, which is skipped`
+        : `manager ${manager} is not in the file or the database`;
     }
-    if (reachesAncestor(finalManager, rec.managerEmail, rec.email)) {
-      return `manager chain loops back to ${rec.email}`;
-    }
+  }
+  if (reachesAncestorAny(finalManagers, rec.managerEmails, rec.email)) {
+    return `manager chain loops back to ${rec.email}`;
   }
 
   if (rec.deskCode !== null) {
@@ -119,7 +178,26 @@ function validateReferences(
     if (!desk) return `unknown desk "${rec.deskCode}"`;
     if (!desk.assignable) return `desk "${rec.deskCode}" is not a desk, or its floor is archived`;
     const claimants = (deskClaims.get(rec.deskCode) ?? []).filter((e) => e !== rec.email);
-    if (claimants.length > 0) return `desk "${rec.deskCode}" is also assigned to ${claimants[0]}`;
+    if (claimants.length > 0) {
+      const line = skippedLine.get(claimants[0]!);
+      // The holder's move off this desk was on a skipped line, so they keep it.
+      return line !== undefined
+        ? `desk "${rec.deskCode}" is still assigned to ${claimants[0]}, whose line ${line} is skipped`
+        : `desk "${rec.deskCode}" is also assigned to ${claimants[0]}`;
+    }
+  }
+
+  if (rec.officeSlug !== null) {
+    if (!snapshot.offices.has(rec.officeSlug)) return `unknown office "${rec.officeSlug}"`;
+    const deskOffice = rec.deskCode ? snapshot.desks.get(rec.deskCode)?.officeSlug : undefined;
+    if (deskOffice && deskOffice !== rec.officeSlug) {
+      return `office "${rec.officeSlug}" isn't the office of desk "${rec.deskCode}"; leave office blank for someone with a desk`;
+    }
+  }
+
+  for (const [provider, value] of Object.entries(rec.identities)) {
+    const others = (identityClaims.get(identityKey(provider, value)) ?? []).filter((e) => e !== rec.email);
+    if (others.length > 0) return `${provider} "${value}" also belongs to ${others[0]}`;
   }
 
   return null;
@@ -128,19 +206,50 @@ function validateReferences(
 function emptyPerson(email: string): PersonRecord {
   return {
     email,
-    name: "",
+    givenName: "",
+    familyName: null,
     preferredName: null,
     title: null,
     phone: null,
     homeRegion: "",
     homeTimezone: null,
     startDate: null,
+    endDate: null,
     active: true,
-    managerEmail: null,
+    managerEmails: [],
     deskCode: null,
+    officeSlug: null,
     teamSlugs: [],
     primaryTeamSlug: null,
+    identities: {},
   };
+}
+
+// A blank home time zone takes the desk's office's, so the dry run shows what will be stored.
+function withDeskTimeZone(row: ValidPersonRow, snapshot: PeopleSnapshot): ValidPersonRow {
+  const { homeTimezone, deskCode, officeSlug } = row.record;
+  if (homeTimezone !== null) return row;
+  const officeZone = officeSlug ? snapshot.offices.get(officeSlug)?.timezone : undefined;
+  const zone = defaultTimeZone(null, deskCode ? snapshot.desks.get(deskCode)?.timezone : officeZone);
+  return zone ? { ...row, record: { ...row.record, homeTimezone: zone } } : row;
+}
+
+// Fills in the person's current values for the later columns the file doesn't have: accounts
+// (#12) and the end date (N6).
+function withKeptValues(row: ValidPersonRow, snapshot: PeopleSnapshot): ValidPersonRow {
+  const current = snapshot.people.get(row.record.email);
+  if (!row.absentColumns || !current) return row;
+  const record = { ...row.record, identities: { ...row.record.identities } };
+  for (const column of row.absentColumns) {
+    if (column === "end_date") record.endDate = current.endDate;
+    else if (column === "office") record.officeSlug = current.officeSlug;
+    else if (current.identities[column]) record.identities[column] = current.identities[column];
+  }
+  return { ...row, record };
+}
+
+function identityKey(provider: string, value: string) {
+  return `${provider} ${value}`;
 }
 
 function pushTo(map: Map<string, string[]>, key: string, value: string) {

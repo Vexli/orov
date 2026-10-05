@@ -1,15 +1,18 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import type { FloorDiff } from "@officeorg/core";
-import { getDb } from "@officeorg/db/client";
-import { ValidationError } from "@officeorg/db/queries/errors";
+import { areaEditSchema, drawingEditSchema, spaceEditSchema, type FloorDiff } from "@orov/core";
+import { getDb } from "@orov/db/client";
+import { ValidationError } from "@orov/db/queries/errors";
 import {
   applyFloorUpload,
   previewFloorRollback,
+  previewDrawingEdit,
   previewFloorUpload,
   rollbackFloor,
-} from "@officeorg/db/queries/floors";
+  saveArea,
+  saveSpace,
+} from "@orov/db/queries/floors";
 import { requireAdmin } from "@/lib/session";
 
 // The drawing travels as text both times: once to preview, once to apply. Apply re-runs the
@@ -87,4 +90,54 @@ export async function rollbackAction(
     revalidatePath(`/admin/floors/${input.floorId}`);
     return { ok: true as const, version: result.version };
   });
+}
+
+export type RenameState = { ok: true } | { ok: false; error: string; field?: string };
+
+// Renames a room or point of interest, and sets a meeting room's capacity (#21).
+export async function saveSpaceAction(floorId: string, id: string, input: unknown): Promise<RenameState> {
+  const user = await requireAdmin();
+  const parsed = spaceEditSchema.safeParse(input);
+  if (!parsed.success) {
+    const issue = parsed.error.issues[0];
+    return { ok: false, error: issue?.message ?? "Check the values", field: String(issue?.path[0] ?? "") };
+  }
+  const result = await attempt(async () => {
+    await saveSpace(getDb(), user.email, text(id), parsed.data);
+    return { ok: true as const };
+  });
+  revalidatePath(`/admin/floors/${text(floorId)}`);
+  revalidatePath("/map");
+  return result;
+}
+
+export async function saveAreaAction(floorId: string, id: string, input: unknown): Promise<RenameState> {
+  const user = await requireAdmin();
+  const parsed = areaEditSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? "Check the name", field: "name" };
+  const result = await attempt(async () => {
+    await saveArea(getDb(), user.email, text(id), parsed.data);
+    return { ok: true as const };
+  });
+  revalidatePath(`/admin/floors/${text(floorId)}`);
+  revalidatePath("/map");
+  return result;
+}
+
+export type EditState =
+  | { ok: true; svg: string; svgElementId: string; diff: FloorDiff; identical: boolean; sanitizedSvg: string }
+  | { ok: false; error: string };
+
+// One edit made on the drawing in the browser (#21), applied to `base` (the drawing being edited,
+// or null for the current version) and previewed like an upload. Applying is applyUploadAction
+// with the returned drawing.
+export async function editDrawingAction(floorId: string, base: string | null, edit: unknown): Promise<EditState> {
+  await requireAdmin();
+  const parsed = drawingEditSchema.safeParse(edit);
+  if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? "That edit isn't possible" };
+  const baseSvg = base === null ? null : text(base);
+  return attempt(async () => ({
+    ok: true as const,
+    ...(await previewDrawingEdit(getDb(), text(floorId), baseSvg, parsed.data)),
+  }));
 }

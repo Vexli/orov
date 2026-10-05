@@ -3,17 +3,17 @@ import { readFileSync } from "node:fs";
 import { basename } from "node:path";
 import { connection } from "next/server";
 import { cache } from "react";
-import { blockingErrors, buildTheme, contrastFailures } from "@officeorg/core/theme/build";
-import { emitThemeCss } from "@officeorg/core/theme/emit-css";
-import type { SlotMapping } from "@officeorg/core/theme/map";
-import { SLOTS } from "@officeorg/core/theme/slots";
-import { defaultThemeValues, type ThemeValues } from "@officeorg/core/theme/values";
-import { getDb } from "@officeorg/db/client";
-import { getActiveTheme } from "@officeorg/db/queries/theme";
+import { blockingErrors, buildTheme, contrastFailures } from "@orov/core/theme/build";
+import { emitThemeCss } from "@orov/core/theme/emit-css";
+import type { SlotMapping } from "@orov/core/theme/map";
+import { SLOTS } from "@orov/core/theme/slots";
+import { defaultThemeValues, type ThemeValues } from "@orov/core/theme/values";
+import { getDb } from "@orov/db/client";
+import { getActiveTheme } from "@orov/db/queries/theme";
 
 // The theme every page is drawn with (plan.md §9.1): the active `theme` row, or, when none has
 // been applied, the deploy-time default. That default is the token file named by
-// THEME_TOKENS_PATH, or OfficeOrg's own defaults (the same values as theme/default.tokens.json).
+// THEME_TOKENS_PATH, or OrOv's own defaults (the same values as theme/default.tokens.json).
 
 export interface CurrentTheme {
   css: string;
@@ -60,7 +60,7 @@ function loadDeployDefault(): CurrentTheme {
       );
     }
   }
-  const css = emitThemeCss(values, [], "/* OfficeOrg default theme. */");
+  const css = emitThemeCss(values, [], "/* OrOv default theme. */");
   return { css, sha256: sha256(css), values };
 }
 
@@ -89,7 +89,7 @@ export const getBrand = cache(async (): Promise<Brand> => {
   const theme = await getCurrentTheme();
   const v = theme.values.light;
   return {
-    appName: v["appName"] || "OfficeOrg",
+    appName: v["appName"] || "OrOv",
     logoLight: v["logo.light"] || null,
     logoDark: v["logo.dark"] || null,
     favicon: v["favicon"] || null,

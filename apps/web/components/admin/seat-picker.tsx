@@ -1,8 +1,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { mapStateCss } from "@officeorg/core/map/state-css";
-import type { DeskOption, PickerFloor } from "@officeorg/db/queries/spaces";
+import { mapStateCss } from "@orov/core/map/state-css";
+import type { DeskOption, PickerFloor } from "@orov/db/queries/spaces";
 import { Drawing } from "@/components/map/floor-map";
 
 interface Props {

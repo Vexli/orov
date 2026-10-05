@@ -6,18 +6,18 @@ import {
   checkBrandAsset,
   fontMetaSchema,
   type BrandAssetKind,
-} from "@officeorg/core/theme/assets";
-import { themeInputSchema, type ThemeBuild } from "@officeorg/core/theme/build";
-import { sanitizeSvg, SvgError } from "@officeorg/core/svg/sanitize";
-import { getDb } from "@officeorg/db/client";
-import { ValidationError } from "@officeorg/db/queries/errors";
+} from "@orov/core/theme/assets";
+import { themeInputSchema, type ThemeBuild } from "@orov/core/theme/build";
+import { sanitizeSvg, SvgError } from "@orov/core/svg/sanitize";
+import { getDb } from "@orov/db/client";
+import { ValidationError } from "@orov/db/queries/errors";
 import {
   activateTheme,
   applyTheme,
   previewTheme,
   saveBrandAsset,
   type ThemeInput,
-} from "@officeorg/db/queries/theme";
+} from "@orov/db/queries/theme";
 import { requireAdmin } from "@/lib/session";
 
 // Server actions for the Branding page (plan.md §9.1). They're public endpoints, so every

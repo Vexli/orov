@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
+  flagEmoji,
   formatRegion,
+  regionLabel,
   isKnownRegion,
   isRegionDisplay,
   normalizeRegionCode,
@@ -59,11 +61,13 @@ describe("formatRegion", () => {
         country: "United States",
         region: "California",
         country_region: "California, United States",
+        // The flag-only mode's text: the country, for screen readers.
+        flag: "United States",
       },
     ],
     [
       "CA-ON",
-      { code: "CA-ON", country: "Canada", region: "Ontario", country_region: "Ontario, Canada" },
+      { code: "CA-ON", country: "Canada", region: "Ontario", country_region: "Ontario, Canada", flag: "Canada" },
     ],
     [
       "GB-SCT",
@@ -72,10 +76,11 @@ describe("formatRegion", () => {
         country: "United Kingdom",
         region: "Scotland",
         country_region: "Scotland, United Kingdom",
+        flag: "United Kingdom",
       },
     ],
     // A country-only code falls back to the country name instead of showing nothing.
-    ["IN", { code: "IN", country: "India", region: "India", country_region: "India" }],
+    ["IN", { code: "IN", country: "India", region: "India", country_region: "India", flag: "India" }],
   ];
 
   for (const [code, expected] of table) {
@@ -105,5 +110,42 @@ describe("isRegionDisplay", () => {
     expect(REGION_DISPLAYS.every(isRegionDisplay)).toBe(true);
     expect(isRegionDisplay("name")).toBe(false);
     expect(isRegionDisplay(null)).toBe(false);
+  });
+});
+
+describe("flagEmoji", () => {
+  it.each([
+    ["CA", "🇨🇦"],
+    ["CA-ON", "🇨🇦"],
+    ["IN-KA", "🇮🇳"],
+    ["FR-75C", "🇫🇷"],
+  ])("%s → %s", (code, flag) => {
+    expect(flagEmoji(code)).toBe(flag);
+  });
+
+  it.each(["XX", "XX-1", "ca", ""])("has no flag for %j", (code) => {
+    expect(flagEmoji(code)).toBeNull();
+  });
+});
+
+describe("regionLabel", () => {
+  it("adds the flag only when asked, in every display mode", () => {
+    expect(regionLabel("CA-ON", { display: "country_region", flag: true })).toEqual({
+      label: "Ontario, Canada",
+      flag: "🇨🇦",
+      flagOnly: false,
+    });
+    expect(regionLabel("CA-ON", { display: "code", flag: true })).toEqual({ label: "CA-ON", flag: "🇨🇦", flagOnly: false });
+    expect(regionLabel("CA-ON", { display: "country_region", flag: false }).flag).toBeNull();
+  });
+
+  it("shows the flag alone in flag-only mode, keeping the country name for screen readers", () => {
+    expect(regionLabel("CA-ON", { display: "flag", flag: false })).toEqual({
+      label: "Canada",
+      flag: "🇨🇦",
+      flagOnly: true,
+    });
+    // A code without a country falls back to the code.
+    expect(regionLabel("XX", { display: "flag", flag: false })).toEqual({ label: "XX", flag: null, flagOnly: false });
   });
 });

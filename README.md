@@ -1,7 +1,7 @@
-# OfficeOrg
+# OrOv
 
 An internal web app for a small company (1–3 offices, fewer than 250 people) that replaces the
-spreadsheets tracking who works where. OfficeOrg is meant to be the **source of truth** for
+spreadsheets tracking who works where. OrOv is meant to be the **source of truth** for
 people, teams, reporting lines and seat assignments, shown as one linked view:
 person ↔ seat ↔ team ↔ manager ↔ presence ↔ Slack.
 
@@ -21,35 +21,70 @@ the phase-by-phase delivery plan with progress notes.
 
 ## Status
 
-**Phase 1 (Foundation), Phase 2 (Maps), Phase 3 (Org chart and selection sync) and Phase 5.5
-(Branding) are complete.** None has been released to `main` yet. The parts that work today:
+**Phase 1 (Foundation), Phase 2 (Maps), Phase 3 (Org chart and selection sync), Phase 5.5
+(Branding) and Phase 7 (Improvement) are complete,** apart from Phase 7's two integration items,
+which wait for Phases 4 and 5. None has been released to `main` yet. The parts that work today:
 
 - Sign-in through any SSO provider Auth.js supports (Google, Microsoft Entra ID, Okta, AWS
   Cognito or any OpenID Connect issuer), limited to one company email domain, with `viewer` and
   `admin` roles
-- Directory with search, team and location filters, a person card, and selection kept in the URL
-- Floor map: the floor drawing with an avatar at each occupied desk, zoom and pan, and a card for
-  the person, desk or room you click. Switch offices and floors, open an area such as the South
-  Wing as a zoomed view, and see each floor's headcount, desks and rooms. The map follows a
-  selected person to their floor, and highlights a team's seats (optionally with its sub-teams)
-  with a count per floor. A desk on a person card links to the map. A List toggle shows the same
-  desks and rooms as a table for keyboard and screen reader users
+- Directory with search, team and location filters, a person card, and selection kept in the URL.
+  The directory, map and org chart use the full width of the window, with the main menu staying
+  at the top, the map's and org chart's controls in a bar just below it, and the selected
+  person's card floating at the right.
+  People have a given name and a family name, and lists sort by family name
+- Floor map: the floor drawing with an avatar at each occupied desk and each room's name, zoom
+  and pan, and a card for the person, desk or room you click. Switch offices and floors, open an
+  area such as the South Wing as a zoomed view, and see each floor's headcount, desks and rooms.
+  The map follows a selected person to their floor, and highlights a team's seats (with its
+  sub-teams, unless you untick them) with a count per floor. A desk code in the directory or on
+  a person card links to the map. A List toggle shows the same desks and rooms as a table for
+  keyboard and screen reader users
 - Org chart: the reporting tree (who reports to whom) and the team tree (teams, their sub-teams
   and members), with expand and collapse, zoom, and the person card for whoever you click. The
-  chart centers on the selected person and opens their direct reports, shows their reporting line
-  up to the top, and highlights a team's members (optionally with its sub-teams). A List toggle
-  shows the same tree as an outline for keyboard and screen reader users
+  chart centers on the selected person and opens their direct reports, shows their reporting
+  line up to the top, and highlights a team's members (with its sub-teams, unless you untick
+  them). A List toggle shows the same tree as an outline for keyboard and screen reader users
 - Switching between the directory, map and org chart keeps the selected person and team. ⌘K
   (Ctrl+K) searches people, teams and rooms, with typo tolerance, from any view
 - Admin pages to create, edit and deactivate people and teams, with checks that reject
-  manager and parent-team cycles. Desks are assigned by clicking the floor drawing; choosing a
+  manager and parent-team cycles. The people list filters by text, team, status and desk (active
+  people by default), and the teams list by name. Several people can be changed at once
+  (activate or deactivate, manager, teams), after reviewing who the change applies to Desks are assigned by clicking the floor drawing; choosing a
   taken desk swaps it, after the admin confirms
-- CSV import with a dry-run diff before anything is written, CSV export, and an audit log of
-  every admin change
-- ISO 3166 region codes (`US`, `US-CA`, `CA-ON`), and a per-user setting for how regions are
-  displayed
+- Links to a person's other accounts (GitHub, GitLab, LinkedIn, a website) on their card, set in
+  the admin form or the people CSV. An account can belong to only one person
+- A member of a sub-team is also a member of the teams above it (shown as "through a sub-team"),
+  so team member counts include everyone under a team
+- Everyone can change their own preferred name, phone, home time zone and account links on
+  **My profile**, without an admin
+- Admins can record a person's last working day, which only admins ever see
+- Someone without a desk of their own can still belong to an office: they count for it in the
+  directory's office filter and the map's overview, and get its time zone
+- A person can report to several managers equally; the reporting chart shows them under each
+- Someone saved or imported without a manager reports to the lead of their primary team (for a
+  lead, the lead of the team above)
+- Phone numbers are checked and stored in international form (`+14155550123`), shown on the
+  person card as a link to call. Home time zones are checked too, and default to the time zone of
+  the person's desk
+- An encrypted export of the whole organization, for backups and moving between instances (see
+  [Backup and moving instances](#backup-and-moving-instances))
+- CSV import with a dry-run diff before anything is written, where rows with errors can be
+  skipped. Files saved by Excel (Windows-1252 or UTF-16, separated by commas, semicolons or tabs)
+  are detected. CSV export, and an audit log of every admin change, filterable by entity, date and
+  admin, and exportable as CSV
+- ISO 3166 region codes (`US`, `US-CA`, `CA-ON`), and per-user settings for how regions are
+  displayed (optionally with the country's flag, or the flag alone) and how dates are written (ISO, day/month/year or month/day/year, in the user's own
+  time zone)
 - A semantic theme layer: components are styled only through theme slots, never raw colors
-- Admin pages for offices and floors. Uploading a floor drawing (SVG) sanitizes it, shows what it
+- Admin pages for offices and floors. Each office chooses what its floors are called (Floor,
+  Building, Wing, …), and the map and admin pages use that word. Rooms and areas can be renamed,
+  and meeting rooms given a seat count, without a new drawing; desks and rooms can be added or
+  removed on the drawing itself in the browser, and the result is reviewed and saved as a new
+  version, like an upload. A floor or office can be archived (hidden everywhere, history kept),
+  or deleted if it never had a drawing. A seating planner rearranges an office so each team sits
+  together, keeping anyone locked in place, and shows every move before applying it Uploading a floor drawing (SVG)
+  sanitizes it, shows what it
   adds, moves and removes before anything is saved, and keeps every version for rollback. How to
   draw one is in [`docs/map-authoring.md`](docs/map-authoring.md)
 - Meeting rooms on the map show whether they're free, busy, booked soon, or out of date, with a
@@ -78,7 +113,7 @@ that only logs a heartbeat. See [`plan.md` §12](plan.md#12-delivery-plan) for t
 ```sh
 pnpm install
 
-# Start Postgres 16. This also creates the officeorg_test and officeorg_e2e databases.
+# Start Postgres 16. This also creates the orov_test and orov_e2e databases.
 pnpm db:up
 
 # Configure the web app. The defaults point at the database from the previous step.
@@ -99,7 +134,7 @@ Then create the schema, load the demo data and start the app:
 
 ```sh
 # The database scripts read DATABASE_URL from the shell, not from .env.local.
-export DATABASE_URL=postgres://officeorg:officeorg@localhost:5432/officeorg
+export DATABASE_URL=postgres://orov:orov@localhost:5432/orov
 
 pnpm db:migrate
 pnpm db:seed     # resets the database and loads the demo data
@@ -118,18 +153,18 @@ URL to register.
 
 ### Commands
 
-| Command               | What it does                                                           |
-| --------------------- | ---------------------------------------------------------------------- |
-| `pnpm dev`            | Start the web app in development mode on port 3000                     |
-| `pnpm build`          | Build every workspace package that has a build step                    |
-| `pnpm lint`           | ESLint across the repo                                                 |
-| `pnpm typecheck`      | TypeScript checks for every package and the e2e suite                  |
-| `pnpm test`           | Unit tests (`packages/core`) and database tests (`packages/db`)        |
-| `pnpm test:e2e`       | Build the app and run the Playwright suite on port 3100                |
-| `pnpm db:up` / `down` | Start or stop the Postgres container                                   |
-| `pnpm db:migrate`     | Apply pending migrations                                               |
-| `pnpm db:seed`        | Reset the database and load the demo data (refuses to run in production) |
-| `pnpm db:generate`    | Generate a migration after changing `packages/db/schema.ts`            |
+| Command               | What it does                                                                                          |
+| --------------------- | ----------------------------------------------------------------------------------------------------- |
+| `pnpm dev`            | Start the web app in development mode on port 3000                                                    |
+| `pnpm build`          | Build every workspace package that has a build step                                                   |
+| `pnpm lint`           | ESLint across the repo                                                                                |
+| `pnpm typecheck`      | TypeScript checks for every package and the e2e suite                                                 |
+| `pnpm test`           | Unit tests (`packages/core`) and database tests (`packages/db`)                                       |
+| `pnpm test:e2e`       | Build the app and run the Playwright suite on port 3100                                               |
+| `pnpm db:up` / `down` | Start or stop the Postgres container                                                                  |
+| `pnpm db:migrate`     | Apply pending migrations                                                                              |
+| `pnpm db:seed`        | Reset the database and load the demo data (refuses to run in production)                              |
+| `pnpm db:generate`    | Generate a migration after changing `packages/db/schema.ts`                                           |
 | `pnpm theme:defaults` | Regenerate `apps/web/app/theme-defaults.css` and `theme/default.tokens.json` from the theme slot list |
 
 ### Testing
@@ -138,7 +173,7 @@ URL to register.
 - **Database tests** run against a throwaway Postgres started by Testcontainers, so Docker must
   be running. On macOS with Colima, set
   `DOCKER_HOST=unix://$HOME/.colima/default/docker.sock TESTCONTAINERS_RYUK_DISABLED=true`.
-- **End-to-end tests** run a production build against the `officeorg_e2e` database (created by
+- **End-to-end tests** run a production build against the `orov_e2e` database (created by
   `pnpm db:up`) and reseed it before each spec. Install the browser once with
   `pnpm exec playwright install chromium`.
 
@@ -197,8 +232,8 @@ validates with zod, writes in a transaction and records an audit entry.
 The `Dockerfile` builds one image with two targets:
 
 ```sh
-docker build --target web -t officeorg-web .
-docker build --target worker -t officeorg-worker .
+docker build --target web -t orov-web .
+docker build --target worker -t orov-worker .
 ```
 
 The web container applies migrations on start and then serves on port 3000. It needs
@@ -212,9 +247,49 @@ logo. Run one web replica
 at a time while a schema change is being deployed, because two replicas migrating at once can
 race.
 
+### Backup and moving instances
+
+Admins can download the whole organization as one file under **Admin → Backup**: offices,
+floors with every drawing version, areas, rooms and desks, teams, people with their memberships
+and accounts, users and their settings, themes and brand files. Ids are kept, so links survive a
+move. The file is encrypted with a passphrase the admin chooses (scrypt, then AES-256-GCM), so it
+can travel by email or sit on a shared drive; without the passphrase it can't be opened. It
+never contains messaging tokens, presence data or the audit log (export that from the audit log
+page). Exports and imports are both recorded in the audit log.
+
+To load a file, choose **Merge** (add and update by id; a reused email, slug, desk code or account
+is a conflict and blocks the import) or **Replace** (empty this instance's organization data and
+load the file: for restoring a backup or setting up a new instance). Each shows what would
+change before anything is written. Roles come from the file only if the admin asks, and the
+importing admin always stays an admin. A file must come from an instance on the same database
+schema version; files from older versions can't be read yet. This complements the database's
+own backups and point-in-time recovery; it doesn't replace them.
+
+### Renamed from OfficeOrg
+
+The project was called OfficeOrg until 2026-10-05. Packages are now `@orov/*` and the images
+`orov-web` and `orov-worker`. A deployment needs no other change: the app reads the database
+named in `DATABASE_URL`, and no table or setting carries the old name. Backup files
+written before the rename (format `officeorg-export`) still import.
+
+A local checkout from before the rename has its database in the old Compose project, which still
+holds port 5432 and uses the `officeorg` user. Stop it, start the new one and point the env files
+at it:
+
+```sh
+docker compose -p <checkout folder name> stop db   # the old project was named after the folder
+pnpm db:up                                         # new project `orov`, user and password `orov`
+# In apps/web/.env.local (and your shell): DATABASE_URL=postgres://orov:orov@localhost:5432/orov
+pnpm db:migrate && pnpm db:seed
+```
+
+Without the Compose plugin, use `docker-compose -p <folder> stop db` and `docker-compose up -d db`
+for the first two lines. The old volume (`<folder>_pgdata`) is left alone; remove it with `docker volume rm` once you no
+longer need its data.
+
 ## Acknowledgements
 
-OfficeOrg is built on open-source work. Thank you to the people who maintain it.
+OrOv is built on open-source work. Thank you to the people who maintain it.
 
 **In use today**
 

@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import type { OrgNode } from "@officeorg/core/org/tree";
+import { standsFor, type OrgNode } from "@orov/core/org/tree";
 
 interface Props {
   nodes: OrgNode[];
@@ -24,7 +24,7 @@ export function OrgOutline({ nodes, label, selectedId, highlightedIds, onSelect 
     return (
       <ul className={depth === 0 ? "space-y-1" : "mt-1 space-y-1 border-l border-border pl-4"}>
         {items.map((n) => {
-          const selected = n.id === selectedId;
+          const selected = standsFor(n.id, selectedId);
           const highlighted = highlightedIds.has(n.id);
           return (
             <li key={n.id}>

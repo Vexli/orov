@@ -3,10 +3,15 @@ import { parseTeamsCsv, teamsToCsv } from "./teams";
 
 describe("parseTeamsCsv", () => {
   it("parses teams and normalizes the slug", () => {
-    const { rows, issues } = parseTeamsCsv("slug,name,parent_slug,slack_channel_id,color\nHR,Human Resources,,C123,#ff0000\nhr-recruiting,Recruiting,HR,,\n");
+    const { rows, issues } = parseTeamsCsv("slug,name,parent_slug,chat_channel_id,color\nHR,Human Resources,,C123,#ff0000\nhr-recruiting,Recruiting,HR,,\n");
     expect(issues).toEqual([]);
-    expect(rows[0]?.record).toEqual({ slug: "hr", name: "Human Resources", parentSlug: null, slackChannelId: "C123", color: "#ff0000" });
+    expect(rows[0]?.record).toEqual({ slug: "hr", name: "Human Resources", parentSlug: null, chatChannelId: "C123", color: "#ff0000" });
     expect(rows[1]?.record.parentSlug).toBe("hr");
+  });
+
+  it("still reads the old slack_channel_id column", () => {
+    const { rows } = parseTeamsCsv("slug,name,slack_channel_id\nhr,HR,C123\n");
+    expect(rows[0]?.record.chatChannelId).toBe("C123");
   });
 
   it("rejects slugs with spaces", () => {
@@ -15,7 +20,7 @@ describe("parseTeamsCsv", () => {
   });
 
   it("round-trips through teamsToCsv", () => {
-    const records = [{ slug: "hr", name: "HR", parentSlug: null, slackChannelId: "C1", color: null }];
+    const records = [{ slug: "hr", name: "HR", parentSlug: null, chatChannelId: "C1", color: null }];
     expect(parseTeamsCsv(teamsToCsv(records)).rows.map((r) => r.record)).toEqual(records);
   });
 });

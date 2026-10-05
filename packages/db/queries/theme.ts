@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { and, desc, eq, inArray, max, sql } from "drizzle-orm";
-import type { BrandAssetKind, FontMeta } from "@officeorg/core/theme/assets";
+import type { BrandAssetKind, FontMeta } from "@orov/core/theme/assets";
 import {
   blockingErrors,
   buildTheme,
@@ -8,11 +8,11 @@ import {
   contrastFailures,
   type ThemeBuild,
   type ThemeDraft,
-} from "@officeorg/core/theme/build";
-import type { FontFace } from "@officeorg/core/theme/emit-css";
-import type { SlotMapping } from "@officeorg/core/theme/map";
-import type { TokenFile } from "@officeorg/core/theme/parse";
-import type { ThemeValues } from "@officeorg/core/theme/values";
+} from "@orov/core/theme/build";
+import type { FontFace } from "@orov/core/theme/emit-css";
+import type { SlotMapping } from "@orov/core/theme/map";
+import type { TokenFile } from "@orov/core/theme/parse";
+import type { ThemeValues } from "@orov/core/theme/values";
 import type { Database, Executor } from "../client";
 import * as s from "../schema";
 import { recordAudit } from "./audit";
@@ -136,7 +136,7 @@ export async function applyTheme(
 ): Promise<{ id: string; version: number }> {
   return db.transaction(async (tx) => {
     // One apply at a time, so two admins can't both take the next version number.
-    await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext('officeorg.theme'))`);
+    await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext('orov.theme'))`);
 
     const { build, assetProblems } = await previewTheme(tx, input);
     const errors = blockingErrors(build);
@@ -204,7 +204,7 @@ export async function activateTheme(
   id: string | null,
 ): Promise<void> {
   await db.transaction(async (tx) => {
-    await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext('officeorg.theme'))`);
+    await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext('orov.theme'))`);
     const previous = await getActiveTheme(tx);
     const target = id ? await getTheme(tx, id) : null;
     if (id && !target) throw new ValidationError("That theme version no longer exists.");

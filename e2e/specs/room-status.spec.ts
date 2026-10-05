@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
-import { roomStatus } from "@officeorg/db/schema";
-import { applyTheme } from "@officeorg/db/queries/theme";
+import { roomStatus } from "@orov/db/schema";
+import { applyTheme } from "@orov/db/queries/theme";
 import { resetE2eDatabase, withE2eDb } from "../support/database";
 import { signInAs } from "../support/session";
 

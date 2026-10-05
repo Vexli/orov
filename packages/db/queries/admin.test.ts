@@ -1,14 +1,22 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { eq } from "drizzle-orm";
-import type { PersonForm, TeamForm } from "@officeorg/core";
+import { selfProfileSchema, type PersonForm, type TeamForm } from "@orov/core";
 import { seedDemoData } from "../seed";
 import * as s from "../schema";
 import { startTestDatabase, type TestDatabase } from "../test-utils";
 import { listAudit } from "./audit";
 import { ValidationError } from "./errors";
 import { listDeskOptions, listPickerFloors } from "./spaces";
-import { deleteTeam, getTeamForEdit, saveTeam } from "./teams";
-import { getPersonForEdit, savePerson, setPersonActive } from "./people";
+import { deleteTeam, getTeamForEdit, listTeamsForAdmin, saveTeam } from "./teams";
+import {
+  bulkUpdatePeople,
+  findOwnProfile,
+  getPersonForEdit,
+  listPeopleForAdmin,
+  saveOwnProfile,
+  savePerson,
+  setPersonActive,
+} from "./people";
 
 let t: TestDatabase;
 
@@ -31,18 +39,22 @@ const ACTOR = "jane@example.com";
 function personInput(overrides: Partial<PersonForm>): PersonForm {
   return {
     email: "new@example.com",
-    name: "New Person",
+    givenName: "New",
+    familyName: "Person",
     preferredName: null,
     title: null,
     phone: null,
     homeRegion: "US",
     homeTimezone: null,
     startDate: null,
+    endDate: null,
     active: true,
-    managerId: null,
+    managerIds: [],
     assignedDeskId: null,
+    officeId: null,
     teamIds: [],
     primaryTeamId: null,
+    identities: {},
     ...overrides,
   };
 }
@@ -53,7 +65,7 @@ function teamInput(overrides: Partial<TeamForm>): TeamForm {
     name: "New Team",
     parentTeamId: null,
     leadId: null,
-    slackChannelId: null,
+    chatChannelId: null,
     color: null,
     ...overrides,
   };
@@ -75,7 +87,7 @@ describe("savePerson", () => {
       t.db,
       ACTOR,
       personInput({
-        managerId: "p_max",
+        managerIds: ["p_max"],
         assignedDeskId: "sp_sf_2_016",
         teamIds: ["t_recruiting", "t_hr"],
         primaryTeamId: "t_recruiting",
@@ -84,9 +96,9 @@ describe("savePerson", () => {
 
     const row = await t.db.query.person.findFirst({
       where: eq(s.person.id, id),
-      with: { manager: true, assignedDesk: true, teamMembers: true },
+      with: { managers: { with: { manager: true } }, assignedDesk: true, teamMembers: true },
     });
-    expect(row?.manager?.id).toBe("p_max");
+    expect(row?.managers[0]?.manager.id).toBe("p_max");
     expect(row?.assignedDesk?.name).toBe("SF-2-016");
     expect(row?.teamMembers.find((m) => m.isPrimary)?.teamId).toBe("t_recruiting");
     expect(row?.teamMembers).toHaveLength(2);
@@ -107,19 +119,18 @@ describe("savePerson", () => {
   it("rejects a manager that would close a loop, and leaves the chain unchanged", async () => {
     // Bob reports to Max, who reports to Jane. Making Jane report to Bob closes the loop.
     await expectValidation(
-      savePerson(t.db, ACTOR, personInput({ email: "jane@example.com", name: "Jane Park", managerId: "p_bob" }), "p_jane"),
+      savePerson(t.db, ACTOR, personInput({ email: "jane@example.com", givenName: "Jane", familyName: "Park", managerIds: ["p_bob"] }), "p_jane"),
       /would create a loop/,
-      "managerId",
+      "managerIds",
     );
-    const jane = await t.db.query.person.findFirst({ where: eq(s.person.id, "p_jane") });
-    expect(jane?.managerId).toBeNull();
+    expect((await getPersonForEdit(t.db, "p_jane"))?.managerIds).toEqual([]);
   });
 
   it("rejects being your own manager", async () => {
     await expectValidation(
-      savePerson(t.db, ACTOR, personInput({ email: "max@example.com", name: "Max Osei", managerId: "p_max" }), "p_max"),
+      savePerson(t.db, ACTOR, personInput({ email: "max@example.com", givenName: "Max", familyName: "Osei", managerIds: ["p_max"] }), "p_max"),
       /would create a loop/,
-      "managerId",
+      "managerIds",
     );
   });
 
@@ -135,7 +146,7 @@ describe("savePerson", () => {
     await savePerson(
       t.db,
       ACTOR,
-      personInput({ email: "max@example.com", name: "Max Osei", managerId: "p_jane", assignedDeskId: "sp_sf_2_014", swapDesk: true }),
+      personInput({ email: "max@example.com", givenName: "Max", familyName: "Osei", managerIds: ["p_jane"], assignedDeskId: "sp_sf_2_014", swapDesk: true }),
       "p_max",
     );
     const desk = async (id: string) => (await t.db.query.person.findFirst({ where: eq(s.person.id, id) }))?.assignedDeskId;
@@ -159,7 +170,7 @@ describe("savePerson", () => {
 
   it("lets a person keep the seat they already have", async () => {
     await expect(
-      savePerson(t.db, ACTOR, personInput({ email: "bob@example.com", name: "Bob Lindqvist", managerId: "p_max", assignedDeskId: "sp_sf_2_014" }), "p_bob"),
+      savePerson(t.db, ACTOR, personInput({ email: "bob@example.com", givenName: "Bob", familyName: "Lindqvist", managerIds: ["p_max"], assignedDeskId: "sp_sf_2_014" }), "p_bob"),
     ).resolves.toEqual({ id: "p_bob" });
   });
 
@@ -193,7 +204,7 @@ describe("savePerson", () => {
     const form = await getPersonForEdit(t.db, "p_bob");
     expect(form).toMatchObject({
       email: "bob@example.com",
-      managerId: "p_max",
+      managerIds: ["p_max"],
       assignedDeskId: "sp_sf_2_014",
       teamIds: expect.arrayContaining(["t_payroll", "t_hr"]),
       primaryTeamId: "t_payroll",
@@ -203,11 +214,246 @@ describe("savePerson", () => {
     expect(bob).toEqual(form);
   });
 
+  it("gives a new person with a desk and no time zone their desk's office's zone", async () => {
+    const { id } = await savePerson(t.db, ACTOR, personInput({ assignedDeskId: "sp_sf_2_016" }));
+    expect((await getPersonForEdit(t.db, id))?.homeTimezone).toBe("America/Los_Angeles");
+  });
+
+  it("never overwrites an explicit time zone, and leaves a deskless person's blank", async () => {
+    const withZone = await savePerson(
+      t.db,
+      ACTOR,
+      personInput({ assignedDeskId: "sp_sf_2_016", homeTimezone: "Europe/Kyiv" }),
+    );
+    expect((await getPersonForEdit(t.db, withZone.id))?.homeTimezone).toBe("Europe/Kyiv");
+    const deskless = await savePerson(t.db, ACTOR, personInput({ email: "remote@example.com" }));
+    expect((await getPersonForEdit(t.db, deskless.id))?.homeTimezone).toBeNull();
+  });
+
+  it("gives a new HR member with no manager the lead of HR", async () => {
+    const { id } = await savePerson(t.db, ACTOR, personInput({ teamIds: ["t_hr"], primaryTeamId: "t_hr" }));
+    expect((await getPersonForEdit(t.db, id))?.managerIds).toEqual(["p_jane"]);
+    // Payroll has no lead of its own, so its members default to HR's.
+    const payroll = await savePerson(
+      t.db,
+      ACTOR,
+      personInput({ email: "pay@example.com", teamIds: ["t_payroll"], primaryTeamId: "t_payroll" }),
+    );
+    expect((await getPersonForEdit(t.db, payroll.id))?.managerIds).toEqual(["p_jane"]);
+  });
+
+  it("doesn't make the lead their own manager, or replace a chosen one", async () => {
+    const jane = (await getPersonForEdit(t.db, "p_jane"))!;
+    await savePerson(t.db, ACTOR, { ...jane, managerIds: [] }, "p_jane");
+    expect((await getPersonForEdit(t.db, "p_jane"))?.managerIds).toEqual([]);
+
+    const { id } = await savePerson(
+      t.db,
+      ACTOR,
+      personInput({ teamIds: ["t_hr"], primaryTeamId: "t_hr", managerIds: ["p_max"] }),
+    );
+    expect((await getPersonForEdit(t.db, id))?.managerIds).toEqual(["p_max"]);
+  });
+
+  it("stores the given and family names, and the database builds the full name", async () => {
+    const { id } = await savePerson(t.db, ACTOR, personInput({ givenName: "Mary Ann", familyName: "Smith" }));
+    const row = await t.db.query.person.findFirst({ where: eq(s.person.id, id) });
+    expect(row).toMatchObject({ givenName: "Mary Ann", familyName: "Smith", name: "Mary Ann Smith" });
+    const single = await savePerson(t.db, ACTOR, personInput({ email: "kaito@example.com", givenName: "Kaito", familyName: null }));
+    expect((await t.db.query.person.findFirst({ where: eq(s.person.id, single.id) }))?.name).toBe("Kaito");
+  });
+
+  it("lists people by family name, then given name", async () => {
+    await savePerson(t.db, ACTOR, personInput({ email: "anna@example.com", givenName: "Anna", familyName: "Lindqvist" }));
+    const names = (await listPeopleForAdmin(t.db)).map((p) => p.name);
+    expect(names).toEqual(["Anna Lindqvist", "Bob Lindqvist", "Sam Ortiz", "Max Osei", "Jane Park", "Priya Raman"]);
+  });
+
+  it("saves, normalizes and clears profile accounts", async () => {
+    const form = (await getPersonForEdit(t.db, "p_max"))!;
+    await savePerson(t.db, ACTOR, { ...form, identities: { github: "maxo", gitlab: "max.o" } }, "p_max");
+    expect((await getPersonForEdit(t.db, "p_max"))?.identities).toEqual({ github: "maxo", gitlab: "max.o" });
+
+    await savePerson(t.db, ACTOR, { ...form, identities: { gitlab: "max.o" } }, "p_max");
+    expect((await getPersonForEdit(t.db, "p_max"))?.identities).toEqual({ gitlab: "max.o" });
+    const audit = (await listAudit(t.db, { entity: "person" }))[0];
+    expect(audit?.after).toMatchObject({ identities: { gitlab: "max.o" } });
+  });
+
+  it("rejects an account another person already has, naming them", async () => {
+    const form = (await getPersonForEdit(t.db, "p_max"))!;
+    await expectValidation(
+      savePerson(t.db, ACTOR, { ...form, identities: { github: "bob-lindqvist" } }, "p_max"),
+      /Bob Lindqvist already has this GitHub account/,
+      "identities.github",
+    );
+  });
+
+  it("keeps identities it doesn't manage, such as messaging ids", async () => {
+    await t.db.insert(s.personIdentity).values({ personId: "p_bob", provider: "slack", value: "U123" });
+    const form = (await getPersonForEdit(t.db, "p_bob"))!;
+    expect(form.identities).toEqual({ github: "bob-lindqvist", linkedin: "bob-lindqvist" });
+    await savePerson(t.db, ACTOR, { ...form, identities: {} }, "p_bob");
+    const rows = await t.db.select().from(s.personIdentity).where(eq(s.personIdentity.personId, "p_bob"));
+    expect(rows.map((r) => r.provider)).toEqual(["slack"]);
+  });
+
   it("deactivates a person and keeps the row", async () => {
     await setPersonActive(t.db, ACTOR, "p_sam", false);
     const sam = await t.db.query.person.findFirst({ where: eq(s.person.id, "p_sam") });
     expect(sam?.active).toBe(false);
     expect((await listAudit(t.db, { entity: "person" }))[0]).toMatchObject({ action: "update", entityId: "p_sam" });
+  });
+});
+
+describe("several managers (N1)", () => {
+  it("saves several managers in order, and the directory shows them all", async () => {
+    const priya = (await getPersonForEdit(t.db, "p_priya"))!;
+    await savePerson(t.db, ACTOR, { ...priya, managerIds: ["p_max", "p_jane"] }, "p_priya");
+    expect((await getPersonForEdit(t.db, "p_priya"))?.managerIds).toEqual(["p_max", "p_jane"]);
+    const people = await listPeopleForAdmin(t.db);
+    expect(people.find((p) => p.id === "p_priya")?.managerNames).toEqual(["Max Osei", "Jane Park"]);
+  });
+
+  it("refuses a loop through any manager", async () => {
+    // Priya reports to Max. Max can't take Jane and Priya as managers.
+    const max = (await getPersonForEdit(t.db, "p_max"))!;
+    await expectValidation(
+      savePerson(t.db, ACTOR, { ...max, managerIds: ["p_jane", "p_priya"] }, "p_max"),
+      /^Priya Raman reports \(directly or not\) to this person/,
+      "managerIds",
+    );
+  });
+});
+
+describe("an office without a desk (N9)", () => {
+  it("puts someone in an office without a desk, with the office's time zone", async () => {
+    const { id } = await savePerson(t.db, ACTOR, personInput({ officeId: "loc_sf" }));
+    const row = await t.db.query.person.findFirst({ where: eq(s.person.id, id) });
+    expect(row).toMatchObject({ officeId: "loc_sf", homeTimezone: "America/Los_Angeles" });
+  });
+
+  it("doesn't store an office for someone with a desk", async () => {
+    const { id } = await savePerson(t.db, ACTOR, personInput({ officeId: "loc_sf", assignedDeskId: "sp_sf_2_016" }));
+    expect((await t.db.query.person.findFirst({ where: eq(s.person.id, id) }))?.officeId).toBeNull();
+  });
+});
+
+describe("saveOwnProfile", () => {
+  it("changes only the self-editable fields, and audits the person as the actor", async () => {
+    const before = (await getPersonForEdit(t.db, "p_bob"))!;
+    // Parsed as the server action does, which canonicalizes the time zone and the accounts.
+    const input = selfProfileSchema.parse({
+      preferredName: "Bobby",
+      phone: "(415) 555-0188",
+      homeTimezone: "america/denver",
+      identities: { github: "@Bobby" },
+    });
+    await saveOwnProfile(t.db, "bob@example.com", input);
+    const after = (await getPersonForEdit(t.db, "p_bob"))!;
+    expect(after).toEqual({
+      ...before,
+      preferredName: "Bobby",
+      phone: "+14155550188",
+      homeTimezone: "America/Denver",
+      identities: { github: "bobby" },
+    });
+    const [entry] = await listAudit(t.db, { entity: "person" });
+    expect(entry).toMatchObject({ actorEmail: "bob@example.com", entityId: "p_bob", action: "update" });
+  });
+
+  it("reads a phone number in the person's own home country", async () => {
+    // Jane is based in Ontario, so a local number is Canadian.
+    await saveOwnProfile(t.db, "jane@example.com", {
+      preferredName: null,
+      phone: "416-555-0123",
+      homeTimezone: "America/Toronto",
+      identities: {},
+    });
+    expect((await findOwnProfile(t.db, "jane@example.com"))?.form.phone).toBe("+14165550123");
+  });
+
+  it("refuses an account someone else has, and someone who isn't in the directory", async () => {
+    await expectValidation(
+      saveOwnProfile(t.db, "max@example.com", {
+        preferredName: null,
+        phone: null,
+        homeTimezone: null,
+        identities: { github: "bob-lindqvist" },
+      }),
+      /Bob Lindqvist already has this GitHub account/,
+      "identities.github",
+    );
+    await expectValidation(
+      saveOwnProfile(t.db, "stranger@example.com", { preferredName: null, phone: null, homeTimezone: null, identities: {} }),
+      /isn't linked to a person/,
+    );
+    expect(await findOwnProfile(t.db, "stranger@example.com")).toBeNull();
+  });
+});
+
+describe("bulkUpdatePeople", () => {
+  it("deactivates several people in one go, with an audit entry each", async () => {
+    await bulkUpdatePeople(t.db, ACTOR, ["p_bob", "p_priya", "p_sam"], { active: false });
+    const rows = await t.db.select({ id: s.person.id, active: s.person.active }).from(s.person);
+    expect(rows.filter((r) => !r.active).map((r) => r.id).sort()).toEqual(["p_bob", "p_priya", "p_sam"]);
+    const audit = await listAudit(t.db, { entity: "person" });
+    expect(audit.map((a) => a.entityId).sort()).toEqual(["p_bob", "p_priya", "p_sam"]);
+  });
+
+  it("rejects the whole batch when one manager change would loop, naming the person", async () => {
+    // Bob reports to Max, so Max can't report to Bob. Priya would have been fine.
+    await expectValidation(
+      bulkUpdatePeople(t.db, ACTOR, ["p_priya", "p_max"], { managerId: "p_bob" }),
+      /^Max Osei: Bob Lindqvist reports .* Nothing was changed\.$/,
+    );
+    expect((await getPersonForEdit(t.db, "p_priya"))?.managerIds).toEqual(["p_max"]);
+    expect(await listAudit(t.db)).toEqual([]);
+  });
+
+  it("adds a team to several people, keeping their other teams", async () => {
+    await bulkUpdatePeople(t.db, ACTOR, ["p_bob", "p_sam"], { addTeamIds: ["t_payroll"] });
+    expect((await getPersonForEdit(t.db, "p_bob"))?.teamIds.sort()).toEqual(["t_hr", "t_payroll"]);
+    expect((await getPersonForEdit(t.db, "p_sam"))?.teamIds.sort()).toEqual(["t_payroll", "t_recruiting"]);
+  });
+});
+
+describe("inherited team memberships", () => {
+  const membershipsOf = async (personId: string) =>
+    (await t.db.select().from(s.teamMember).where(eq(s.teamMember.personId, personId)))
+      .map((m) => `${m.teamId}:${m.source}`)
+      .sort();
+
+  it("makes a member of a sub-team an inherited member of the teams above", async () => {
+    expect(await membershipsOf("p_priya")).toEqual(["t_hr:inherited", "t_recruiting:explicit"]);
+    // Bob chose HR as well as Payroll, so his HR membership stays explicit.
+    expect(await membershipsOf("p_bob")).toEqual(["t_hr:explicit", "t_payroll:explicit"]);
+  });
+
+  it("removes the inherited membership with the last sub-team one, but keeps an explicit one", async () => {
+    const priya = (await getPersonForEdit(t.db, "p_priya"))!;
+    expect(priya.teamIds).toEqual(["t_recruiting"]);
+    await savePerson(t.db, ACTOR, { ...priya, teamIds: [], primaryTeamId: null }, "p_priya");
+    expect(await membershipsOf("p_priya")).toEqual([]);
+
+    const bob = (await getPersonForEdit(t.db, "p_bob"))!;
+    await savePerson(t.db, ACTOR, { ...bob, teamIds: ["t_hr"], primaryTeamId: "t_hr" }, "p_bob");
+    expect(await membershipsOf("p_bob")).toEqual(["t_hr:explicit"]);
+  });
+
+  it("moves inherited memberships when a team moves", async () => {
+    const { id: finance } = await saveTeam(t.db, ACTOR, teamInput({ slug: "finance", name: "Finance" }));
+    const payroll = (await getTeamForEdit(t.db, "t_payroll"))!;
+    await saveTeam(t.db, ACTOR, { ...payroll, parentTeamId: finance }, "t_payroll");
+    expect(await membershipsOf("p_bob")).toEqual(
+      [`${finance}:inherited`, "t_hr:explicit", "t_payroll:explicit"].sort(),
+    );
+  });
+
+  it("counts inherited members in the teams list", async () => {
+    const hr = (await listTeamsForAdmin(t.db)).find((team) => team.id === "t_hr");
+    // Jane, Max and Bob chose HR; Priya and Sam are in it through Recruiting.
+    expect(hr?.memberCount).toBe(5);
   });
 });
 

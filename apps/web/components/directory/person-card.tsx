@@ -1,6 +1,8 @@
 import Link from "next/link";
-import type { DirectoryPerson } from "@officeorg/core/directory/model";
-import { displayName, initials } from "@officeorg/core/directory/filter";
+import type { DirectoryPerson } from "@orov/core/directory/model";
+import { displayName, personInitials } from "@orov/core/directory/filter";
+import { identityLinks } from "@orov/core/people/identities";
+import { TeamChip } from "../team-chip";
 import { LocationLabel } from "./location-label";
 
 interface Props {
@@ -13,6 +15,7 @@ interface Props {
 // Presence and chat buttons arrive in Phases 4 and 5.
 export function PersonCard({ person, onSelectPerson, onClose }: Props) {
   const name = displayName(person);
+  const links = identityLinks(person.identities);
   return (
     <aside aria-label={`${name} details`} className="rounded-lg border border-border p-5">
       <div className="flex items-start gap-4">
@@ -20,7 +23,7 @@ export function PersonCard({ person, onSelectPerson, onClose }: Props) {
           aria-hidden="true"
           className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-muted text-sm font-semibold text-fg"
         >
-          {initials(name)}
+          {personInitials(person)}
         </div>
         <div className="min-w-0 flex-1">
           <h2 className="text-lg font-heading">{name}</h2>
@@ -61,17 +64,19 @@ export function PersonCard({ person, onSelectPerson, onClose }: Props) {
             "No desk assigned"
           )}
         </Field>
-        <Field label="Manager">
-          {person.manager ? (
-            <button
-              type="button"
-              onClick={() => onSelectPerson(person.manager!.id)}
-              className="underline underline-offset-4"
-            >
-              {person.manager.name}
-            </button>
-          ) : (
+        <Field label={person.managers.length > 1 ? "Managers" : "Manager"}>
+          {person.managers.length === 0 ? (
             "—"
+          ) : (
+            <ul className="flex flex-wrap gap-x-3">
+              {person.managers.map((m) => (
+                <li key={m.id}>
+                  <button type="button" onClick={() => onSelectPerson(m.id)} className="underline underline-offset-4">
+                    {m.name}
+                  </button>
+                </li>
+              ))}
+            </ul>
           )}
         </Field>
         <Field label="Teams">
@@ -80,20 +85,44 @@ export function PersonCard({ person, onSelectPerson, onClose }: Props) {
           ) : (
             <ul className="flex flex-wrap gap-1.5">
               {person.teams.map((t) => (
-                <li
-                  key={t.id}
-                  className={`rounded px-2 py-0.5 text-xs ${
-                    t.isPrimary ? "bg-primary font-medium text-primary-fg" : "bg-muted text-fg"
-                  }`}
-                >
-                  {t.name}
-                  {t.isPrimary ? " (primary)" : ""}
+                <li key={t.id}>
+                  <TeamChip team={t} labelPrimary />
                 </li>
               ))}
             </ul>
           )}
         </Field>
+        {person.phone ? (
+          <Field label="Phone">
+            {person.phone.uri ? (
+              <a href={person.phone.uri} className="underline underline-offset-4">
+                {person.phone.label}
+              </a>
+            ) : (
+              person.phone.label
+            )}
+          </Field>
+        ) : null}
         <Field label="Home timezone">{person.homeTimezone ?? "—"}</Field>
+        {links.length > 0 ? (
+          <Field label="Accounts">
+            <ul className="flex flex-wrap gap-x-4 gap-y-1">
+              {links.map((link) => (
+                <li key={link.provider}>
+                  <a
+                    href={link.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label={`${link.label}: ${link.value} (opens in a new tab)`}
+                    className="underline underline-offset-4"
+                  >
+                    {link.label}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </Field>
+        ) : null}
       </dl>
     </aside>
   );

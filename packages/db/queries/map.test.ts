@@ -52,12 +52,15 @@ describe("loadMap", () => {
   });
 
   it("lists offices and floors for navigation, with regions in the viewer's style", async () => {
-    const map = await loadMap(t.db, { loc: null, floor: null }, "code");
+    const map = await loadMap(t.db, { loc: null, floor: null }, { display: "code", flag: true });
     expect(map.locations).toEqual([
       {
         slug: "sf",
         name: "San Francisco",
         regionLabel: "US-CA",
+        regionFlag: "🇺🇸",
+        regionFlagOnly: false,
+        floorLabels: { singular: "Floor", plural: "Floors" },
         floors: [
           { slug: "2", name: "Floor 2", level: 2, hasDrawing: true, deskCount: 13, roomCount: 3 },
           { slug: "3", name: "Floor 3", level: 3, hasDrawing: true, deskCount: 8, roomCount: 2 },

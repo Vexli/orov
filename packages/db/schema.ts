@@ -40,10 +40,11 @@ export const presenceStatus = pgEnum("presence_status", [
   "unknown",
 ]);
 
+// Vendor-neutral: which tool a signal came from is presence_signal.provider.
 export const presenceSource = pgEnum("presence_source", [
-  "slack_message",
-  "gcal_ooo",
-  "gcal_working_location",
+  "message",
+  "calendar_ooo",
+  "calendar_working_location",
   "manual",
 ]);
 
@@ -57,6 +58,9 @@ export const presenceDateScope = pgEnum("presence_date_scope", [
   "tomorrow",
   "parse",
 ]);
+
+// Whether a membership was chosen, or follows from one in a sub-team (#23).
+export const membershipSource = pgEnum("membership_source", ["explicit", "inherited"]);
 
 export const roomState = pgEnum("room_state", ["free", "busy", "soon"]);
 
@@ -77,7 +81,11 @@ export const regionDisplay = pgEnum("region_display", [
   "country",
   "region",
   "country_region",
+  "flag",
 ]);
+
+// Mirrors DATE_FORMATS in packages/core/dates/format.ts.
+export const dateFormat = pgEnum("date_format", ["iso", "dmy", "mdy"]);
 
 // A region column holds an ISO 3166-1 alpha-2 country ("US") or an ISO 3166-2 subdivision
 // ("US-CA"). The database checks the shape; the app checks the code exists, because the
@@ -112,8 +120,14 @@ export const location = pgTable(
     name: text("name").notNull(),
     timezone: text("timezone").notNull(),
     region: text("region").notNull(),
-    googleBuildingId: text("google_building_id"),
+    // The building's id in the room or calendar provider (Google buildingId, Microsoft Graph place).
+    externalBuildingId: text("external_building_id"),
     sortOrder: integer("sort_order").notNull().default(0),
+    // What this office calls its floors, e.g. Building/Buildings on a campus (#16).
+    floorLabelSingular: text("floor_label_singular").notNull().default("Floor"),
+    floorLabelPlural: text("floor_label_plural").notNull().default("Floors"),
+    // Archiving an office archives its floors too (#22).
+    archivedAt: timestamp("archived_at", { withTimezone: true }),
   },
   (t) => [check("location_region_iso3166", regionShape(t.region))],
 );
@@ -184,7 +198,9 @@ export const space = pgTable(
     // Human-readable code, for example "SF-2-014". Shown on cards and in CSV imports.
     name: text("name").notNull(),
     capacity: integer("capacity"),
-    googleResourceEmail: text("google_resource_email").unique(),
+    // The room's id in the calendar provider: a Google resource email, a Microsoft Graph room
+    // address, or a booking tool's room id.
+    calendarResourceId: text("calendar_resource_id").unique(),
     archivedAt: timestamp("archived_at", { withTimezone: true }),
   },
   (t) => [
@@ -201,17 +217,28 @@ export const person = pgTable(
   {
     id: id("p"),
     email: text("email").notNull().unique(),
-    name: text("name").notNull(),
+    givenName: text("given_name").notNull(),
+    // Null for someone with a single name.
+    familyName: text("family_name"),
+    // The full name, kept in step by the database so every reader of `name` (search, the org
+    // chart, the map) works unchanged. Write givenName and familyName instead.
+    name: text("name")
+      .notNull()
+      .generatedAlwaysAs(
+        sql`CASE WHEN family_name IS NULL OR family_name = '' THEN given_name ELSE given_name || ' ' || family_name END`,
+      ),
     preferredName: text("preferred_name"),
     title: text("title"),
     photoUrl: text("photo_url"),
     phone: text("phone"),
     homeRegion: text("home_region").notNull(),
     homeTimezone: text("home_timezone"),
-    managerId: text("manager_id").references((): AnyPgColumn => person.id),
     assignedDeskId: text("assigned_desk_id").references(() => space.id),
-    slackUserId: text("slack_user_id").unique(),
+    // The office of someone without a desk (N9). Null with a desk, whose office it is.
+    officeId: text("office_id").references(() => location.id),
     startDate: date("start_date"),
+    // The last working day (N6). Admin-only.
+    endDate: date("end_date"),
     active: boolean("active").notNull().default(true),
     ...timestamps,
   },
@@ -220,8 +247,40 @@ export const person = pgTable(
     uniqueIndex("person_assigned_desk")
       .on(t.assignedDeskId)
       .where(sql`${t.assignedDeskId} is not null`),
-    index("person_manager").on(t.managerId),
     check("person_home_region_iso3166", regionShape(t.homeRegion)),
+  ],
+);
+
+// Whom each person reports to (N1): any number of managers, all equal. `position` keeps the order
+// they were given in; the org chart draws someone's own node under the first.
+export const personManager = pgTable(
+  "person_manager",
+  {
+    personId: text("person_id")
+      .notNull()
+      .references((): AnyPgColumn => person.id, { onDelete: "cascade" }),
+    managerId: text("manager_id")
+      .notNull()
+      .references((): AnyPgColumn => person.id, { onDelete: "cascade" }),
+    position: integer("position").notNull().default(0),
+  },
+  (t) => [primaryKey({ columns: [t.personId, t.managerId] }), index("person_manager_manager").on(t.managerId)],
+);
+
+// Other accounts a person has, by provider id from packages/core/people/identities.ts: profile
+// links (github, linkedin, …) and, later, messaging-tool ids. One account belongs to one person.
+export const personIdentity = pgTable(
+  "person_identity",
+  {
+    personId: text("person_id")
+      .notNull()
+      .references(() => person.id, { onDelete: "cascade" }),
+    provider: text("provider").notNull(),
+    value: text("value").notNull(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.personId, t.provider] }),
+    uniqueIndex("person_identity_provider_value").on(t.provider, t.value),
   ],
 );
 
@@ -233,7 +292,8 @@ export const team = pgTable(
     name: text("name").notNull(),
     parentTeamId: text("parent_team_id").references((): AnyPgColumn => team.id),
     leadId: text("lead_id").references(() => person.id),
-    slackChannelId: text("slack_channel_id"),
+    // In the deployment's messaging provider (MESSAGING_PROVIDER), so no provider column.
+    chatChannelId: text("chat_channel_id"),
     color: text("color"),
   },
   (t) => [index("team_parent").on(t.parentTeamId)],
@@ -249,6 +309,9 @@ export const teamMember = pgTable(
       .notNull()
       .references(() => team.id, { onDelete: "cascade" }),
     isPrimary: boolean("is_primary").notNull().default(false),
+    // A member of a sub-team is also an "inherited" member of every team above it. Those rows
+    // are derived (syncInheritedMemberships) and never primary.
+    source: membershipSource("source").notNull().default("explicit"),
   },
   (t) => [
     primaryKey({ columns: [t.personId, t.teamId] }),
@@ -269,14 +332,16 @@ export const presenceSignal = pgTable(
     date: date("date").notNull(),
     status: presenceStatus("status").notNull(),
     source: presenceSource("source").notNull(),
+    // The tool the signal came from: "slack", "google", "microsoft", "manual", …
+    provider: text("provider").notNull(),
     sourceRef: text("source_ref").notNull(),
     note: text("note"),
     observedAt: timestamp("observed_at", { withTimezone: true }).notNull(),
     retractedAt: timestamp("retracted_at", { withTimezone: true }),
   },
-  // Idempotent upserts: the same Slack message or calendar event never produces two rows.
+  // Idempotent upserts: the same chat message or calendar event never produces two rows.
   (t) => [
-    uniqueIndex("presence_signal_source").on(t.source, t.sourceRef, t.date),
+    uniqueIndex("presence_signal_source").on(t.provider, t.source, t.sourceRef, t.date),
   ],
 );
 
@@ -315,16 +380,22 @@ export const roomStatus = pgTable("room_status", {
   checkedAt: timestamp("checked_at", { withTimezone: true }).notNull(),
 });
 
-export const slackUserToken = pgTable("slack_user_token", {
-  personId: text("person_id")
-    .primaryKey()
-    .references(() => person.id, { onDelete: "cascade" }),
-  encryptedToken: text("encrypted_token").notNull(),
-  scopes: text("scopes").notNull(),
-  createdAt: timestamp("created_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-});
+// A person's own token for a messaging provider, for actions taken as them (group DMs).
+export const messagingUserToken = pgTable(
+  "messaging_user_token",
+  {
+    personId: text("person_id")
+      .notNull()
+      .references(() => person.id, { onDelete: "cascade" }),
+    provider: text("provider").notNull(),
+    encryptedToken: text("encrypted_token").notNull(),
+    scopes: text("scopes").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [primaryKey({ columns: [t.personId, t.provider] })],
+);
 
 export const appUser = pgTable("app_user", {
   email: text("email").primaryKey(),
@@ -333,6 +404,10 @@ export const appUser = pgTable("app_user", {
   regionDisplay: regionDisplay("region_display")
     .notNull()
     .default("country_region"),
+  // Whether region labels get the country's flag in front (#28).
+  regionFlag: boolean("region_flag").notNull().default(false),
+  // How this user sees dates and times (#27).
+  dateFormat: dateFormat("date_format").notNull().default("iso"),
   lastSeenAt: timestamp("last_seen_at", { withTimezone: true }),
 });
 
@@ -424,14 +499,21 @@ export const spaceRelations = relations(space, ({ one }) => ({
 }));
 
 export const personRelations = relations(person, ({ one, many }) => ({
-  manager: one(person, {
-    fields: [person.managerId],
-    references: [person.id],
-    relationName: "manager",
-  }),
-  reports: many(person, { relationName: "manager" }),
+  managers: many(personManager, { relationName: "managers" }),
+  reports: many(personManager, { relationName: "reports" }),
   assignedDesk: one(space, { fields: [person.assignedDeskId], references: [space.id] }),
+  office: one(location, { fields: [person.officeId], references: [location.id] }),
   teamMembers: many(teamMember),
+  identities: many(personIdentity),
+}));
+
+export const personManagerRelations = relations(personManager, ({ one }) => ({
+  person: one(person, { fields: [personManager.personId], references: [person.id], relationName: "managers" }),
+  manager: one(person, { fields: [personManager.managerId], references: [person.id], relationName: "reports" }),
+}));
+
+export const personIdentityRelations = relations(personIdentity, ({ one }) => ({
+  person: one(person, { fields: [personIdentity.personId], references: [person.id] }),
 }));
 
 export const teamRelations = relations(team, ({ one, many }) => ({

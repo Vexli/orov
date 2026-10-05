@@ -1,9 +1,9 @@
 import NextAuth from "next-auth";
 import { authConfig } from "./auth.config";
 import { getAuthSetup } from "./auth-providers";
-import { canSignIn, isBootstrapAdmin } from "@officeorg/core";
-import { getDb } from "@officeorg/db/client";
-import { recordSignIn } from "@officeorg/db/queries/app-users";
+import { canSignIn, isBootstrapAdmin } from "@orov/core";
+import { getDb } from "@orov/db/client";
+import { recordSignIn } from "@orov/db/queries/app-users";
 
 function adminEmails(): string[] {
   return (process.env.ADMIN_EMAILS ?? "")

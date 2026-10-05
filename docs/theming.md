@@ -1,10 +1,10 @@
-# Theming OfficeOrg
+# Theming OrOv
 
 This guide is for designers who keep the brand's design tokens, and for the admin who imports
-them. OfficeOrg can take your colors, fonts, corner radius, spacing and density from a design
+them. OrOv can take your colors, fonts, corner radius, spacing and density from a design
 token file, without any code change, so the directory, floor map and org chart match the brand.
 
-OfficeOrg never uses your token names directly. Every part of the app is styled through a fixed
+OrOv never uses your token names directly. Every part of the app is styled through a fixed
 list of **slots** (`bg`, `primary`, `room.busy`, …). Importing a theme means mapping your tokens
 onto those slots. Any slot you don't map keeps its default, so a partial theme still works.
 
@@ -14,7 +14,7 @@ so it's always a complete, valid example of the format.
 
 ## Exporting tokens
 
-OfficeOrg reads the [W3C design tokens format (DTCG)](https://www.designtokens.org) and the older
+OrOv reads the [W3C design tokens format (DTCG)](https://www.designtokens.org) and the older
 Tokens Studio JSON format. You can give it one file or several.
 
 | Tool                                 | How to export                                                                                                                                                                                                 |
@@ -35,7 +35,7 @@ the order sets apply in). The set's name decides when it applies:
 - Every other set (`core`, `Global`, `brand`) is a **base** that applies in both modes, before
   the mode's own sets. A later set overrides a token of the same name from an earlier one.
 
-A single token can also carry both values itself, which is how OfficeOrg's own export writes
+A single token can also carry both values itself, which is how OrOv's own export writes
 them:
 
 ```json
@@ -156,7 +156,7 @@ rebuilt from its parts, never copied into the page as written.
 
 ## Mapping tokens onto slots
 
-OfficeOrg suggests a token for each slot from the token's name and type, and the admin can change
+OrOv suggests a token for each slot from the token's name and type, and the admin can change
 any of them. A token is only offered for a slot of the same kind: a color token for a color
 slot, a dimension for a size, and so on.
 
@@ -178,7 +178,7 @@ it:
 
 - a slot mapped to a token with a dark value uses that value in dark mode;
 - a slot mapped to a token with only one value uses it in both modes;
-- a slot left unmapped keeps OfficeOrg's default dark value.
+- a slot left unmapped keeps OrOv's default dark value.
 
 A light-only theme looks the same whatever the viewer's setting.
 
@@ -240,21 +240,21 @@ used everywhere. Without any logo, the header shows the app name.
 
 To use a brand font, upload each weight you need with its family name, tick it, and name the
 family in `font.sans` or `font.mono`, such as `Acme Sans, sans-serif`. If a font list has no
-generic family (`sans-serif`, `monospace`, `system-ui`, …), OfficeOrg adds `sans-serif` to
+generic family (`sans-serif`, `monospace`, `system-ui`, …), OrOv adds `sans-serif` to
 `font.sans` and `monospace` to `font.mono`, so text never falls back to a serif.
 
 ## The default theme for a deployment
 
-Until an admin applies a theme, OfficeOrg uses its own defaults, the values in
+Until an admin applies a theme, OrOv uses its own defaults, the values in
 `theme/default.tokens.json`. To ship a deployment with the brand already in place, point the
 `THEME_TOKENS_PATH` environment variable at a token file on the server:
 
 ```sh
-THEME_TOKENS_PATH=/etc/officeorg/brand.tokens.json
+THEME_TOKENS_PATH=/etc/orov/brand.tokens.json
 ```
 
 That file is mapped by name only: a token whose path is a slot name sets that slot, and nothing
-else is suggested. A theme exported from OfficeOrg has exactly that shape, and so does
+else is suggested. A theme exported from OrOv has exactly that shape, and so does
 `theme/default.tokens.json`, which makes a good starting point. The file is read once when the
 server starts. If it can't be read or has errors, the server logs why and uses the built-in
 defaults; contrast failures are logged as a warning but don't stop it.

@@ -1,12 +1,12 @@
 import { defineConfig, devices } from "@playwright/test";
 import { E2E_AUTH_SECRET } from "./support/constants";
 
-// The suite runs the production build against the officeorg_e2e database (see docker/postgres/init.sql).
+// The suite runs the production build against the orov_e2e database (see docker/postgres/init.sql).
 // Global setup migrates it once. Each spec reseeds it in beforeEach, so specs don't depend on order.
 const PORT = Number(process.env.E2E_PORT ?? 3100);
 const BASE_URL = `http://localhost:${PORT}`;
 const E2E_DATABASE_URL =
-  process.env.E2E_DATABASE_URL ?? "postgres://officeorg:officeorg@localhost:5432/officeorg_e2e";
+  process.env.E2E_DATABASE_URL ?? "postgres://orov:orov@localhost:5432/orov_e2e";
 
 export default defineConfig({
   testDir: "./specs",
@@ -24,7 +24,7 @@ export default defineConfig({
   webServer: {
     // Migrates first, as the web container does: every page reads the active theme, so the
     // server can't answer the readiness check until the schema is current.
-    command: `pnpm --filter @officeorg/db db:migrate && pnpm --filter @officeorg/web build && pnpm --filter @officeorg/web start -H localhost -p ${PORT}`,
+    command: `pnpm --filter @orov/db db:migrate && pnpm --filter @orov/web build && pnpm --filter @orov/web start -H localhost -p ${PORT}`,
     url: BASE_URL,
     reuseExistingServer: !process.env.CI,
     timeout: 300_000,

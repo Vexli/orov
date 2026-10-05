@@ -5,20 +5,29 @@ import type { CsvIssue } from "../csv/parse";
 import type { ValidTeamRow } from "../csv/teams";
 import { summarize, type ImportPlan, type PlannedRow } from "./plan";
 
+// `skip` holds line numbers the admin left out, as in planPeopleImport.
 export function planTeamsImport(
   rows: ValidTeamRow[],
   parseIssues: CsvIssue[],
   existing: Map<string, TeamRecord>,
+  skip: ReadonlySet<number> = new Set(),
 ): ImportPlan<TeamRecord> {
   const planned: PlannedRow<TeamRecord>[] = [];
   const desired = new Map<string, ValidTeamRow>();
   const errors = new Map<string, string>();
+  const skippedLine = new Map<string, number>();
 
   for (const issue of parseIssues) {
-    planned.push({ line: issue.line, key: `line ${issue.line}`, action: "error", changes: [], message: issue.message });
+    const action = skip.has(issue.line) ? "skipped" : "error";
+    planned.push({ line: issue.line, key: `line ${issue.line}`, action, changes: [], message: issue.message });
   }
 
   for (const row of rows) {
+    if (skip.has(row.line)) {
+      planned.push({ line: row.line, key: row.record.slug, action: "skipped", changes: [] });
+      if (!skippedLine.has(row.record.slug)) skippedLine.set(row.record.slug, row.line);
+      continue;
+    }
     const prior = desired.get(row.record.slug);
     if (prior) {
       planned.push({
@@ -44,7 +53,13 @@ export function planTeamsImport(
     if (rec.parentSlug !== null) {
       if (rec.parentSlug === slug) errors.set(slug, "parent_slug cannot be the team itself");
       else if (!desired.has(rec.parentSlug) && !existing.has(rec.parentSlug)) {
-        errors.set(slug, `parent team "${rec.parentSlug}" is not in the file or the database`);
+        const line = skippedLine.get(rec.parentSlug);
+        errors.set(
+          slug,
+          line !== undefined
+            ? `parent team "${rec.parentSlug}" is on line ${line}, which is skipped`
+            : `parent team "${rec.parentSlug}" is not in the file or the database`,
+        );
       } else if (reachesAncestor(finalParent, rec.parentSlug, slug)) {
         errors.set(slug, `parent chain loops back to ${slug}`);
       }
@@ -80,5 +95,5 @@ export function planTeamsImport(
 }
 
 function emptyTeam(slug: string): TeamRecord {
-  return { slug, name: "", parentSlug: null, slackChannelId: null, color: null };
+  return { slug, name: "", parentSlug: null, chatChannelId: null, color: null };
 }

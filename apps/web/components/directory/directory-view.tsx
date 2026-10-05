@@ -8,16 +8,19 @@ import {
   getCoreRowModel,
   useReactTable,
 } from "@tanstack/react-table";
-import type { DirectoryPerson, DirectoryTeam } from "@officeorg/core/directory/model";
+import type { DirectoryPerson, DirectoryTeam } from "@orov/core/directory/model";
 import {
   displayName,
   filterDirectory,
   locationText,
   type DirectoryFilters,
-} from "@officeorg/core/directory/filter";
+} from "@orov/core/directory/filter";
 import { directoryParsers } from "@/lib/url-state";
 import { LocationLabel } from "./location-label";
+import { TeamChip } from "../team-chip";
+import { FLOATING_PANEL_GUTTER, FloatingPanel } from "../view-bar";
 import { PersonCard } from "./person-card";
+import { sortByName } from "@orov/core/people/names";
 
 interface Props {
   people: DirectoryPerson[];
@@ -62,11 +65,8 @@ const columns = [
     cell: (info) => (
       <ul className="flex flex-wrap gap-1">
         {info.row.original.teams.map((t) => (
-          <li
-            key={t.id}
-            className={`rounded px-1.5 py-0.5 text-xs ${t.isPrimary ? "bg-primary text-primary-fg" : "bg-muted"}`}
-          >
-            {t.name}
+          <li key={t.id}>
+            <TeamChip team={t} />
           </li>
         ))}
       </ul>
@@ -75,7 +75,7 @@ const columns = [
   helper.accessor((p) => locationText(p), {
     id: "location",
     header: "Location",
-    cell: (info) => <LocationLabel person={info.row.original} />,
+    cell: (info) => <LocationLabel person={info.row.original} linkDesk />,
   }),
 ];
 
@@ -117,7 +117,8 @@ export function DirectoryView({ people, teams, locations }: Props) {
   const hasFilters = params.q !== "" || params.team !== null || params.loc !== null || params.desk;
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
+    // Full width (N2); the card floats at the right while someone is selected.
+    <div className={selected ? FLOATING_PANEL_GUTTER : undefined}>
       <section aria-label="People directory" className="min-w-0">
         <h1 className="text-xl font-heading">Directory</h1>
 
@@ -137,7 +138,7 @@ export function DirectoryView({ people, teams, locations }: Props) {
             className="rounded-md border border-border bg-transparent px-3 py-2 text-sm"
           >
             <option value="">All teams</option>
-            {teams.map((t) => (
+            {sortByName(teams).map((t) => (
               <option key={t.id} value={t.id}>
                 {t.name}
               </option>
@@ -209,12 +210,19 @@ export function DirectoryView({ people, teams, locations }: Props) {
               {table.getRowModel().rows.map((row) => {
                 const isSelected = row.original.id === params.person;
                 return (
+                  // The whole row is a click target for pointer users. The name button stays the
+                  // keyboard and screen reader route, so rows aren't focusable themselves. A click
+                  // on a link or button inside (the desk link) does its own thing instead.
                   <tr
                     key={row.id}
                     id={`person-row-${row.original.id}`}
-                    aria-selected={isSelected}
-                    className={`border-b border-border align-top last:border-0 ${
-                      isSelected ? "bg-accent" : ""
+                    aria-current={isSelected ? "true" : undefined}
+                    onClick={(e) => {
+                      if ((e.target as Element).closest("a,button,input,select")) return;
+                      meta.selectPerson(row.original.id);
+                    }}
+                    className={`cursor-pointer border-b border-border align-top last:border-0 ${
+                      isSelected ? "bg-accent" : "hover:bg-muted"
                     }`}
                   >
                     {row.getVisibleCells().map((cell) => (
@@ -237,19 +245,15 @@ export function DirectoryView({ people, teams, locations }: Props) {
         </div>
       </section>
 
-      <div className="lg:sticky lg:top-6 lg:self-start">
-        {selected ? (
+      {selected ? (
+        <FloatingPanel>
           <PersonCard
             person={selected}
             onSelectPerson={(id) => setParams({ person: id })}
             onClose={() => setParams({ person: null })}
           />
-        ) : (
-          <p className="rounded-lg border border-dashed border-border p-5 text-sm text-muted-fg">
-            Select someone to see their card.
-          </p>
-        )}
-      </div>
+        </FloatingPanel>
+      ) : null}
     </div>
   );
 }

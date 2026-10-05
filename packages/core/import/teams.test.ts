@@ -3,10 +3,10 @@ import type { TeamRecord } from "../records";
 import { parseTeamsCsv } from "../csv/teams";
 import { planTeamsImport } from "./teams";
 
-const HEADER = "slug,name,parent_slug,slack_channel_id,color";
+const HEADER = "slug,name,parent_slug,chat_channel_id,color";
 
 function team(slug: string, parentSlug: string | null = null): TeamRecord {
-  return { slug, name: slug.toUpperCase(), parentSlug, slackChannelId: null, color: null };
+  return { slug, name: slug.toUpperCase(), parentSlug, chatChannelId: null, color: null };
 }
 
 function run(body: string, existing: TeamRecord[] = []) {
@@ -37,5 +37,12 @@ describe("planTeamsImport", () => {
     const plan = run("hr,People,,,\n", [team("hr")]);
     expect(plan.rows[0]?.action).toBe("update");
     expect(plan.rows[0]?.changes).toEqual([{ field: "name", before: "HR", after: "People" }]);
+  });
+
+  it("flags a team whose parent is on a skipped line", () => {
+    const parsed = parseTeamsCsv(`${HEADER}\nfin,Finance,,,\npay,Payroll,fin,,\n`);
+    const plan = planTeamsImport(parsed.rows, parsed.issues, new Map(), new Set([2]));
+    expect(plan.rows.map((r) => r.action)).toEqual(["skipped", "error"]);
+    expect(plan.rows[1]?.message).toBe('parent team "fin" is on line 2, which is skipped');
   });
 });

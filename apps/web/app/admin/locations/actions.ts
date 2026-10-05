@@ -1,10 +1,18 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { floorFormSchema, locationFormSchema } from "@officeorg/core";
-import { getDb } from "@officeorg/db/client";
-import { ValidationError } from "@officeorg/db/queries/errors";
-import { saveFloor, saveLocation } from "@officeorg/db/queries/floors";
+import { floorFormSchema, locationFormSchema } from "@orov/core";
+import { getDb } from "@orov/db/client";
+import { ValidationError } from "@orov/db/queries/errors";
+import {
+  deleteFloor,
+  deleteLocation,
+  DesklessConfirmationNeeded,
+  saveFloor,
+  saveLocation,
+  setFloorArchived,
+  setLocationArchived,
+} from "@orov/db/queries/floors";
 import { requireAdmin } from "@/lib/session";
 
 export type SpaceSaveState =
@@ -52,4 +60,44 @@ export async function saveFloorAction(
       return { ok: false, error: error.message, field: error.field };
     throw error;
   }
+}
+
+// Archiving, unarchiving and deleting offices and floors (#22).
+export type ArchiveState =
+  | { ok: true }
+  | { ok: false; error: string; // People who would lose their desk, when the admin hasn't confirmed yet.
+      deskless?: string[] };
+
+type Target = { kind: "floor" | "office"; id: string };
+
+async function run(work: () => Promise<void>): Promise<ArchiveState> {
+  try {
+    await work();
+  } catch (error) {
+    if (error instanceof DesklessConfirmationNeeded) return { ok: false, error: error.message, deskless: error.people };
+    if (error instanceof ValidationError) return { ok: false, error: error.message };
+    throw error;
+  }
+  // Floors and offices appear in the map, directory filters, search and admin pages.
+  revalidatePath("/", "layout");
+  return { ok: true };
+}
+
+export async function setArchivedAction(target: Target, archived: boolean, confirmDeskless: boolean): Promise<ArchiveState> {
+  const user = await requireAdmin();
+  const options = { confirmDeskless: confirmDeskless === true };
+  return run(() =>
+    target.kind === "floor"
+      ? setFloorArchived(getDb(), user.email, String(target.id), archived === true, options)
+      : setLocationArchived(getDb(), user.email, String(target.id), archived === true, options),
+  );
+}
+
+export async function deleteAction(target: Target): Promise<ArchiveState> {
+  const user = await requireAdmin();
+  return run(() =>
+    target.kind === "floor"
+      ? deleteFloor(getDb(), user.email, String(target.id))
+      : deleteLocation(getDb(), user.email, String(target.id)),
+  );
 }

@@ -28,6 +28,14 @@ describe("search", () => {
     ]);
   });
 
+  it("matches the full name built from the given and family names", async () => {
+    expect((await search(t.db, "Lindqvist")).people.map((p) => p.id)).toEqual(["p_bob"]);
+    expect((await search(t.db, "Bob L")).people.map((p) => p.id)).toEqual(["p_bob"]);
+    // A name change shows up straight away, since the database keeps the full name in step.
+    await t.db.update(s.person).set({ familyName: "Lind" }).where(eq(s.person.id, "p_bob"));
+    expect((await search(t.db, "Bob Lind")).people[0]).toMatchObject({ id: "p_bob", name: "Bob Lind" });
+  });
+
   it("forgives a typo through pg_trgm", async () => {
     expect((await search(t.db, "lindqvst")).people.map((p) => p.id)).toEqual(["p_bob"]);
     expect((await search(t.db, "recruting")).teams.map((t) => t.id)).toEqual(["t_recruiting"]);

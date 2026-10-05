@@ -12,15 +12,22 @@ const teams: DirectoryTeam[] = [
 const person = (id: string, teamIds: string[]): DirectoryPerson => ({
   id,
   name: id,
+  givenName: id,
+  familyName: null,
+  identities: {},
+  office: null,
+  phone: null,
   preferredName: null,
   email: `${id}@x.com`,
   title: null,
   homeRegion: "US",
   homeRegionLabel: "United States",
+  homeRegionFlag: null,
+  homeRegionFlagOnly: false,
   homeTimezone: null,
-  manager: null,
+  managers: [],
   desk: null,
-  teams: teamIds.map((t) => ({ id: t, name: t, slug: t, isPrimary: false })),
+  teams: teamIds.map((t) => ({ id: t, name: t, slug: t, isPrimary: false, inherited: false })),
 });
 
 const seat = (personId: string, floorSlug: string): MapSeat => ({
@@ -49,6 +56,9 @@ const locations: MapLocation[] = [
     slug: "sf",
     name: "San Francisco",
     regionLabel: "",
+    regionFlag: null,
+    regionFlagOnly: false,
+    floorLabels: { singular: "Floor", plural: "Floors" },
     floors: [floor("2"), floor("3"), floor("4")],
   },
 ];

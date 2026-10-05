@@ -1,8 +1,9 @@
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { eq } from "drizzle-orm";
-import { sanitizeSvg } from "@officeorg/core/svg/sanitize";
+import { sanitizeSvg } from "@orov/core/svg/sanitize";
 import { createDb, type Database } from "./client";
+import { syncInheritedMemberships } from "./queries/memberships";
 import { resetDatabase } from "./reset";
 import * as s from "./schema";
 
@@ -78,9 +79,11 @@ export async function seedDemoData(db: Database): Promise<void> {
       {
         id: "p_jane",
         email: "jane@example.com",
-        name: "Jane Park",
+        givenName: "Jane",
+        familyName: "Park",
         title: "Head of HR",
         homeRegion: "CA-ON",
+        phone: "+14165550199",
         homeTimezone: "America/Toronto",
         assignedDeskId: "sp_sf_2_003",
         startDate: "2019-03-04",
@@ -88,43 +91,55 @@ export async function seedDemoData(db: Database): Promise<void> {
       {
         id: "p_max",
         email: "max@example.com",
-        name: "Max Osei",
+        givenName: "Max",
+        familyName: "Osei",
         title: "HR Business Partner",
         homeRegion: "US-CA",
-        managerId: "p_jane",
+        homeTimezone: "America/Los_Angeles",
         assignedDeskId: "sp_sf_2_010",
         startDate: "2021-06-14",
       },
       {
         id: "p_bob",
         email: "bob@example.com",
-        name: "Bob Lindqvist",
+        givenName: "Bob",
+        familyName: "Lindqvist",
         title: "Payroll Analyst",
         homeRegion: "US-CA",
-        managerId: "p_max",
+        phone: "+14155550123",
+        homeTimezone: "America/Los_Angeles",
         assignedDeskId: "sp_sf_2_014",
         startDate: "2023-01-09",
       },
       {
         id: "p_priya",
         email: "priya@example.com",
-        name: "Priya Raman",
+        givenName: "Priya",
+        familyName: "Raman",
         title: "Recruiter",
         homeRegion: "IN-KA",
         homeTimezone: "Asia/Kolkata",
-        managerId: "p_max",
         startDate: "2024-05-20",
       },
       {
         id: "p_sam",
         email: "sam@example.com",
-        name: "Sam Ortiz",
+        givenName: "Sam",
+        familyName: "Ortiz",
         title: "Recruiter",
         homeRegion: "US",
-        managerId: "p_max",
+        homeTimezone: "America/Los_Angeles",
         assignedDeskId: "sp_sf_3_001",
         startDate: "2025-02-03",
       },
+    ]);
+
+    // Bob, Priya and Sam report to Max, and Max to Jane (U3).
+    await tx.insert(s.personManager).values([
+      { personId: "p_max", managerId: "p_jane", position: 0 },
+      { personId: "p_bob", managerId: "p_max", position: 0 },
+      { personId: "p_priya", managerId: "p_max", position: 0 },
+      { personId: "p_sam", managerId: "p_max", position: 0 },
     ]);
 
     await tx.insert(s.team).values([
@@ -140,6 +155,15 @@ export async function seedDemoData(db: Database): Promise<void> {
       { personId: "p_bob", teamId: "t_hr", isPrimary: false },
       { personId: "p_priya", teamId: "t_recruiting", isPrimary: true },
       { personId: "p_sam", teamId: "t_recruiting", isPrimary: true },
+    ]);
+
+    // Priya and Sam (Recruiting) and Bob (Payroll) are inherited members of HR; Bob is also an
+    // explicit one.
+    await syncInheritedMemberships(tx);
+
+    await tx.insert(s.personIdentity).values([
+      { personId: "p_bob", provider: "github", value: "bob-lindqvist" },
+      { personId: "p_bob", provider: "linkedin", value: "bob-lindqvist" },
     ]);
 
     // Everyone in the seed has signed in before. Jane is the admin, so the admin pages work on

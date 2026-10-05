@@ -17,7 +17,7 @@ export const teamFormSchema = z.object({
   name: z.string().trim().min(1, "Name is required"),
   parentTeamId: z.string().nullable(),
   leadId: z.string().nullable(),
-  slackChannelId: optionalText,
+  chatChannelId: optionalText,
   color: optionalText,
 });
 

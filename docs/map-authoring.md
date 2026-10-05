@@ -1,7 +1,10 @@
 # Drawing floor maps
 
+"Floor" in this guide means whatever an office calls that level: an office can name it Building,
+Wing, Level or anything else in its settings, and the drawing rules are the same.
+
 This guide is for whoever draws the floor plans, in Figma, Illustrator, Inkscape or any tool that
-exports SVG. OfficeOrg reads the drawing's element **ids** to find desks, rooms and areas, so the
+exports SVG. OrOv reads the drawing's element **ids** to find desks, rooms and areas, so the
 ids are the only part of the file with rules. Everything else is up to you.
 
 Two sample floors that follow every rule here live in
@@ -10,14 +13,20 @@ Two sample floors that follow every rule here live in
 ## The file
 
 - **One SVG file per floor.**
-- The root `<svg>` needs a `viewBox`. If it only has `width` and `height`, OfficeOrg uses those as
+- The root `<svg>` needs a `viewBox`. If it only has `width` and `height`, OrOv uses those as
   the viewBox. The units don't matter; the map scales to fit the screen.
 - Keep it under 2 MB. A floor with a few hundred desks is usually well under 200 KB.
 
 ## Element ids
 
-Give an element an id with one of these prefixes and OfficeOrg treats it as part of the map.
-Anything without one of these prefixes is **decoration**: walls, labels, furniture, plants.
+Give an element an id with one of these prefixes and OrOv treats it as part of the map.
+Anything without one of these prefixes is **decoration**: walls, furniture, plants, signs.
+
+**Don't write room, point-of-interest or area names into the drawing.** OrOv draws each
+room's, phone booth's, kitchen's, elevator's and restroom's name itself, from its name in the app,
+so a renamed room needs no new drawing and the names follow the theme. A name drawn in the SVG as
+well would show twice. Areas aren't named on the map at all; people choose them with the buttons
+above it. Other text is fine as decoration, such as a "Reception" sign.
 
 | Prefix             | What it is                          | Example           | Becomes                      |
 | ------------------ | ----------------------------------- | ----------------- | ---------------------------- |
@@ -29,8 +38,10 @@ Anything without one of these prefixes is **decoration**: walls, labels, furnitu
 
 Rules:
 
-- **Slugs** are lowercase letters, digits and single hyphens: `south-wing`, `huddle-a`.
-- **`<floor>` in a desk id must be the floor's slug** in OfficeOrg (usually its number), so
+- **Slugs** are lowercase letters, digits and single hyphens: `south-wing`, `huddle-a`. They
+  stay ASCII on purpose, because they end up in SVG ids, CSS selectors and URLs. People's and
+  teams' names have no such limit; only these ids do.
+- **`<floor>` in a desk id must be the floor's slug** in OrOv (usually its number), so
   `desk-2-…` only goes on floor 2. The upload is rejected otherwise, because desk codes have to
   be unique across every office.
 - **`<n>` is the desk number.** Any digits work. Padding them to the same width (`001`, `014`)
@@ -41,7 +52,16 @@ Rules:
   kept as "other". Add `-<n>` when a floor has more than one (`poi-restroom-2`).
 - **Every id is unique** within the file. Duplicates are rejected.
 - **Names come from the slug** the first time a room or area appears (`huddle-a` → "Huddle A").
-  Uploading the drawing again never renames a room or area that already exists.
+  Uploading the drawing again never renames a room or area that already exists. To give one a
+  better name ("Fjord" for `room-huddle-a`), rename it on the floor's admin page; the drawing
+  doesn't change.
+- **Small changes don't need the drawing tool.** On a floor's admin page, "Edit the drawing
+  here" adds a desk (numbered after the floor's highest), draws a rectangular room (its id comes
+  from the name you give it) or removes a desk or room. Each change is shown like an upload
+  before it's saved as a new version. For walls or anything else, edit the drawing itself. The map shows
+  a room's or point of interest's name centred in its shape, shrunk to fit, and cut short with
+  "…" if the shape is too small. Areas aren't labelled on the drawing; people pick them with the
+  buttons above the map.
 
 The prefix can go on any shape (`rect`, `path`, `polygon`, `circle`) or on a group `<g>`. For a
 desk drawn as several shapes (a desk and a chair), group them and put the id on the group.
@@ -51,7 +71,7 @@ desk drawn as several shapes (a desk and a chair), group them and put the id on 
 An area is a part of the floor that people can open as a zoomed view, such as the South Wing.
 The map zooms to fit the area and dims everything outside it.
 
-OfficeOrg decides which area a desk or room belongs to in two ways:
+OrOv decides which area a desk or room belongs to in two ways:
 
 1. **Nesting (preferred).** If the desk is inside the area's group in the layer tree, it belongs
    to that area. This is exact, so use it when you can.
@@ -65,18 +85,18 @@ zoom fits the whole area and not just the desks in it.
 
 ## Colors and styling
 
-OfficeOrg colors desks and rooms itself: the selected person, the highlighted team, and later
+OrOv colors desks and rooms itself: the selected person, the highlighted team, and later
 the room status. It overrides the fill and stroke of every `desk-`, `room-` and `poi-` element,
 so the colors you pick for those don't matter.
 
-For decoration, **use `currentColor`** for walls, outlines and labels (`stroke="currentColor"`,
-`fill="currentColor"`). OfficeOrg sets that color from the active theme, so the drawing works in
+For decoration, **use `currentColor`** for walls, outlines and any text (`stroke="currentColor"`,
+`fill="currentColor"`). OrOv sets that color from the active theme, so the drawing works in
 light and dark mode and follows the organization's brand. Fixed colors work too, but they won't
 adapt.
 
 ## What the upload removes
 
-Floor drawings are shown directly in the page, so OfficeOrg cleans every upload before storing it:
+Floor drawings are shown directly in the page, so OrOv cleans every upload before storing it:
 
 - `<script>`, `<foreignObject>`, event handlers such as `onclick`, and any link or image that
   points outside the file. An embedded PNG, JPEG, GIF or WebP image (a `data:` URL) is kept.
@@ -102,7 +122,7 @@ Layer Names**.
 ## Uploading and changing a floor
 
 An admin uploads the file on the floor's page under **Admin → Offices & floors**. Before anything is saved
-OfficeOrg shows what would change:
+OrOv shows what would change:
 
 | Result                     | What happens when the admin applies it                                        |
 | -------------------------- | ----------------------------------------------------------------------------- |
@@ -126,6 +146,7 @@ its history stays attached to it.
 - [ ] Every meeting room is `room-<slug>`, and phone booths are `room-phone-<n>`
 - [ ] Desks and rooms in an area are nested inside the `area-<slug>` group
 - [ ] Each area group has an outline shape
-- [ ] Walls and labels use `currentColor`
+- [ ] No text labels for rooms, points of interest or areas (the app draws their names)
+- [ ] Walls and other decoration use `currentColor`
 - [ ] No two elements share an id
 - [ ] Exported with ids switched on

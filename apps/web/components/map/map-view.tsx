@@ -9,15 +9,19 @@ import type {
   MapLocation,
   MapSeat,
   MapSpace,
-} from "@officeorg/core";
-import { ROOM_STATE_LABEL, type RoomDisplayState } from "@officeorg/core/map/room-status";
-import { mapStateCss } from "@officeorg/core/map/state-css";
-import { teamSeats, type TeamSeats } from "@officeorg/core/map/team-seats";
-import { displayName, initials } from "@officeorg/core/directory/filter";
+} from "@orov/core";
+import { ROOM_STATE_LABEL, type RoomDisplayState } from "@orov/core/map/room-status";
+import { mapStateCss } from "@orov/core/map/state-css";
+import { DEFAULT_TIER_LABELS, tierLabel } from "@orov/core/spaces/tier";
+import { teamSeats, type TeamSeats } from "@orov/core/map/team-seats";
+import { displayName, personInitials } from "@orov/core/directory/filter";
 import { PersonCard } from "@/components/directory/person-card";
 import { mapParsers } from "@/lib/url-state";
 import { FloorList, KIND_LABEL } from "./floor-list";
-import { FloorMap, type Avatar, type RoomCue } from "./floor-map";
+import { RegionText } from "../directory/location-label";
+import { ViewBar } from "../view-bar";
+import { FloorMap, type Avatar, type MapLabel, type RoomCue } from "./floor-map";
+import { sortByName } from "@orov/core/people/names";
 
 interface Props {
   map: MapData;
@@ -97,6 +101,8 @@ export function MapView({ map, people, teams }: Props) {
   const teamPeople = useMemo(() => new Set(team?.seats.map((s) => s.personId)), [team]);
 
   const focusArea = floor?.areas.find((a) => a.slug === params.area) ?? null;
+  // What this office calls its floors (#16).
+  const tier = map.locations.find((l) => l.slug === floor?.locationSlug)?.floorLabels ?? DEFAULT_TIER_LABELS;
 
   const peopleById = useMemo(() => new Map(people.map((p) => [p.id, p])), [people]);
   const seatsHere = useMemo(
@@ -138,6 +144,21 @@ export function MapView({ map, people, teams }: Props) {
     [floor, focusArea],
   );
 
+  // Every room and point of interest gets its name from the database; desks show avatars
+  // instead. Areas aren't labelled on the drawing: they're picked with the buttons above it.
+  // Names outside an open area are dimmed with the rest of the drawing.
+  const labels = useMemo<MapLabel[]>(
+    () =>
+      (floor?.spaces ?? [])
+        .filter((sp) => sp.kind !== "desk")
+        .map((sp) => ({
+          svgElementId: sp.svgElementId,
+          name: sp.name,
+          dimmed: focusArea !== null && sp.areaId !== focusArea.id,
+        })),
+    [floor, focusArea],
+  );
+
   const stateCss = useMemo(
     () =>
       mapStateCss({
@@ -159,7 +180,7 @@ export function MapView({ map, people, teams }: Props) {
         return [
           {
             svgElementId: seat.svgElementId,
-            initials: initials(name),
+            initials: personInitials(person),
             name,
             emphasis:
               seat.personId === params.person
@@ -196,12 +217,9 @@ export function MapView({ map, people, teams }: Props) {
   }
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
-      <section aria-label="Floor map" className="min-w-0" aria-busy={navigating}>
-        <h1 className="text-xl font-heading">
-          {floor.locationName}, {floor.name}
-          {focusArea ? `, ${focusArea.name}` : ""}
-        </h1>
+    <>
+      {/* The map's own controls, in the bar under the main menu (N4). */}
+      <ViewBar label="Map filters">
         <MapNavigation
           locations={map.locations}
           locationSlug={floor.locationSlug}
@@ -220,7 +238,7 @@ export function MapView({ map, people, teams }: Props) {
           onChange={(teamId, sub) => setParams({ team: teamId, sub: teamId ? sub : null })}
           onFloor={goTo}
         />
-        <div role="group" aria-label="Display" className="mt-3 flex gap-1">
+        <div role="group" aria-label="Display" className="flex gap-1">
           {(["map", "list"] as const).map((v) => (
             <button
               key={v}
@@ -233,6 +251,13 @@ export function MapView({ map, people, teams }: Props) {
             </button>
           ))}
         </div>
+      </ViewBar>
+    <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
+      <section aria-label={`${tier.singular} map`} className="min-w-0" aria-busy={navigating}>
+        <h1 className="text-xl font-heading">
+          {floor.locationName}, {floor.name}
+          {focusArea ? `, ${focusArea.name}` : ""}
+        </h1>
         <div className={`mt-4 transition-opacity ${navigating ? "opacity-60" : ""}`}>
           {params.view === "list" ? (
             <FloorList
@@ -253,7 +278,8 @@ export function MapView({ map, people, teams }: Props) {
               stateCss={stateCss}
               avatars={avatars}
               roomCues={roomCues}
-              label={`Floor plan of ${floor.locationName}, ${floor.name}`}
+              labels={labels}
+              label={`${tier.singular} plan of ${floor.locationName}, ${floor.name}`}
               onSelect={select}
               focusAreaId={focusArea?.svgElementId ?? null}
             />
@@ -290,11 +316,13 @@ export function MapView({ map, people, teams }: Props) {
             location={map.locations.find((l) => l.slug === floor.locationSlug)!}
             currentFloor={floor.slug}
             seats={map.seats}
+            withoutDesk={people.filter((p) => !p.desk && p.office?.slug === floor.locationSlug).length}
             onFloor={goTo}
           />
         )}
       </div>
     </div>
+    </>
   );
 }
 
@@ -372,7 +400,7 @@ function MapNavigation({
   const location = locations.find((l) => l.slug === locationSlug);
   const floors = location?.floors.filter((f) => f.hasDrawing) ?? [];
   return (
-    <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-2">
+    <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
       {locations.length > 1 ? (
         <select
           aria-label="Office"
@@ -387,7 +415,11 @@ function MapNavigation({
           ))}
         </select>
       ) : null}
-      <div role="group" aria-label="Floors" className="flex flex-wrap gap-1">
+      <div
+        role="group"
+        aria-label={(location?.floorLabels ?? DEFAULT_TIER_LABELS).plural}
+        className="flex flex-wrap gap-1"
+      >
         {floors.map((f) => (
           <button
             key={f.slug}
@@ -408,7 +440,7 @@ function MapNavigation({
             onClick={() => onArea(null)}
             className={pill(areaSlug === null)}
           >
-            Whole floor
+            {tierLabel(location?.floorLabels ?? DEFAULT_TIER_LABELS, "whole")}
           </button>
           {areas.map((a) => (
             <button
@@ -433,21 +465,26 @@ function OfficeOverview({
   location,
   currentFloor,
   seats,
+  withoutDesk,
   onFloor,
 }: {
   location: MapLocation;
   currentFloor: string;
   seats: MapSeat[];
+  // People in this office who have no desk of their own (N9).
+  withoutDesk: number;
   onFloor: (loc: string, floor: string | null) => void;
 }) {
   return (
     <aside aria-label={`${location.name} overview`} className="rounded-lg border border-border p-5">
       <h2 className="text-lg font-heading">{location.name}</h2>
-      <p className="text-sm text-muted-fg">{location.regionLabel}</p>
+      <p className="text-sm text-muted-fg">
+        <RegionText flag={location.regionFlag} flagOnly={location.regionFlagOnly} label={location.regionLabel} />
+      </p>
       <table className="mt-4 w-full text-left text-sm">
         <thead className="border-b border-border text-xs uppercase text-muted-fg">
           <tr>
-            <th className="py-1.5 pr-2 font-medium">Floor</th>
+            <th className="py-1.5 pr-2 font-medium">{location.floorLabels.singular}</th>
             <th className="py-1.5 pr-2 text-right font-medium">People</th>
             <th className="py-1.5 pr-2 text-right font-medium">Desks</th>
             <th className="py-1.5 text-right font-medium">Rooms</th>
@@ -483,6 +520,11 @@ function OfficeOverview({
           })}
         </tbody>
       </table>
+      {withoutDesk > 0 ? (
+        <p className="mt-3 text-sm">
+          {withoutDesk} {withoutDesk === 1 ? "person works" : "people work"} here without a desk.
+        </p>
+      ) : null}
       <p className="mt-4 text-sm text-muted-fg">Select a desk or a room on the map.</p>
     </aside>
   );
@@ -507,7 +549,7 @@ function TeamHighlight({
 }) {
   const name = teams.find((t) => t.id === teamId)?.name;
   return (
-    <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
+    <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
       <select
         aria-label="Highlight team"
         value={teamId ?? ""}
@@ -515,7 +557,7 @@ function TeamHighlight({
         className="rounded-md border border-border bg-transparent px-3 py-1.5 text-sm"
       >
         <option value="">Highlight a team…</option>
-        {teams.map((t) => (
+        {sortByName(teams).map((t) => (
           <option key={t.id} value={t.id}>
             {t.name}
           </option>

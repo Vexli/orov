@@ -1,12 +1,14 @@
 import { BrandingEditor, type ThemeDraftState } from "@/components/admin/branding/branding-editor";
 import { ThemeVersions } from "@/components/admin/branding/theme-versions";
-import { getDb } from "@officeorg/db/client";
+import { formatDateTime } from "@orov/core";
+import { getDb } from "@orov/db/client";
+import { requireAdmin } from "@/lib/session";
 import {
   getActiveTheme,
   getTheme,
   listBrandAssets,
   listThemeVersions,
-} from "@officeorg/db/queries/theme";
+} from "@orov/db/queries/theme";
 
 const EMPTY: ThemeDraftState = { files: [], mapping: {}, darkMode: true, fonts: [] };
 
@@ -15,6 +17,7 @@ export default async function BrandingAdminPage({
 }: {
   searchParams: Promise<{ applied?: string; activated?: string }>;
 }) {
+  const user = await requireAdmin();
   const { applied, activated } = await searchParams;
   const db = getDb();
   const [active, versions, assets] = await Promise.all([
@@ -60,7 +63,12 @@ export default async function BrandingAdminPage({
         initial={initial}
         assets={assets.map((a) => ({ id: a.id, kind: a.kind, meta: a.meta }))}
       />
-      <ThemeVersions versions={versions} />
+      <ThemeVersions
+        versions={versions.map((v) => ({
+          ...v,
+          createdLabel: formatDateTime(v.createdAt, user.dateFormat, user.timeZone, { zone: true }),
+        }))}
+      />
     </div>
   );
 }

@@ -1,0 +1,1 @@
+ALTER TABLE "person" ADD COLUMN "end_date" date;

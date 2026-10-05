@@ -1,6 +1,6 @@
-# OfficeOrg: Implementation Plan
+# OrOv: Implementation Plan
 
-This plan turns the build-from-scratch option in `report.md` into concrete work. OfficeOrg is an internal web app with four parts: a floor map, a people directory, an org chart, and optional live presence (off by default, §8.5). It also shows Google Calendar room status and has Slack chat shortcuts. It covers 1–3 offices and fewer than 250 people.
+This plan turns the build-from-scratch option in `report.md` into concrete work. OrOv is an internal web app with four parts: a floor map, a people directory, an org chart, and optional live presence (off by default, §8.5). It also shows Google Calendar room status and has Slack chat shortcuts. It covers 1–3 offices and fewer than 250 people.
 
 Where this plan departs from `report.md`, it says so. One change in particular: **WFH and sick status come from keyword messages in a public Slack channel** (the requirement in the report's Context section), not from Slack profile status emoji (the design in the report's Integrations section).
 
@@ -150,33 +150,44 @@ e2e/  Playwright specs per user story
 
 ## 5. Data model
 
-The schema builds on the model in `report.md` and adds cache, audit, and integration tables. All ids are text (`p_…`, `t_…`; use `cuid2`) so they're safe to put in URLs.
+The schema builds on the model in `report.md` and adds cache, audit, and integration tables. All ids are text (`p_…`, `t_…`; use `cuid2`) so they're safe to put in URLs. Integration columns are vendor-neutral (Phase 7 #4–6): no column, enum value or CSV header names Slack or Google, so a Microsoft 365, Teams or room-booking adapter needs no schema change.
 
 ```
-location      (id, slug UNIQUE, name, timezone, region (ISO 3166 code), googleBuildingId?,
-               sortOrder)
+location      (id, slug UNIQUE, name, timezone, region (ISO 3166 code), externalBuildingId?,
+               sortOrder, floorLabelSingular, floorLabelPlural,   -- default Floor/Floors (#16)
+               archivedAt?)                                       -- archives its floors too (#22)
 floor         (id, locationId, slug, name, level int, svgAssetId, sortOrder)
                 UNIQUE(locationId, slug)
 svg_asset     (id, floorId, version int, sanitizedSvg text, sha256, uploadedBy, uploadedAt)
 area          (id, floorId, slug, name, svgElementId)          UNIQUE(floorId, svgElementId)
 space         (id, floorId, areaId?, kind, svgElementId, name, capacity?,
-               googleResourceEmail? UNIQUE, archivedAt?)
+               calendarResourceId? UNIQUE, archivedAt?)
                 kind: desk | meeting_room | phone_booth | kitchen | elevator | restroom | other
                 UNIQUE(floorId, svgElementId)
 
-person        (id, email UNIQUE, name, preferredName?, title?, photoUrl?, phone?,
+person        (id, email UNIQUE, givenName, familyName?, name (generated: "given family"),
+               preferredName?, title?, photoUrl?, phone? (E.164),
                homeRegion (ISO 3166 code), homeTimezone?,
-               managerId → person?, assignedDeskId → space? UNIQUE (partial, non-null),
-               slackUserId? UNIQUE, startDate?, active bool, createdAt, updatedAt)
+               assignedDeskId → space? UNIQUE (partial, non-null),
+               officeId → location? (only without a desk, N9),
+               startDate?, endDate? (last day, admin-only, N6), active bool, createdAt, updatedAt)
 team          (id, slug UNIQUE, name, parentTeamId → team?, leadId → person?,
-               slackChannelId?, color?)
-team_member   (personId, teamId, isPrimary bool)   PK(personId, teamId)
-                partial UNIQUE(personId) WHERE isPrimary
+               chatChannelId?, color?)
+person_manager (personId, managerId → person, position)   PK(personId, managerId)
+               -- any number of equal managers per person (Phase 7 N1; was person.managerId)
+team_member   (personId, teamId, isPrimary bool, source: explicit | inherited)
+                PK(personId, teamId), partial UNIQUE(personId) WHERE isPrimary
+                inherited: derived from an explicit membership of a sub-team (Phase 7 #23)
+person_identity (personId → person ON DELETE CASCADE, provider, value)
+                PK(personId, provider), UNIQUE(provider, value)
+                provider: github | gitlab | linkedin | website (profile, admin-edited)
+                          | messaging ids from #4 (written by the match job)
 
-presence_signal (id, personId, date, status, source, sourceRef, note?, observedAt,
+presence_signal (id, personId, date, status, source, provider, sourceRef, note?, observedAt,
                  retractedAt?)
-                 source: slack_message | gcal_ooo | gcal_working_location | manual
-                 UNIQUE(source, sourceRef, date)   -- idempotent upserts
+                 source: message | calendar_ooo | calendar_working_location | manual
+                 provider: slack | google | microsoft | manual | …
+                 UNIQUE(provider, source, sourceRef, date)   -- idempotent upserts
 presence_day    (personId, date, status, winningSignalId?, PK(personId, date))  -- derived
 presence_rule   (id, priority int, pattern text, matchType: keyword|regex,
                  status, dateScope: today|tomorrow|parse, enabled)
@@ -187,7 +198,8 @@ room_status     (spaceId PK, state: free|busy|soon, currentUntil?, nextStartsAt?
 app_setting     (key PK, value jsonb, updatedBy, updatedAt)
                  key presence.display: off | simple | detailed   -- default off (§8.5)
 
-slack_user_token (personId PK, encryptedToken, scopes, createdAt)   -- for group DMs
+messaging_user_token (personId, provider, encryptedToken, scopes, createdAt)   -- for group DMs
+                 PK(personId, provider)
 app_user        (email PK, role: viewer|admin,
                  regionDisplay: code|country|region|country_region   -- default country_region
                  lastSeenAt)
@@ -204,7 +216,7 @@ brand_asset   (id, kind: logo_light|logo_dark|favicon|font, mime, bytes bytea, s
 
 ### Invariants, enforced in code and covered by tests
 
-- **No cycles** in `person.managerId` or `team.parentTeamId`. Check with a recursive CTE inside the same transaction as the write, and reject the write if it would create a cycle.
+- **No cycles** through any of a person's managers (`person_manager`) or in `team.parentTeamId`. Check with a recursive CTE inside the same transaction as the write, and reject the write if it would create a cycle.
 - **One person per desk** (partial unique index). Reassigning a desk is a single transaction that swaps the two people.
 - **The desk must be `kind = desk`**, and its floor must not be archived.
 - `homeRegion` and `assignedDeskId` are **independent** (U4). The UI shows "Ontario, Canada [SF-2-003]", with the seat code as a badge, in the viewer's region format (§7.1).
@@ -245,7 +257,7 @@ Anything without one of these prefixes is decoration.
 
 - Inject the sanitized SVG **once** with `dangerouslySetInnerHTML`, and don't re-render it. To show state, generate a `<style>` block from the current state with rules keyed by id, for example `#desk-2-014 { fill: var(--sel) }`, `#room-boardroom { fill: var(--busy) }`, and `.dim :not(.hl) { opacity: .25 }`. Changing state then re-renders only a short string of CSS, not hundreds of SVG nodes.
 - The state `<style>` block uses **only theme slot variables** (`var(--map-selection)`, `var(--room-busy)`, `var(--map-dim-opacity)`), never literal colors, so a brand theme restyles the map without touching the SVG (§9.1). Room status also gets a non-color cue (a pattern fill or icon in the overlay), so it never depends on hue alone.
-- An **overlay layer** draws avatars and, when presence display is on, the presence state from §8.5: badges in `detailed` mode, a greyed avatar and desk in `simple` mode, nothing in `off` mode. It's an absolutely positioned `<svg>` with the same viewBox, placed using `getBBox()` of each desk element, measured once after mount and cached per asset version.
+- An **overlay layer** draws the names of rooms and points of interest from the database (Phase 7 #26; drawings carry no name labels; areas are not labelled, N8), avatars and, when presence display is on, the presence state from §8.5: badges in `detailed` mode, a greyed avatar and desk in `simple` mode, nothing in `off` mode. It's an absolutely positioned `<svg>` with the same viewBox, placed using `getBBox()` of each desk element, measured once after mount and cached per asset version.
 - Clicking an element triggers event delegation on the root: read `target.closest('[id^=desk-],[id^=room-]')`, then update the URL.
 - **Area view (U6):** with `area=south-wing` in the URL, call `zoomToElement('area-south-wing')` and add the `dim` class to everything outside that area.
 - **Floor switcher** for the location's floors. The location overview page lists floors with headcount and free-room counts.
@@ -258,13 +270,13 @@ Anything without one of these prefixes is decoration.
 ### URL schema (the only selection state)
 
 ```
-/{directory|map|org}?loc=sf&floor=2&area=south-wing&person=p_123&team=t_9&sub=1&multi=p_1,p_2
+/{directory|map|org}?loc=sf&floor=2&area=south-wing&person=p_123&team=t_9&sub=false&multi=p_1,p_2
 ```
 
 | Param                  | Effect                                                                                                                       |
 | ---------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
 | `person`               | The focused person. Every view centers on them.                                                                              |
-| `team`                 | The highlighted team. `sub=1` includes descendant teams (U2).                                                                |
+| `team`                 | The highlighted team, with its descendant teams (U2). `sub=false` limits it to the team itself.                                                                |
 | `multi`                | A multi-select set for group chat (U7). Shown in a selection tray in the shell.                                              |
 | `loc`, `floor`, `area` | Only the map uses these. When a `person` is set and their desk is elsewhere, the map changes these params to match the desk. |
 
@@ -288,11 +300,16 @@ Anything without one of these prefixes is decoration.
 | `country`                  | United States             | India                |
 | `region`                   | California                | India (falls back)   |
 | `country_region` (default) | California, United States | India                |
+| `flag` (Phase 7 N7)        | 🇺🇸 (United States for screen readers) | 🇮🇳                  |
 
 - Labels are formatted **on the server** by `formatRegion` in `packages/core/regions/iso3166.ts`. Queries such as `loadDirectory(db, regionDisplay)` return the finished label next to the code, so the ISO 3166-2 list (about 5,000 rows) never reaches the browser. Client code must not import that module.
 - Country names come from `Intl.DisplayNames`, so they use everyday names ("United States") and can follow a locale later. ICU has no subdivision names, so those come from the ISO 3166-2 list as published (local spellings such as "Karnātaka"). A nested subdivision such as `FR-75C` shows its own name ("Paris, France").
 - A code that is no longer in ISO 3166 shows as the raw code, not as an error.
 - Filters and URL state use codes, never labels, so a shared link works the same for every viewer.
+
+**Country flags** (`app_user.regionFlag`, Phase 7 #28): a checkbox under the region display that puts the country's flag emoji in front of every region label, in any display mode. The flag travels separately from the label (`regionLabel` returns `{ label, flag }`), is `aria-hidden` in the UI, and the text label always stays, since Windows shows flag emoji as letter pairs.
+
+**Date format** (`app_user.dateFormat`, Phase 7 #27): `iso` (default, `2026-10-04 14:30`), `dmy` (`04/10/2026 14:30`) or `mdy` (`10/04/2026 2:30 PM`), formatted on the server by `formatDateTime` in `packages/core/dates/format.ts`. Times are shown in the viewer's home time zone if they have a person row, else their browser's (a `tz` cookie), else UTC, and timestamps carry the zone's abbreviation. Date filters (the audit log's) are read in the same zone. CSV files always use ISO 8601 in UTC.
 
 ---
 
@@ -361,11 +378,11 @@ Presence display is **off by default**. An admin chooses the mode on the Presenc
 
 ### 8.6 Slack: identity and chat (U7)
 
-- **Matching** (`slack:match-users`, nightly, plus an admin button with a diff): call `users.lookupByEmail` for each person without a `slackUserId`. Unmatched people show up in an admin list for manual entry.
+- **Matching** (`slack:match-users`, nightly, plus an admin button with a diff): call `users.lookupByEmail` for each person without a `slack` row in `person_identity`. Unmatched people show up in an admin list for manual entry.
 - **1:1 chat:** a link to `slack://user?team=T&id=U`, with `https://app.slack.com/client/T/U` as the fallback. This needs no API call.
-- **Team chat:** `slack://channel?team=T&id=C` from `team.slackChannelId`.
+- **Team chat:** `slack://channel?team=T&id=C` from `team.chatChannelId`.
 - **Group DM (2–8 others):**
-    1. If the viewer has no `slack_user_token`, the first click sends them through **Connect Slack** (an OAuth v2 user flow with the user scopes `im:write` and `mpim:write`). The token is stored encrypted with AES-256-GCM using `TOKEN_ENC_KEY`.
+    1. If the viewer has no Slack row in `messaging_user_token`, the first click sends them through **Connect Slack** (an OAuth v2 user flow with the user scopes `im:write` and `mpim:write`). The token is stored encrypted with AES-256-GCM using `TOKEN_ENC_KEY`.
     2. `POST /api/slack/group-dm {personIds}` calls `conversations.open users=…` as the viewer and returns the channel id. The browser then navigates to the `slack://channel` deep link.
     3. Slack caps a group DM at 9 people including the viewer. Enforce that in the selection tray.
 
@@ -375,14 +392,16 @@ Presence display is **off by default**. An admin chooses the mode on the Presenc
 
 | Page                   | Capabilities                                                                                                                                                                                                                                       |
 | ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Import**             | Upload a CSV for people, teams, or memberships. The people file's `home_region` column takes an ISO 3166 code (`US` or `US-CA`); files that still use the older `home_country` header import unchanged. Each row is validated with zod, then the admin sees a dry-run diff (create/update/error per row) and applies it. Managers are resolved by email in a second pass so the file order doesn't matter. |
+| **Import**             | Upload a CSV for people, teams, or memberships. The people file's `home_region` column takes an ISO 3166 code (`US` or `US-CA`); files that still use the older `home_country` header import unchanged. Each row is validated with zod, then the admin sees a dry-run diff (create/update/error per row) and applies it. Rows can be skipped (one by one, or every row with an error); a row that depends on a skipped one (its manager, the other half of a desk swap, its parent team) becomes an error too, and Apply writes exactly what the dry run showed (Phase 7 #1). Managers are resolved by email in a second pass so the file order doesn't matter. |
 | **People / Teams**     | CRUD with cycle-safe manager and parent pickers, desk assignment through a seat picker (a mini map), team membership, and a primary-team flag.                                                                                                     |
-| **Locations / Floors** | CRUD (each location has an ISO 3166 `region` code, validated like `home_region`), SVG upload with the diff from §6, and version history with rollback.                                                                                                                                                                         |
+| **Locations / Floors** | Create, edit, and archive or delete (Phase 7 #22: archive hides an office or floor everywhere and keeps its history, after the admin confirms who loses a desk; only an office or floor that never had a drawing can be deleted). Each location has an ISO 3166 `region` code, validated like `home_region`), SVG upload with the diff from §6, and version history with rollback.                                                                                                                                                                         |
 | **Rooms**              | Google import diff, room ↔ svg id linking, and capacity overrides.                                                                                                                                                                                 |
 | **Presence**           | The display mode selector (`off` / `simple` / `detailed`, default `off`, §8.5) with a preview of each mode, and "Delete presence data". Below that, CRUD for rules, a "test this message" box, and the parsed-message log from §8.3.                                                                                                                                                                   |
 | **Integrations**       | The last run, status, and stats for each job from `integration_run`, with "run now" buttons. Unmatched Slack users are listed here.                                                                                                                |
 | **Branding**           | Upload a tokens file, edit the token → slot mapping, see a live preview of the directory, map, and org chart with the draft theme, read the contrast report, upload logos and fonts, and roll back to an earlier theme version. Export the active theme as DTCG JSON (§9.1). |
-| **Audit log**          | Every admin write is recorded with before and after JSON. Filterable.                                                                                                                                                                              |
+| **Seating**            | Per office: lock people in place, plan seating so each primary team sits together across the office's desks, review the moves, apply them in one transaction (Phase 7 N10). |
+| **Backup**             | Export the organization as one passphrase-encrypted file and import one, merging or replacing, with a preview first (Phase 7 #29). |
+| **Audit log**          | Every admin write is recorded with before and after JSON. Filterable by entity, date range and actor, paged, and exportable as CSV (`/api/export/audit`, same filters); each export is itself recorded.                                                                                                                                                                              |
 | **Export**             | CSV export of people, teams, and seats, so the spreadsheets can be retired safely.                                                                                                                                                                 |
 
 Every admin mutation runs as a server action that calls `requireAdmin()`, validates with zod, writes in a transaction, and records an audit entry.
@@ -419,7 +438,7 @@ Each slot supports a light value and an optional dark value, taken from the toke
 4. **Emit** (`emit-css.ts`) a CSS string: `:root { --primary: …; … }`, a `.dark { … }` block, and `@font-face` rules for uploaded fonts. `density` sets Tailwind v4's `--spacing` base variable, which scales every spacing utility.
 5. **Preview** the draft CSS in an iframe of the directory, map, and org chart, then **apply** it in one transaction as a new `theme` row that becomes active.
 
-**Serving.** `globals.css` uses Tailwind v4 `@theme inline` to point utilities at the slot variables (for example `--color-primary: var(--primary)`), with the defaults from `slots.ts`. The root layout links `/theme.css`, which returns the active theme's `compiledCss` with an ETag and a long cache keyed by the theme version. It's a stylesheet rather than an inline `<style>`, so it fits the CSP in §10. When no `theme` row is active, the route serves OfficeOrg's defaults (the values `theme/default.tokens.json` is generated from), or the file named by the `THEME_TOKENS_PATH` env var, mapped by slot name.
+**Serving.** `globals.css` uses Tailwind v4 `@theme inline` to point utilities at the slot variables (for example `--color-primary: var(--primary)`), with the defaults from `slots.ts`. The root layout links `/theme.css`, which returns the active theme's `compiledCss` with an ETag and a long cache keyed by the theme version. It's a stylesheet rather than an inline `<style>`, so it fits the CSP in §10. When no `theme` row is active, the route serves OrOv's defaults (the values `theme/default.tokens.json` is generated from), or the file named by the `THEME_TOKENS_PATH` env var, mapped by slot name.
 
 **Fonts and logos.** `next/font` works only at build time, so runtime brand fonts are uploaded WOFF2 files stored as `brand_asset` rows, served same-origin from `/api/brand-assets/[id]`, and declared with generated `@font-face`. SVG logos go through the same sanitize step as floor SVGs (§6). `appName` and the favicon feed Next.js `generateMetadata`.
 
@@ -430,7 +449,7 @@ Each slot supports a light value and an optional dark value, taken from the toke
 ## 10. Security and operations
 
 - **Authentication:** every route except `/api/auth/*`, `/login`, `/dev/sign-in` (404 outside local development), `/api/health`, and the theme files the sign-in page needs (`/theme.css`, `/api/brand-assets/*`) is protected by the proxy. The domain check (and Google's `hd` check) runs in the Auth.js `signIn` callback, not just in the client prompt hint. Development sign-in methods are not registered in a production build, and `canSignIn` rejects them again if they were.
-- **Authorization:** `viewer` can read everything except presence reasons (§8.4). `admin` can write. Every user can change their own settings (§7.1), and nothing else. Presence is also gated by the display mode (§8.5): `off` exposes nothing, and `simple` exposes only an away flag, to every role.
+- **Authorization:** `viewer` can read everything except presence reasons (§8.4). `admin` can write. Every user can change their own settings (§7.1) and a few fields of their own directory entry on `/profile` (preferred name, phone, home time zone, other accounts; Phase 7 #20), found by their session email and audited with them as the actor, and nothing else. Presence is also gated by the display mode (§8.5): `off` exposes nothing, and `simple` exposes only an away flag, to every role.
 - **Secrets:** the Google service-account JSON, Slack bot, app and signing tokens, `TOKEN_ENC_KEY`, and `AUTH_SECRET` come from the host's secret store and never live in the repo.
 - **DWD blast radius:** grant the service account only the four read-only scopes listed above. Document this in `docs/runbook.md` for the Workspace admin.
 - **SVG sanitizing** is described in §6. Also send a CSP with `script-src 'self'` and no `unsafe-inline` scripts.
@@ -468,7 +487,7 @@ The five spikes from §2 and `docs/spikes.md`.
 
 **Phase status:** all items done and merged into `phase/1-foundation` (2026-10-03). Integration run on the phase branch: 126 unit, 48 database (Testcontainers) and 23 Playwright specs pass. U1 (directory part), U4, U10 and U13 each have a passing spec. Not yet merged into `main`.
 
-**Running it locally:** `docker compose up -d db` (or `docker-compose` without the Compose plugin), copy `.env.example` to `apps/web/.env.local`, then `pnpm db:migrate`, `pnpm db:seed`, `pnpm dev`. `pnpm test:e2e` builds and serves the app on port 3100 against the `officeorg_e2e` database. On macOS with Colima, database tests need `DOCKER_HOST=unix://$HOME/.colima/default/docker.sock TESTCONTAINERS_RYUK_DISABLED=true`.
+**Running it locally:** `docker compose up -d db` (or `docker-compose` without the Compose plugin), copy `.env.example` to `apps/web/.env.local`, then `pnpm db:migrate`, `pnpm db:seed`, `pnpm dev`. `pnpm test:e2e` builds and serves the app on port 3100 against the `orov_e2e` database. On macOS with Colima, database tests need `DOCKER_HOST=unix://$HOME/.colima/default/docker.sock TESTCONTAINERS_RYUK_DISABLED=true`.
 
 - [x] pnpm workspace, Next.js app, worker skeleton, Docker, CI pipeline
     - **Completed:** 2026-10-03
@@ -489,7 +508,7 @@ The five spikes from §2 and `docs/spikes.md`.
 - [x] CSV import/export with dry-run diff, plus an audit log
     - **Completed:** 2026-10-03
     - **Branch:** merged from `feature/csv-import-audit`
-    - **Notes:** Teams import before people. A people row is the person's full state (a blank cell clears a field); people missing from the file are left alone. Imports are all-or-nothing and re-planned inside the write transaction. Exports re-import with no changes (tested). Team leads are not in the CSV and are set in the admin UI. The memberships CSV from §9 is folded into the people file (`teams`, `primary_team` columns).
+    - **Notes:** Teams import before people. A people row is the person's full state (a blank cell clears a field); people missing from the file are left alone. Imports are all-or-nothing and re-planned inside the write transaction. (Phase 7 #1 later added skipping rows; the rows that aren't skipped are still all-or-nothing.) Exports re-import with no changes (tested). Team leads are not in the CSV and are set in the admin UI. The memberships CSV from §9 is folded into the people file (`teams`, `primary_team` columns).
 - [x] People and Teams admin CRUD with cycle checks
     - **Completed:** 2026-10-03
     - **Branch:** merged from `feature/people-teams-admin`
@@ -514,7 +533,7 @@ The five spikes from §2 and `docs/spikes.md`.
 - [x] SVG sanitize, parse, and diff pipeline, the upload UI, versions and rollback
     - **Completed:** 2026-10-03
     - **Branch:** merged from `feature/svg-pipeline`
-    - **Notes:** `packages/core/svg/{sanitize,parse,diff,geometry}.ts`. **Departs from §6 step 1:** SVGO runs before DOMPurify, so `inlineStyles` can copy `<style>` rules onto elements before `<style>` is dropped, and the security pass is the last thing to touch the markup. `<style>` is always removed (an inline one would style the whole page). `<use>` is re-allowed because the href hook only permits `#id` or a raster `data:image`. Area membership by nesting, else by the smallest area box containing the element's center; `geometry.ts` computes boxes server-side with transforms (no browser). `sanitize` and `parse` load jsdom and are imported by path only; `@officeorg/core`'s index exports just `diff`, so client code can't pull jsdom in. The seed stores floors through `sanitizeSvg` like a real upload, and a DB test checks each seeded floor diffs to "no changes" against its own drawing. Apply and rollback re-plan inside one transaction with the floor row locked (`FOR UPDATE`). Rollback switches `svgAssetId` back and reconciles rows with the same diff, without adding a version. Archived spaces come back as the same row when their id reappears. Also built, because uploads need somewhere to live: office and floor CRUD at `/admin/locations` and `/admin/floors/[id]` (§9 "Locations / Floors"). Office slugs lock once floors exist, and floor slugs once a drawing exists, because desk codes and desk ids embed them. Audit entities gained `location` and `floor`. The action body limit is now 3 MB for 2 MB drawings, and `jsdom` is in `serverExternalPackages`. Rooms and areas can't be renamed in the UI yet (Phase 4 Rooms page). Tests: 67 unit, 16 DB, 6 Playwright (U11).
+    - **Notes:** `packages/core/svg/{sanitize,parse,diff,geometry}.ts`. **Departs from §6 step 1:** SVGO runs before DOMPurify, so `inlineStyles` can copy `<style>` rules onto elements before `<style>` is dropped, and the security pass is the last thing to touch the markup. `<style>` is always removed (an inline one would style the whole page). `<use>` is re-allowed because the href hook only permits `#id` or a raster `data:image`. Area membership by nesting, else by the smallest area box containing the element's center; `geometry.ts` computes boxes server-side with transforms (no browser). `sanitize` and `parse` load jsdom and are imported by path only; `@orov/core`'s index exports just `diff`, so client code can't pull jsdom in. The seed stores floors through `sanitizeSvg` like a real upload, and a DB test checks each seeded floor diffs to "no changes" against its own drawing. Apply and rollback re-plan inside one transaction with the floor row locked (`FOR UPDATE`). Rollback switches `svgAssetId` back and reconciles rows with the same diff, without adding a version. Archived spaces come back as the same row when their id reappears. Also built, because uploads need somewhere to live: office and floor CRUD at `/admin/locations` and `/admin/floors/[id]` (§9 "Locations / Floors"). Office slugs lock once floors exist, and floor slugs once a drawing exists, because desk codes and desk ids embed them. Audit entities gained `location` and `floor`. The action body limit is now 3 MB for 2 MB drawings, and `jsdom` is in `serverExternalPackages`. Rooms and areas can't be renamed in the UI yet (Phase 4 Rooms page). Tests: 67 unit, 16 DB, 6 Playwright (U11).
 - [x] Map renderer: single injection, CSS-state `<style>` block, overlay layer, zoom and pan
     - **Completed:** 2026-10-03
     - **Branch:** merged from `feature/map-renderer`
@@ -604,7 +623,7 @@ The five spikes from §2 and `docs/spikes.md`.
 ### Phase 6: Polish (ongoing)
 
 - [ ] Mobile layout: map as full-screen sheet, directory first
-- [ ] Click-to-place seat editor in the app, so new desks don't need a Figma round-trip
+- [x] Click-to-place seat editor in the app, so new desks don't need a Figma round-trip (done as Phase 7 #21 step 2, 2026-10-04)
 - [ ] "Who's in today" dashboard per location (shown only when presence display is on, §8.5)
 - [ ] Optional HRIS sync, which replaces CSV as the people source
 - [ ] Live theme sync from the Figma Variables REST API (Enterprise plans only) or the Penpot API
@@ -613,6 +632,195 @@ The five spikes from §2 and `docs/spikes.md`.
 - [ ] A UI locale setting (§7.1), so country names in region labels follow the user's language
 
 **Total: about 7.5–9 weeks for one engineer, or about 4.5–5.5 weeks for two.** Two engineers can split phases 2 and 3, and phases 4 and 5, in parallel. Phase 5.5 depends only on Phase 1's token layer, so it can run alongside any later phase.
+
+### Phase 7: Improvement
+
+The improvement backlog raised after Phases 1–3. Each item keeps its number from the original backlog note (a local, gitignored `note.md`, since replaced by a newer list). Finished items record what was built; open items carry the essentials of the note's design below, so nothing depends on that file any more. Items are in the note's suggested order: the vendor-neutral schema first (cheap while Phases 4 and 5 are unbuilt), then quick UI wins, data quality, the people model, settings, map and admin, and the rename last. Feature branches merge into `phase/7-improvement`.
+
+**Phase status:** closed 2026-10-05: every item that can be built without Google or Slack access is done and merged into `phase/7-improvement`, then `dev`. Not yet merged into `main`. #3 and #4–6 (interfaces) stay `[!] BLOCKED` and move with Phases 4 and 5. Integration run on the phase branch after #30: 558 unit, 149 database (Testcontainers) and 134 Playwright specs pass, plus the CI drift checks (migrations, theme defaults) and a Docker build of both targets with no database. Migrations `0004`–`0015`; the backup format refuses files from any other schema version, so take a fresh export after deploying. Started 2026-10-04.
+
+**G. Vendor-neutral schema**
+
+- [x] #12 Extra account identities (GitHub, LinkedIn, …)
+    - **Completed:** 2026-10-04
+    - **Branch:** merged from `feature/person-identities`
+    - **Notes:** Migration `0004` adds `person_identity` (§5). The registry is `packages/core/people/identities.ts`: profile providers `github`, `gitlab`, `linkedin`, `website`, each with `normalize` (accepts a handle, `@handle` or profile URL; handles are lowercased) and `url`. `identityLinks` builds every link the card shows. `PersonRecord.identities` holds profile accounts only, and `diffPersonRecords` reports one change per provider (`github: old → new`). The people CSV has `github`, `gitlab`, `linkedin`, `website` columns after `primary_team`, in registry order (a test keeps them in step). **Departs from the full-state rule:** a blank cell clears an account, but a file *without* the column keeps the person's current value (`ValidPersonRow.keepIdentities`), so a spreadsheet from before the columns existed doesn't wipe accounts. `parseCsv` now returns `headers` for that. Duplicates are refused in the form (naming the holder, field `identities.<provider>`) and in the import planner (claims work like desk claims, so two people can swap accounts in one file). `savePerson` and the import replace only profile rows, so #4's messaging ids survive. The card shows labelled text links ("GitHub"), not icons, because no icon library is installed. Bob has seeded GitHub and LinkedIn accounts. The person action now reports nested field paths (`identities.github`). Tests: 32 unit, 4 DB, 1 Playwright.
+- [x] #4–6 Provider-agnostic messaging, calendar and room status: schema renames
+    - **Completed:** 2026-10-04
+    - **Branch:** merged from `feature/vendor-neutral-schema`
+    - **Notes:** Migration `0005` (§5 updated): `person.slack_user_id` → a `slack` row in `person_identity` (the registry has a `slack` provider of kind `messaging`, read-only: the form schema refuses it and saves keep it); `slack_user_token` → `messaging_user_token` with PK `(person_id, provider)`; `team.slack_channel_id` → `chat_channel_id`; `space.google_resource_email` → `calendar_resource_id`; `location.google_building_id` → `external_building_id`; `presence_source` values → `message`, `calendar_ooo`, `calendar_working_location`, `manual`, plus `presence_signal.provider` (NOT NULL), now part of the `presence_signal_source` unique index. Existing values are carried over, not dropped. The teams CSV reads `slack_channel_id` as an alias; the team form says "Chat channel ID". **The migration is hand-written**, because drizzle-kit asks interactively about renames. The snapshot was produced from `schema.ts` with `generateDrizzleJson` from `drizzle-kit/api`, keeping the id chain of a `generate --custom` file. `drizzle-kit generate` reports no changes, and a database built from `0000`–`0005` dumps the same schema as one built by `drizzle-kit push` (compared once by hand). Use the same method for the next rename. §3, §4 and §8 still describe Slack and Google directly; rewrite them with the interfaces item below. Tests: 5 unit, 1 DB updated.
+
+**A. Quick UI wins**
+
+- [x] #8 Strike through inactive people in the admin list
+    - **Completed:** 2026-10-04
+    - **Branch:** merged from `feature/admin-inactive-strike`
+    - **Notes:** The name in `/admin/people` gets `line-through text-muted-fg` plus a visually hidden " (inactive)". Inactive people are not sorted last; #9's status filter (default: active) hides them instead. Tests: 1 Playwright.
+- [x] #14 Click anywhere in a directory row to select it
+    - **Completed:** 2026-10-04
+    - **Branch:** merged from `feature/directory-row-click`
+    - **Notes:** `onClick` on the `<tr>` ignores clicks inside `a,button,input,select`, so #15's desk link navigates. Rows get `cursor-pointer` and `hover:bg-muted`; no `tabIndex`, the name button stays the keyboard route. The selected row has `aria-current="true"` instead of `aria-selected` (`selection.spec.ts` updated). Tests: 1 Playwright.
+- [x] #15 Desk code in the directory links to the map
+    - **Completed:** 2026-10-04
+    - **Branch:** merged from `feature/directory-desk-link`
+    - **Notes:** `LocationLabel` takes `linkDesk`; only the directory's Location column sets it, because the card has its own desk link. The link is `/map?person=…` with `aria-label="Show <desk> on the map"`, the same as the card's. "Remote" stays a plain badge. Tests: 1 Playwright (Sam's desk on Floor 3, so the map switches floors).
+- [x] #24 Team highlight lights up members in the team tree
+    - **Completed:** 2026-10-04
+    - **Branch:** merged from `feature/org-team-member-highlight`
+    - **Notes:** `teamHighlightIds("team", …)` adds `memberNodeId(team, person)` for each membership of an in-scope team. Bob's node under HR stays unlit when only Payroll is highlighted. Member nodes use the same `--map-highlight` ring as team nodes; a lighter style wasn't needed. The `chart.fit` framing on more nodes looked fine. Tests: 1 unit added and 1 updated, 2 Playwright updated and 1 added.
+- [x] #25 Include sub-teams by default
+    - **Completed:** 2026-10-04
+    - **Branch:** merged from `feature/subteams-default`
+    - **Notes:** `selectionParsers.sub` defaults to `true` and `EMPTY_FILTERS.includeSubteams` is `true`. Only `sub=false` appears in URLs (nuqs `clearOnDefault`); the palette copies the raw value, so `sub=false` carries into room links. Every `sub: null` reset now means "include". §7 updated. The branch also carries a fix to `map.spec.ts` U1, which #15 broke (the list row and the card both had a "Show SF-2-014 on the map" link). Tests: 1 unit rewritten; 5 Playwright specs rewritten and 1 added (`sub=false` carries across tabs).
+- [x] #9 Filter the admin lists
+    - **Completed:** 2026-10-04
+    - **Branch:** merged from `feature/admin-list-filters`
+    - **Notes:** `packages/core/admin/filter.ts`: `filterAdminPeople` (text, team with `teamScope`, `status` active/inactive/all, `desk` any/with/without) and `filterAdminTeams` (name/slug match plus ancestors; `matched` vs `visible`). `matchesQuery` was extracted from `filterDirectory`, and `teamScope` now takes any `{ id, parentTeamId }[]`. The pages are client tables (`components/admin/{people,teams}-table.tsx`) with nuqs params `adminPeopleParsers` (`q`, `team`, `sub`, `status`, `desk`) and `adminTeamsParsers` (`q`); defaults stay out of the URL. **Status defaults to `active`**, so #8's strike-through shows when "Inactive" or "Active and inactive" is chosen. Test note: nuqs writes the URL a moment after a change, so a spec that reloads must wait for the URL first. Tests: 8 unit, 2 Playwright, 1 updated.
+- [x] #17 Export the audit log
+    - **Completed:** 2026-10-04
+    - **Branch:** merged from `feature/audit-export`
+    - **Notes:** `packages/core/csv/audit.ts` (`auditToCsv`, `changedFields`, `summarizeAuditChange`, moved from the page). `listAudit` takes `entity`, `from`/`to` (inclusive UTC dates), `actor` (contains, wildcards literal via `containsPattern`), `beforeId` (keyset paging) and `limit` (`null` = all). `AUDIT_ENTITIES` is now exported from `queries/audit.ts`. Page: a GET filter form, 100 rows a page with "Older →"/"← Newest", and "Export CSV" with the same query; the filters are parsed once in `apps/web/lib/audit-filters.ts` for both. **Decided:** exports are audited (`entity: "audit_log"`, `action: "export"`, `after: { filters, rows }`). Times are still shown in UTC (column header says so); #27 adds the user's format and zone. Tests: 5 unit, 6 DB, 2 Playwright.
+
+**B. Data quality**
+
+- [x] #10 CSV import handles non-UTF-8 files
+    - **Completed:** 2026-10-04
+    - **Branch:** merged from `feature/csv-encoding`
+    - **Notes:** `packages/core/csv/decode.ts` `decodeCsv(bytes, encoding?)`: UTF-16 by BOM (or by the zero bytes of BOM-less UTF-16, marked `guessed`), then strict UTF-8, else Windows-1252 (`guessed`). The panel reads `file.arrayBuffer()`, decodes in the browser, shows "Read as …" (a `status` named "<kind> file encoding") and a select to re-read the bytes as another encoding. **Beyond the note:** `parseCsv` detects the separator (comma, semicolon or tab) from the header row, because Excel's UTF-16 "Unicode Text" is tab-separated and its CSV uses semicolons in decimal-comma locales; and the dry run lists a *new* row's fields too, since it showed nothing for creates and there was no way to check names. Cells are NFC-normalized in `parseCsv`. Secondary hardening done: `initials()` takes whole graphemes (`Intl.Segmenter`); `docs/map-authoring.md` says why slugs stay ASCII. **Not done:** accent-insensitive search (`unaccent`), left until #2 rewrites `search.ts`; internationalized emails (low priority, only if an SSO provider sends them). Tests: 12 unit, 2 Playwright.
+- [x] #18 Validate time zones
+    - **Completed:** 2026-10-04
+    - **Branch:** merged from `feature/timezone-validation`
+    - **Notes:** `packages/core/time/zones.ts`: `canonicalTimeZone` (fixes the case only and keeps aliases as given; refuses UTC offsets, which Intl accepts), `isTimeZone` (moved from `spaces/form.ts`), `timeZoneOptions` (adds `UTC`), and zod helpers `timeZoneSchema`/`optionalTimeZoneSchema`, used by the office form, the person form and the people CSV. **Don't store `resolvedOptions().timeZone`:** it swaps aliases for ICU's preferred ids, which are the old names (Node turns `Asia/Kolkata` into `Asia/Calcutta`, `Europe/Kyiv` into `Europe/Kiev`). The first version did, and the export round-trip DB test caught it; fixed on `fix/timezone-aliases`. `components/admin/time-zone-list.tsx` renders the `<datalist>` only in the browser (via `useSyncExternalStore`), because Node's and the browser's zone lists differ. Existing bad values aren't migrated: a re-import shows them as row errors, and the form refuses to save them. Tests: 13 unit, 1 Playwright.
+- [x] #19 Default time zone from the desk's office
+    - **Completed:** 2026-10-04
+    - **Branch:** merged from `feature/timezone-from-desk`
+    - **Notes:** Step 1 (desk office) only. `defaultTimeZone(explicit, deskZone)` in `core/time/zones.ts`, applied in `savePerson` (looks up the desk's `location.timezone`) and in `planPeopleImport` (`DeskInfo.timezone`, loaded by `loadPeopleSnapshot`), so the dry run shows it. **Decided:** stored, not computed at read time, and applied *whenever* the zone is blank on a save or import row, not only on create; a later desk move doesn't update an already-stored zone. Consequence: people stored before this with a desk and no zone show `homeTimezone: — → …` once on their next import or save. The seed's desk holders (Max, Bob, Sam) now have `America/Los_Angeles`, keeping the export round-trip test meaningful. A desk-swap holder isn't re-defaulted. `DeskOption` gained `locationName` and `timezone` for the form's placeholder and hint (the hint sits outside the `<label>`, so it isn't part of the input's name). **Not built:** step 2, the region fallback for deskless people, which needs a country → zones dataset. Tests: 3 unit, 2 DB, 1 Playwright.
+- [x] #13 Phone number normalization
+    - **Completed:** 2026-10-04
+    - **Branch:** merged from `feature/phone-normalization`
+    - **Notes:** New dependency `libphonenumber-js` (MIT, `min` metadata) in `packages/core`. `core/people/phone.ts`: `normalizePhone(raw, homeRegion)` → E.164, or `+…;ext=N` with an extension (RFC 3966 form, which the library parses back); `displayPhone(stored)` → `{ uri, label }`, with `uri: null` for a value that doesn't parse. The person form normalizes in a final `.transform` (it needs `homeRegion`), the CSV in `validatePersonRow`. **Server-only formatting:** `DirectoryPerson.phone` is `{ uri, label }` built in `loadDirectory`, so client code must not import `people/phone` (no client component does; the index is only type-imported there). The card shows a `tel:` link. `/admin/people` lists stored numbers that don't parse ("Phone numbers to fix"); saving the person normalizes or rejects each. No data migration. The person form gained a phone field error. Seed: Jane and Bob have numbers, so the export round-trip test covers phones. Tests: 17 unit, 2 Playwright.
+- [x] #1 Skip rows in a CSV import
+    - **Completed:** 2026-10-04
+    - **Branch:** merged from `feature/import-skip-rows`
+    - **Notes:** `RowAction` gained `"skipped"` (and `counts.skipped`). `planPeopleImport` and `planTeamsImport` take `skip: ReadonlySet<number>` (file line numbers) and drop those rows before building `desired`, so dependants fail through the existing checks; their messages name the skipped line (manager, desk swap, parent team). `planSkippingErrors` in `core/import/plan.ts` re-plans until no errors remain and keeps each skipped row's reason. `canApply` = no errors and at least one row that isn't skipped. DB: `planPeopleCsv`/`planTeamsCsv(db, text, { skip, skipErrors })` return the final `skip`; `applyPeopleCsv`/`applyTeamsCsv(…, skip)` re-plan with it; `ApplyResult.skipped`. Actions take `{ text, skip, skipErrors }`. UI: a Skip checkbox per row (shown at once, then replaced by the server's list), "Skip all rows with errors", and stale preview answers dropped by a request counter. Skipped rows write nothing, including no audit entry (the optional summary entry wasn't added). §9 Import and the Phase 1 note updated. Tests: 7 unit, 2 DB, 2 Playwright (1 rewritten).
+
+**C. People model**
+
+- [x] #2 Given and family name as separate fields
+    - **Completed:** 2026-10-04
+    - **Branch:** merged from `feature/given-family-name`
+    - **Notes:** Migration `0006` (hand-written, same snapshot method as `0005`): `given_name` NOT NULL, `family_name` nullable, backfilled by splitting at the last whitespace (whitespace inside a name is normalized to one space; checked on sample rows), and `name` re-created as `GENERATED ALWAYS AS (…) STORED NOT NULL`. **Departs from the note:** `name` stays generated rather than being dropped after a release, so every reader of the full name (search's trigram match, org tree, map, pickers, audit labels) is unchanged and only writers moved to the parts. Dropping it later means switching those reads to `fullName()`. `core/people/names.ts`: `splitFullName` (the migration's rule), `fullName`, `compareByFamilyName` (fixed `Intl.Collator("en")`, so server and browser agree; "Å" sorts with "A"). `personInitials` uses the first given name and the family name. `PersonRecord`/`PersonForm` have `givenName`/`familyName`; `PERSON_FIELDS` diffs them separately. CSV: `given_name`, `family_name`; a file with only `name` is split and the dry run shows a notice (`PlanResult.notices`, rendered as a `note`). Lists sort in JS after loading (`loadDirectory`, `listPeopleForAdmin`). Family-name-first order is out of scope (`fullName` is the place to add it). Tests: 18 unit, 4 DB, 1 Playwright; 3 specs updated for the form fields.
+- [x] #11 Default manager from the primary team's lead
+    - **Completed:** 2026-10-04
+    - **Branch:** merged from `feature/default-manager`
+    - **Notes:** `inheritedManager(personKey, primaryTeamKey, teams)` in `core/teams/tree.ts` (generic keys: ids in `savePerson`, slugs and emails in the import; walks up past a team whose lead is the person, or that has no lead; cycle-safe). `PeopleSnapshot.teams` holds parent slug and lead email per team (leads come from the database; the CSV has none). **Open questions, settled with the note's recommendations:** (1) a primary-team change re-defaults the manager only if the current one was the old team's default (done in the form, which knows); (2) changing `team.leadId` does **not** reassign members; the recommended confirm step on the team form is not built; (3) a blank manager means "default" in the form and the CSV. **Added:** a default that would close a loop is dropped (the person gets no manager) rather than rejected. The form's empty manager option reads "Default: <name>, lead of <team>". Tests: 12 unit, 2 DB, 1 Playwright.
+- [x] #23 Auto-add parent-team memberships
+    - **Completed:** 2026-10-04
+    - **Branch:** merged from `feature/inherited-team-memberships`
+    - **Notes:** Confirmed with the project owner after #25 shipped (2026-10-04): build it. Migration `0007` adds `team_member.source` (`membership_source` enum, default `explicit`) and backfills inherited rows. `syncInheritedMemberships` (`packages/db/queries/memberships.ts`) deletes and rebuilds every inherited row from the explicit ones with a recursive CTE; it runs at the end of `savePerson`, `applyPeopleCsv`, `saveTeam` and `applyTeamsCsv` (a team move moves its members' inherited memberships). That answers the note's open question: removing the last sub-team membership removes the inherited one, never an explicit one. **Views match explicit memberships** (`explicitTeams` in `core/directory/filter.ts`, used by `filterDirectory`, `filterAdminPeople`, `teamSeats`, `teamTree`, `personNodeId`, `teamHighlightIds`), so a team means what it did before and "Include sub-teams" (#25) still matters; the team tree doesn't repeat people under ancestors. `PersonRecord.teamSlugs` and `PersonForm.teamIds` are explicit only, so the CSV round-trip is stable. Inherited memberships show as dashed `TeamChip`s ("through a sub-team"), ticked and locked in the person form ("through Recruiting"), and count in `listTeamsForAdmin`. **Not in the note's form step:** an inherited team can't be unticked, since membership follows from the sub-team. Tests: 8 unit, 4 DB, 1 Playwright.
+
+**F. Settings, E. Map, D. Admin**
+
+- [x] #27 Date format setting (ISO, DMY, MDY)
+    - **Completed:** 2026-10-04
+    - **Branch:** merged from `feature/date-format`
+    - **Notes:** Migration `0008` (`date_format` enum, `app_user.date_format` default `iso`; its own migration rather than shared with #28, so each feature commits alone). `core/dates/format.ts`: `DATE_FORMATS`, labels, `formatDate`, `formatDateTime(d, fmt, zone, { zone })` from `formatToParts` (fixed `en-US` parts, not the locale's layout), and `startOfDay(date, zone, addDays)` (DST-safe). `CurrentUser` gained `dateFormat` and `timeZone` (home time zone via `findHomeTimeZone`, else the `tz` cookie written by `components/time-zone-cookie.tsx` in the root layout, else UTC). `setRegionDisplay` → `setUserSettings(email, partial)`. Applied to the audit log (and its date filters: `AuditFilters.timeZone`), floor versions and theme versions; the latter two moved from client `toLocaleString()` to server-formatted labels. Exports stay ISO UTC. §7.1 updated. Tests: 20 unit, 2 DB, 1 Playwright.
+- [x] #28 Country flag option for region display
+    - **Completed:** 2026-10-04
+    - **Branch:** merged from `feature/region-flags`
+    - **Notes:** Migration `0009` (`app_user.region_flag` boolean, default false; own migration, see #27). Core: `flagEmoji(code)` (country part → regional indicators; null for an unassigned country), `RegionFormat { display, flag }`, `DEFAULT_REGION_FORMAT`, `regionLabel(code, format) → { label, flag }`. `loadDirectory` and `loadMap` take a `RegionFormat` (`regionFormatOf(user)` in `lib/session.ts`); `DirectoryPerson.homeRegionFlag` and `MapLocation.regionFlag` carry the flag, shown `aria-hidden` before the label in `LocationLabel` and the map's office overview. Admin pages still show raw codes, as before. Settings: a "Show country flags" checkbox (avoids a "Country …" label, which the region e2e regexes match). **Also on this branch:** `e2e/support/session.ts` `switchUser`, which leaves the page before changing cookies, because a prefetch in flight re-set the old user's session cookie (Auth.js refreshes it on every response); the #27 spec's other-user check had passed only by coincidence. Tests: 7 unit, 2 DB, 1 Playwright.
+- [x] #26 App draws room and POI names on the map
+    - **Completed:** 2026-10-04
+    - **Branch:** merged from `feature/map-labels`
+    - **Notes:** `core/map/labels.ts` `labelLayout(box, name, kind)`: rooms centred, up to 18 units, shrunk to fit (0.6 em glyph estimate), truncated with "…" at 9 (full name in a `<title>`), left out when even three characters don't fit; areas at the top-left corner, 16 units. **Decided:** labels always show at a size fitted to the drawing, rather than hiding by zoom level (no zoom-aware layout). `FloorMap` measures `poi-` and `area-` shapes too and draws a `labels` layer under avatars and status cues (`data-label=<svg id>`), `fill-fg`/`fill-muted-fg` with a `stroke-card` halo (`paint-order: stroke`), which fixes the Phase 2 dark-mode contrast gap. `map-view` builds labels from `floor.areas` and non-desk `floor.spaces`, dimmed outside an open area. The seed drawings lost their 13 `<text>` labels (they still diff to "no changes"); `docs/map-authoring.md` now says not to draw names. **Existing deployments:** a drawing uploaded before this still has its own text, so names show twice until it's re-uploaded without them. The optional per-user "Show names on map" toggle wasn't built. Tests: 5 unit, 3 Playwright.
+- [x] #16 Admin-named "floor" tier
+    - **Completed:** 2026-10-04
+    - **Branch:** merged from `feature/floor-tier-label`
+    - **Notes:** Per office, as confirmed with the project owner (2026-10-04). Migration `0010` (`location.floor_label_singular`/`_plural`, defaults Floor/Floors; not shared with #22). `core/spaces/tier.ts`: `TierLabels`, `DEFAULT_TIER_LABELS`, `TIER_PRESETS` (Floor, Building, Wing, Level, Zone), `tierLabel(labels, "singular" | "plural" | "lower" | "lowerPlural" | "whole")`. `locationFormSchema` takes both (trimmed, 1–30 characters, defaulted). `MapLocation.floorLabels`. Replaced: the map's floor group name, "Whole floor", the section and drawing labels, the overview column; the office list's column, "Add floor" and "No floors yet"; the new-floor heading; the floor page's "Floor details", buttons and "Floor drawing (SVG)". **Kept:** the admin nav and "Offices and floors" (not tied to one office), the seat picker's group label (it spans offices), and "No floor has a drawing yet" (no office in context). Tests: 7 unit, 2 Playwright.
+- [x] #7 Bulk edit people
+    - **Completed:** 2026-10-04
+    - **Branch:** merged from `feature/bulk-edit-people`
+    - **Notes:** `core/people/bulk.ts`: `bulkPatchSchema` (`active`, `managerId` (null = default lead, #11), `addTeamIds`, `removeTeamIds`, `primaryTeamId`), `applyBulkPatch(form, patch)` (joins a new primary team; drops a removed primary; never swaps desks), `bulkUpdateInputSchema`. `savePerson` was split into a wrapper and `savePersonIn(tx, …)`; `bulkUpdatePeople(db, actor, ids, patch)` runs it per person in one transaction (all or nothing; errors prefixed with the person's name and "Nothing was changed."). UI: row checkboxes plus "Select everyone shown" (indeterminate when partial), selection limited to rows the filters show, `components/admin/bulk-action-bar.tsx` with a native `<dialog>` that lists the people before applying. Phone numbers stored before #13 aren't normalized by a bulk change (savePerson trusts its input; the action-level schema isn't re-run). Tests: 5 unit, 3 DB, 2 Playwright; 2 row locators moved to email, as row names now start with the checkbox label.
+- [x] #20 Everyone can edit their own profile
+    - **Completed:** 2026-10-04
+    - **Branch:** merged from `feature/self-profile`
+    - **Notes:** `/profile` ("My profile" in the top bar), `selfProfileSchema` in `core/people/form.ts` (`preferredName`, `phone`, `homeTimezone`, `identities`; zod drops anything else), `findOwnProfile(db, email)` and `saveOwnProfile(db, email, input)` in `queries/people.ts` (phone normalized against the person's own `homeRegion`; blank time zone defaulted from the desk as in #19; `checkIdentitiesFree` is now shared with `savePersonIn`; returns what was stored so the form shows the normalized phone). Audit `actorEmail` is the person. **Open question settled with the note's recommendation:** no photo self-edit (no free URLs; wait for uploads or #3). §10 Authorization and §13 Q2 updated. Tests: 1 unit, 3 DB, 2 Playwright.
+- [x] #21 Rename and create rooms and desks in the browser
+    - **Completed:** 2026-10-04
+    - **Branch:** merged from `feature/rename-spaces` (step 1) and `feature/place-desks-rooms` (step 2)
+    - **Step 1 notes:** "Room and area names" on `/admin/floors/[id]` (`components/admin/space-names.tsx`): areas, rooms and points of interest with inline names and a seat count for meeting rooms and phone booths. `spaceEditSchema`/`areaEditSchema` in `core/spaces/form.ts`; `listFloorSpacesForAdmin`, `saveSpace` (refuses desks: their name is their code) and `saveArea` in `queries/floors.ts`; audit entities `space` and `area`. Names are never overwritten by an upload (the diff keeps existing rows), so a re-upload keeps a rename; tested. Tests: 4 DB, 2 Playwright.
+    - **Step 2 notes:** done 2026-10-04, merged from `feature/place-desks-rooms`. `core/svg/edit.ts` `editDrawing(svg, floorSlug, edit)` (server-only, jsdom) adds a desk (`desk-<floor>-<next>`), a room (`room-<slug>` via `slugFromName`, `-2`… if taken) or removes a desk or room; `core/svg/edit-input.ts` `drawingEditSchema` (jsdom-free). `previewDrawingEdit(db, floorId, base, edit)` applies it to `base` (or the current version), sanitizes, and plans it like an upload; applying is the existing `applyUploadAction`. New shapes go at the SVG root; area membership comes from the parser's bounding-box fallback (a transform on the area group doesn't matter). UI: `components/admin/drawing-editor.tsx` (tools Add a desk / Draw a room / Remove; desk size = the floor's most common desk box) in `FloorDrawingPanel`; `getFloorForAdmin` returns `currentSvg`. Rooms are rectangles only. Phase 6's click-to-place item marked done. Tests: 11 unit, 2 DB, 2 Playwright.
+- [x] #22 Archive (or delete) rooms, floors and offices
+    - **Completed:** 2026-10-04
+    - **Branch:** merged from `feature/archive-floors-offices`
+    - **Notes:** Migration `0011` (`location.archived_at`). `queries/floors.ts`: `setFloorArchived`, `setLocationArchived` (archives the office's live floors at the same instant; unarchiving restores only floors whose `archivedAt` equals the office's, so a floor archived earlier stays archived), `deleteFloor`, `deleteLocation` (refused if any floor ever had an `svg_asset`; such a floor has no areas, spaces or room status, so no FK ordering is needed). Desk holders: `DesklessConfirmationNeeded` (a `ValidationError` carrying names) until `confirmDeskless`, then each person is made deskless with an audit entry. Archived offices are filtered in `loadMap` and `loadDirectory`'s office list; archived floors were already filtered everywhere. UI: `components/admin/archive-controls.tsx` on the floor and office pages; `/admin/locations?archived=1` shows archived ones, marked "(archived)". **Single rooms and desks** are removed through the drawing (#21's editor or an upload), as the note says. Tests: 3 DB, 2 Playwright.
+- [x] #29 Encrypted JSON export and import of the organization
+    - **Completed:** 2026-10-04
+    - **Branch:** merged from `feature/organization-backup`
+    - **Notes:** `core/backup/crypto.ts` (server-only, imported by path): `encryptExport`/`decryptExport`, scrypt N=2¹⁵ r=8 p=1 (64 MB `maxmem`) → AES-256-GCM, file `{ format: "orov-export", version: 1, kdf, cipher: { iv, tag }, ciphertext }`; passphrase ≥ 12 characters; a crafted file can't ask for absurd scrypt costs. `queries/backup.ts`: sections in FK order (locations, floors, svgAssets, areas, spaces, teams, people, teamMembers, personIdentities, appUsers, brandAssets, themes), generic over drizzle column metadata (generated `person.name` skipped, timestamps revived, bytea as base64); `exportOrganization`, `exportOrganizationAudited`, `planImport` (per-section create/update/unchanged; merge conflicts on office/team slug, email, desk code, account), `applyImport` (one transaction; deferred self-references floor→svgAsset, team→parent/lead, person→manager set in a second pass; cycle checks; `syncInheritedMemberships`; roles from the file only with `applyRoles`; importing admin forced to admin; replace mode also clears room status, presence and messaging tokens). Audit entity `organization`, actions `export`/`import`. **Schema version** is the database's latest `drizzle.__drizzle_migrations.created_at`; **any other version is refused**: format v1 has no upgrade steps yet, so the first schema change after this must add them (or exports must be retaken). Web: `POST /api/admin/backup/export` and `/import` (route handlers, no server-action body limit), `/admin/backup` with "Backup" in the admin nav. `app_settings` don't exist yet, so aren't exported. README "Backup and moving instances"; §9 row. Tests: 4 unit, 5 DB (including a full replace round trip equal row for row), 2 Playwright.
+
+**N. Second list (from the replaced `note.md`, 2026-10-04)**
+
+Built after #21 step 2, #22 and #29, at the project owner's direction; #30 still goes last. Numbered N1–N10 to keep them apart from the original items.
+
+- [x] N1 Allow dual managers
+    - **Completed:** 2026-10-04
+    - **Branch:** merged from `feature/multiple-managers`
+    - **Decided (2026-10-04):** **equal** managers, **any number**. In the reporting chart a person appears under each of their managers (as the team tree shows multi-team people), with their own reports under the first only, so whole subtrees aren't duplicated; selecting them highlights every node. The people CSV's `manager_email` takes several emails separated by `;`. Storage moves to a `person_manager(personId, managerId, position)` table; cycle checks walk every edge; #11's default applies when there are none.
+    - **Notes:** Migration `0015` is hand-written (snapshot via `generateDrizzleJson`, schema compared against a push): it drops the old index first, since Postgres shares one namespace between tables and indexes and the index on `person.manager_id` was named `person_manager`, then backfills. `PersonRecord.managerEmails`, `PersonForm.managerIds`, `DirectoryPerson.managers`, admin rows' `managerIds`/`managerNames`. Core: `reachesAncestorAny` (multi-parent cycle walk) in the import planner; `reportNodeId`/`standsFor` in `core/org/tree.ts` (extra nodes `<managerId>>personId` are leaves under each other manager). DB: `hasManagerCycle` and `managerWouldLoop` walk `person_manager`; `writeManagers`; the loop error names the blocking manager. Bulk edit's "Set manager" makes that the only manager. Backup gained a `personManagers` section. The manager arrays compare as sets in diffs, so reordering alone isn't a change. Tests: 5 unit, 4 DB, 1 Playwright; many fixtures updated.
+- [x] N2 Directory and org chart use the full page width, with the person card floating over the content
+    - **Completed:** 2026-10-04
+    - **Branch:** merged from `feature/full-width-layout` (with N3 and N4)
+    - **Notes:** The `(app)` layout's `main` dropped `max-w-7xl` (Settings and Profile keep their own `max-w-xl`). `FloatingPanel` in `components/view-bar.tsx`: fixed at the right on `lg` (below the bar with `belowBar`), static below the content on narrow screens; the view pads its content with `FLOATING_PANEL_GUTTER` while a person is selected, so the card never covers a row or control. The "Select someone to see their card" placeholder is gone. **Interpretation:** the map keeps its right column, since it shows the office overview when nothing is selected. Checked with desktop screenshots.
+- [x] N3 Keep the main menu at the top while scrolling
+    - **Completed:** 2026-10-04 (`feature/full-width-layout`)
+    - **Notes:** `sticky top-0 z-30 bg-bg` header; one `lg:h-14` row on wide screens, which the bar and panel offsets rely on. On narrow screens it can wrap, and the bar below it isn't sticky.
+- [x] N4 Map and org chart filters in a secondary bar between the main menu and the content
+    - **Completed:** 2026-10-04 (`feature/full-width-layout`)
+    - **Notes:** `ViewBar` (`role="region"`, named "Map filters" / "Org chart filters"), full width under the menu, `lg:sticky lg:top-14`. Map: floors, areas, team highlight with its counts, Map/List. Org: tree, Chart/List, team highlight. The directory's filters stay in its header (the note named the map and org chart only).
+- [x] N5 People and teams sorted alphabetically in every dropdown
+    - **Completed:** 2026-10-04
+    - **Branch:** merged from `feature/sorted-dropdowns`
+    - **Notes:** `sortByName` in `core/people/names.ts` (the lists' `Intl.Collator("en")`) applied at render in the org, directory and map team filters, the admin people team filter, the person form's manager select, the team form's parent and lead selects, and the bulk bar's manager/team select. Dropdowns sort by the shown full name (given name first); lists keep sorting by family name (#2). The no-README-change check: the README doesn't describe dropdown order. Tests: 1 unit, 1 Playwright.
+- [x] N6 Final date (admin view only)
+    - **Completed:** 2026-10-04
+    - **Branch:** merged from `feature/end-date`
+    - **Notes:** A person's last working day, as decided (2026-10-04). Migration `0013` (`person.end_date`). `PersonRecord`/`PersonForm.endDate` ("Last day"; refused before the start date in the form and the CSV). CSV `end_date` after `start_date`. #12's `keepIdentities` became `ValidPersonRow.absentColumns` with `KEPT_IF_ABSENT` (account columns and `end_date`), so an older spreadsheet doesn't clear it. Admin list shows "Last day …" under the status, formatted with `formatDate` in UTC (a calendar date shouldn't shift by zone). `DirectoryPerson` never carries it; the e2e test checks the viewer's page HTML, including the server-component payload. It doesn't deactivate anyone on the day; that would need the worker. Tests: 2 unit, 1 Playwright.
+- [x] N7 Flags as a standalone region display option
+    - **Completed:** 2026-10-04
+    - **Branch:** merged from `feature/flag-only-display`
+    - **Notes:** `REGION_DISPLAYS` gained `flag` ("Flag only"; migration `0012` adds the enum value). `formatRegion(code, "flag")` is the country name; `regionLabel` returns `flagOnly: true` with the flag and that name, or the bare code when there's no flag. `DirectoryPerson.homeRegionFlagOnly`, `MapLocation.regionFlagOnly`; `RegionText` in `location-label.tsx` renders the flag `aria-hidden` with the name in an `sr-only` span and a `title`. The #28 checkbox is irrelevant in this mode. **Also on this branch:** a fix to #22's archive spec, whose `name: "Archive floor"` matched "Unarchive floor" as a substring (the intermittent failure noted under N8). Tests: 5 unit, 1 Playwright.
+- [x] N8 Don't draw area names on the map; use areas only to filter
+    - **Completed:** 2026-10-04
+    - **Branch:** merged from `feature/no-area-labels`
+    - **Notes:** `map-view` no longer builds area labels; `labelLayout(box, name)` lost its `kind` and area layout; `FloorMap` no longer measures `area-` shapes. Area buttons and dimming are unchanged. The map labels spec now checks areas have no label and dims by rooms. One full e2e run had an unidentified single failure that didn't recur in two more runs; if it shows up again, record which spec. Tests: 1 unit removed, 2 Playwright updated.
+- [x] N9 Assign a person to an office without a desk
+    - **Completed:** 2026-10-04
+    - **Branch:** merged from `feature/office-without-desk`
+    - **Notes:** Migration `0014` (`person.office_id` → `location`). Stored only without a desk: `savePersonIn` and the import planner drop it when a desk is set, and the planner refuses an office that isn't the desk's. `DirectoryPerson.office`, `officeSlugOf` (desk office, else assigned office) for the office filter, `locationSummary` badge shows the office instead of "Remote". `PersonRecord.officeSlug`; CSV `office` column after `desk`, in `KEPT_IF_ABSENT`. Time zone default (#19) falls back to the office's. Map overview: "N people work here without a desk". `deleteLocation` refuses an office with people in it. **Not handled:** archiving an office leaves its desk-less people pointing at it (they show the archived office's name); a follow-up could ask, as with desks. Tests: 5 unit, 2 DB, 1 Playwright.
+- [x] N10 Seating planner: admins plan a seating chart by grouping, lock individuals in place, and auto-regroup the rest
+    - **Decided (2026-10-04):** group by primary team, over the desks of one office (all its floors); locked people keep their desks; everyone else is placed so each team sits together (same floor and area, nearest desks). Computed and applied in one sitting: a preview of moves, then one transaction with an audit entry per person. No saved drafts.
+    - **Completed:** 2026-10-04
+    - **Branch:** merged from `feature/seating-planner`
+    - **Notes:** `core/seating/plan.ts` `planSeating(desks, people)` (pure): locked people keep their desks; teams seated largest first, no-team last; a new team starts in the first area with a desk for every member (else the roomiest); each member takes the free desk minimizing floor change (1,000,000) + area change (400) + distance to the team's centroid − 60 for their own desk. `core/svg/positions.ts` `deskCenters(svg)` (server-only, jsdom) supplies positions. `queries/seating.ts`: `loadSeatingInput` (non-archived floors with drawings; active people at the office's desks), `previewSeating`, `applySeating` (validates the exact reviewed moves, clears then sets desks, audits each). UI: `/admin/locations/[id]/seating` ("Plan seating" on the office list). **Scope:** rearranges people who already have a desk in the office; people in the office without a desk (N9) aren't given desks by it. Tests: 5 unit, 3 DB, 1 Playwright.
+
+**G. Integrations (with Phases 4 and 5)**
+
+- [!] #4–6 Provider-agnostic interfaces in `packages/integrations`
+    - **Blocked:** built with Phases 4 and 5, which wait on the Phase 0 spikes (a Google Workspace service account and a Slack workspace). The schema half is done above.
+    - **Design (from the note):** `MessagingProvider` (`matchUsers(emails)`, `listProfiles()` for #3, `personLink`/`channelLink` with web fallback, `openGroupChat(viewerToken, ids)`, `maxGroupSize`, `subscribeStatusChannel`/`history(since)`, `react(messageRef, emoji)`), `CalendarProvider` (`outOfOffice`, `workingLocation`), `RoomDirectory` + `RoomStatusSource` (`listRooms()`, `freeBusy(resourceIds, from, to)`), fakes for each. Selected by env: `MESSAGING_PROVIDER`, `CALENDAR_PROVIDER`, `ROOMS_PROVIDER`; `INTEGRATIONS=fake` sets them all. Providers declare capabilities (`supportsGroupChat`, `supportsReactions`) and the UI hides what's missing. Later targets: Microsoft Teams + M365 (Graph; chat deep links need no API call), Robin/Skedda/Envoy (room status only), Google Chat/Mattermost/Discord (spike each). Rewrite §3, §4, §8 and §10 around providers when this lands.
+- [!] #3 Sync photo and title from the messaging tool
+    - **Blocked:** needs #4's `MessagingProvider.listProfiles()`, so Phase 5; #2 is done
+    - **Design (from the note):** wire `photoUrl` through `DirectoryPerson`, the card, the map overlay (`<image>` with a circular clip, falling back to initials) and org nodes (scheme-checked, through `escapeHtml`). A nightly `profiles:sync` job plus an admin "Sync now" with a diff (reuse `diffRecords` and the import dry-run UI). Per-field precedence (`person.title_source: manual | synced`; an admin edit flips it to manual). Proxy images same-origin (`/api/avatars/[personId]`) to keep CSP `img-src 'self'`. Open question: sync titles at all? Recommended: photos on by default, titles opt-in per deployment.
+
+**H. Rebrand**
+
+- [x] #30 Rename the project from OfficeOrg to OrOv
+    - **Completed:** 2026-10-05
+    - **Branch:** merged from `feature/rename-orov`
+    - **Depends on:** every other item; it touches nearly every file. Done with #3 and #4–6 still blocked, at the project owner's direction (2026-10-05), so Phases 4 and 5 are built under the new name.
+    - **Notes:** One mechanical commit (`OfficeOrg` → `OrOv`, `officeorg` → `orov`; nothing used `OFFICEORG_*`), plus one fix. Databases are `orov`, `orov_test`, `orov_e2e` (the main one never had a `_dev` suffix, so it stays without one), user and password `orov`. `docker-compose.yml` sets `name: orov`, so the volume is `orov_pgdata` whatever the folder is called: Postgres applies `POSTGRES_USER` only to a fresh volume, so a new volume was needed anyway, and the old `<folder>_pgdata` is left intact (README "Renamed from OfficeOrg" gives the switch-over steps). The theme advisory lock key is now `orov.theme`; don't run an old and a new replica together while applying a theme. **Fix:** the backup format id is now `orov-export`, and `decryptExport` still reads `officeorg-export` (`LEGACY_EXPORT_FORMATS`; the id isn't part of what GCM authenticates). A theme that was applied before keeps its stored `appName`; only the default changed. Acceptance: `pnpm install`, the dev database switch-over, and `docker build` of both targets (tagged `orov-web`, `orov-worker`) checked. Tests: 1 unit added, 1 extended.
+    - **Design (from the note):** replace `OfficeOrg` → `OrOv` and `officeorg` → `orov` (and any `OFFICEORG_*` → `OROV_*`) across README, plan.md, docs, package names (`@orov/*`), `pnpm-workspace.yaml`, the Dockerfile, compose service and volume names, CI image and artifact names, `.env.example`, code comments and strings, and the database init script (`orov_dev`, `orov_test`, `orov_e2e`). Keep table names and type names. One commit with no logic changes. Acceptance: `pnpm install`, `pnpm dev` and the Docker build work with the new names; images tagged `orov-web` and `orov-worker`.
 
 ---
 
@@ -627,7 +835,7 @@ The five spikes from §2 and `docs/spikes.md`.
 | R5  | Spreadsheet data quality (duplicate names, missing managers).                          | The dry-run import surfaces every bad row before anything is written.                                                                                            |
 | R6  | Brand palettes often fail WCAG AA, especially for status colors on the map. | The contrast gate in §9.1 blocks failing themes by default and suggests the nearest passing shade. Room status also has a non-color cue. |
 | Q1  | Which Slack channel is the status channel, and is there one per office?                | Default: one channel, configured by env var. A per-location channel is a small extension.                                                                        |
-| Q2  | Should people be able to edit their own profile (photo, phone) without being an admin? | Default: no in v1. Self-edit is a small Phase 6 item.                                                                                                            |
+| Q2  | Should people be able to edit their own profile (photo, phone) without being an admin? | **Resolved (Phase 7 #20):** yes, for preferred name, phone, home time zone and other accounts. Photos wait for uploads or the synced photo (#3), so no free photo URLs. |
 | Q3  | Hosting target and network access (public with Google SSO, or behind VPN/IAP)?         | Socket Mode works for either.                                                                                                                                    |
 | Q4  | Do deskless or remote people belong on the map at all?                                 | Default: no. They appear in the directory and org chart with a "{region} [Remote]" card, in the viewer's region format (§7.1).                                    |
 | Q5  | Does the organization have an exported token file, or only a PDF brand guide? | Default: start from `theme/default.tokens.json` and set the slots directly in the Branding mapping editor. A token file isn't required. |

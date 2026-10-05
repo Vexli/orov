@@ -29,7 +29,7 @@ const jane: Person = { id: "p_jane", name: "Jane Park", desk: "desk-2-003", mana
 // Each view, checked for the same person: the card, plus that view's own sign of focus.
 async function expectDirectoryFocus(page: Page, p: Person) {
   await expect(page).toHaveURL(new RegExp(`/directory\\?person=${p.id}`));
-  await expect(page.locator(`#person-row-${p.id}`)).toHaveAttribute("aria-selected", "true");
+  await expect(page.locator(`#person-row-${p.id}`)).toHaveAttribute("aria-current", "true");
   await expect(page.getByRole("complementary", { name: `${p.name} details` })).toBeVisible();
 }
 
@@ -117,17 +117,16 @@ test.describe("U9: selection across views", () => {
   test("a team and its sub-teams stay highlighted in every view", async ({ page }) => {
     await page.goto("/directory");
     await page.getByRole("combobox", { name: "Filter by team" }).selectOption({ label: "HR" });
-    await page.getByRole("checkbox", { name: "Include sub-teams" }).check();
     await expect(page.getByText("Showing 5 of 5")).toBeVisible();
 
     await tab(page, "Map").click();
-    await expect(page).toHaveURL(/\/map\?team=t_hr&sub=true/);
+    await expect(page).toHaveURL(/\/map\?team=t_hr$/);
     await expect(page.getByRole("status", { name: "Team seats" })).toContainText(
       "HR and sub-teams: 4 seats",
     );
 
     await tab(page, "Org chart").click();
-    await expect(page).toHaveURL(/\/org\?team=t_hr&sub=true/);
+    await expect(page).toHaveURL(/\/org\?team=t_hr$/);
     await expect(page.getByRole("status", { name: "Highlighted team" })).toHaveText(
       "HR and sub-teams: 5 people",
     );
@@ -136,6 +135,19 @@ test.describe("U9: selection across views", () => {
     await tab(page, "Directory").click();
     await expect(page.getByRole("combobox", { name: "Filter by team" })).toHaveValue("t_hr");
     await expect(page.getByRole("checkbox", { name: "Include sub-teams" })).toBeChecked();
+  });
+
+  test("turning sub-teams off carries across the views", async ({ page }) => {
+    await page.goto("/directory?team=t_hr");
+    await page.getByRole("checkbox", { name: "Include sub-teams" }).uncheck();
+    await expect(page.getByText("Showing 3 of 5")).toBeVisible();
+
+    await tab(page, "Map").click();
+    await expect(page).toHaveURL(/\/map\?team=t_hr&sub=false/);
+    await expect(page.getByRole("status", { name: "Team seats" })).toContainText("HR: 3 seats");
+
+    await tab(page, "Org chart").click();
+    await expect(page.getByRole("status", { name: "Highlighted team" })).toHaveText("HR: 3 people");
   });
 
   test("closing the card in one view clears the selection for the others", async ({ page }) => {
@@ -149,6 +161,6 @@ test.describe("U9: selection across views", () => {
 
     await tab(page, "Org chart").click();
     await expect(page.locator("[data-org-chart] [data-selected]")).toHaveCount(0);
-    await expect(page.getByText("Select someone to see their card.")).toBeVisible();
+    await expect(page.getByRole("complementary", { name: /details$/ })).toHaveCount(0);
   });
 });

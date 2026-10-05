@@ -1,15 +1,19 @@
 import { createLoader, parseAsBoolean, parseAsString, parseAsStringLiteral } from "nuqs/server";
-import { ORG_TREES } from "@officeorg/core/org/tree";
+import { DESK_FILTERS, PERSON_STATUSES } from "@orov/core/admin/filter";
+import { ORG_TREES } from "@orov/core/org/tree";
 
 // The one definition of URL state. Every view imports it, so the same person, team and filters
 // survive a switch between views (plan.md §7).
 //
 // Imported from nuqs/server, which has no client-only code, so server pages can parse the same
 // params with a loader and client components can pass these parsers to useQueryStates.
+//
+// `sub` defaults to true: a team means the team and everything under it, unless the viewer
+// unticks "Include sub-teams". nuqs leaves defaults out of the URL, so only `sub=false` is written.
 export const selectionParsers = {
   person: parseAsString,
   team: parseAsString,
-  sub: parseAsBoolean.withDefault(false),
+  sub: parseAsBoolean.withDefault(true),
 };
 
 export const directoryParsers = {
@@ -40,4 +44,17 @@ export const orgParsers = {
   ...selectionParsers,
   tree: parseAsStringLiteral(ORG_TREES).withDefault("reporting"),
   view: parseAsStringLiteral(["chart", "list"] as const).withDefault("chart"),
+};
+
+// Filters on the admin people list (/admin/people). Inactive people are hidden unless asked for.
+export const adminPeopleParsers = {
+  q: parseAsString.withDefault(""),
+  team: parseAsString,
+  sub: parseAsBoolean.withDefault(true),
+  status: parseAsStringLiteral(PERSON_STATUSES).withDefault("active"),
+  desk: parseAsStringLiteral(DESK_FILTERS).withDefault("any"),
+};
+
+export const adminTeamsParsers = {
+  q: parseAsString.withDefault(""),
 };

@@ -1,5 +1,5 @@
 import { encode } from "next-auth/jwt";
-import type { BrowserContext } from "@playwright/test";
+import type { BrowserContext, Page } from "@playwright/test";
 import { E2E_AUTH_SECRET } from "./constants";
 
 // Signs in by minting the JWT the app issues after a Google sign-in, using the e2e AUTH_SECRET.
@@ -21,4 +21,13 @@ export async function signInAs(context: BrowserContext, email: string) {
       sameSite: "Lax",
     },
   ]);
+}
+
+// Signs out and in as someone else in the same browser context. The page is left first: Auth.js
+// refreshes the session cookie on every response, so a link prefetch still in flight from the
+// old user's page would otherwise set their cookie back after the switch.
+export async function switchUser(page: Page, context: BrowserContext, email: string) {
+  await page.goto("about:blank");
+  await context.clearCookies();
+  await signInAs(context, email);
 }

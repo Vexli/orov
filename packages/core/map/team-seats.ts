@@ -1,4 +1,4 @@
-import { teamScope } from "../directory/filter";
+import { explicitTeams, teamScope } from "../directory/filter";
 import type { DirectoryPerson, DirectoryTeam } from "../directory/model";
 import type { MapLocation, MapSeat } from "./model";
 
@@ -35,7 +35,7 @@ export function teamSeats(
 ): TeamSeats {
   const scope = teamScope(teamId, includeSubteams, data.teams);
   const members = new Set(
-    data.people.filter((p) => p.teams.some((t) => scope.has(t.id))).map((p) => p.id),
+    data.people.filter((p) => explicitTeams(p).some((t) => scope.has(t.id))).map((p) => p.id),
   );
   const seats = data.seats.filter((s) => members.has(s.personId));
 

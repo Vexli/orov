@@ -195,7 +195,7 @@ describe("buildTheme", () => {
     values.light["density"] = "compact";
     values.light["font.sans"] = '"Acme Sans", sans-serif';
     values.light["appName"] = "Acme Office";
-    const file = { name: "officeorg-theme.tokens.json", content: exportThemeTokens(values) };
+    const file = { name: "orov-theme.tokens.json", content: exportThemeTokens(values) };
 
     const first = buildTheme({ files: [file], mapping: {}, darkMode: true });
     const mapping = suggestMapping(first.tokens);

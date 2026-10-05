@@ -1,9 +1,10 @@
-import { eq, isNotNull, inArray } from "drizzle-orm";
+import { eq, inArray, isNotNull, isNull } from "drizzle-orm";
 import {
   parsePeopleCsv,
   parseTeamsCsv,
   peopleToCsv,
   planPeopleImport,
+  planSkippingErrors,
   planTeamsImport,
   teamsToCsv,
   type DeskInfo,
@@ -11,11 +12,12 @@ import {
   type PeopleSnapshot,
   type PersonRecord,
   type TeamRecord,
-} from "@officeorg/core";
+} from "@orov/core";
 import type { Database, Executor } from "../client";
 import * as s from "../schema";
 import { recordAudit } from "./audit";
-import { hasManagerCycle, loadPersonRecords } from "./people";
+import { syncInheritedMemberships } from "./memberships";
+import { hasManagerCycle, loadPersonRecords, writeManagers, writeProfileIdentities } from "./people";
 import { hasTeamCycle, loadTeamRecords } from "./teams";
 
 export class ImportRejectedError extends Error {
@@ -35,12 +37,45 @@ function rejectionFor(plan: ImportPlan<unknown>): ImportRejectedError {
   return new ImportRejectedError(`The file has errors, so nothing was imported.${reason}`, plan);
 }
 
-export type PlanResult<R> = { ok: true; plan: ImportPlan<R> } | { ok: false; fatal: string };
+// `skip` lists file line numbers the admin left out. `skipErrors` also skips every row with an
+// error, and then the rows that depended on them; the result's `skip` is the full set, which the
+// apply step must be given so it writes what the dry run showed.
+export interface PlanOptions {
+  skip?: readonly number[];
+  skipErrors?: boolean;
+}
+
+// `notices` are things to read before applying, such as names split from a legacy column.
+export type PlanResult<R> =
+  | { ok: true; plan: ImportPlan<R>; skip: number[]; notices: string[] }
+  | { ok: false; fatal: string };
 
 export interface ApplyResult {
   created: number;
   updated: number;
   unchanged: number;
+  skipped: number;
+}
+
+function planWithSkips<R>(
+  plan: (skip: ReadonlySet<number>) => ImportPlan<R>,
+  options: PlanOptions,
+  notices: string[] = [],
+): PlanResult<R> {
+  const initial = new Set(options.skip ?? []);
+  const byLine = (a: number, b: number) => a - b;
+  if (!options.skipErrors) return { ok: true, plan: plan(initial), skip: [...initial].sort(byLine), notices };
+  const result = planSkippingErrors(plan, initial);
+  return { ok: true, plan: result.plan, skip: [...result.skip].sort(byLine), notices };
+}
+
+function applyCounts(plan: ImportPlan<unknown>): ApplyResult {
+  return {
+    created: plan.counts.create,
+    updated: plan.counts.update,
+    unchanged: plan.counts.unchanged,
+    skipped: plan.counts.skipped,
+  };
 }
 
 async function loadPeopleSnapshot(db: Executor): Promise<PeopleSnapshot> {
@@ -49,7 +84,9 @@ async function loadPeopleSnapshot(db: Executor): Promise<PeopleSnapshot> {
 
   const deskRows = await db.query.space.findMany({
     where: eq(s.space.kind, "desk"),
-    with: { floor: { columns: { archivedAt: true } } },
+    with: {
+      floor: { columns: { archivedAt: true }, with: { location: { columns: { timezone: true, slug: true } } } },
+    },
   });
   const owners = await db
     .select({ email: s.person.email, deskId: s.person.assignedDeskId })
@@ -62,36 +99,67 @@ async function loadPeopleSnapshot(db: Executor): Promise<PeopleSnapshot> {
     desks.set(desk.name, {
       assignable: desk.archivedAt === null && desk.floor.archivedAt === null,
       ownerEmail: ownerByDeskId.get(desk.id) ?? null,
+      timezone: desk.floor.location.timezone,
+      officeSlug: desk.floor.location.slug,
     });
   }
+
+  // Team leads aren't in the spreadsheet, so they come from the database by team slug.
+  const leads = await db
+    .select({ slug: s.team.slug, email: s.person.email })
+    .from(s.team)
+    .innerJoin(s.person, eq(s.person.id, s.team.leadId));
+  const leadBySlug = new Map(leads.map((l) => [l.slug, l.email]));
 
   return {
     people: new Map(people.map((p) => [p.email, p])),
     teamSlugs: new Set(teams.map((t) => t.slug)),
+    teams: new Map(
+      teams.map((t) => [t.slug, { parentTeamId: t.parentSlug, leadId: leadBySlug.get(t.slug) ?? null }]),
+    ),
+    offices: new Map(
+      (
+        await db
+          .select({ slug: s.location.slug, timezone: s.location.timezone })
+          .from(s.location)
+          .where(isNull(s.location.archivedAt))
+      ).map((o) => [o.slug, { timezone: o.timezone }]),
+    ),
     desks,
   };
 }
 
-export async function planPeopleCsv(db: Executor, text: string): Promise<PlanResult<PersonRecord>> {
+export async function planPeopleCsv(
+  db: Executor,
+  text: string,
+  options: PlanOptions = {},
+): Promise<PlanResult<PersonRecord>> {
   const parsed = parsePeopleCsv(text);
   if (parsed.fatal) return { ok: false, fatal: parsed.fatal };
   const snapshot = await loadPeopleSnapshot(db);
-  return { ok: true, plan: planPeopleImport(parsed.rows, parsed.issues, snapshot) };
+  return planWithSkips(
+    (skip) => planPeopleImport(parsed.rows, parsed.issues, snapshot, skip),
+    options,
+    parsed.notices,
+  );
 }
 
 // Re-plans inside the transaction, so the result reflects the database at write time rather than
 // whatever the dry run saw. Writes happen in three passes:
 //   1. Upsert every changed person with no manager and no desk. This clears the desk of anyone
 //      who is moving, so two people can swap desks without hitting the unique index.
-//   2. Set managers, desks and team memberships, now that every referenced person exists.
+//      It also clears their profile accounts, so two people can swap one the same way.
+//   2. Set managers, desks, team memberships and accounts, now that every referenced person exists.
 //   3. Check each changed person for a manager cycle.
+// Skipped lines write nothing.
 export async function applyPeopleCsv(
   db: Database,
   actorEmail: string,
   text: string,
+  skip: readonly number[] = [],
 ): Promise<ApplyResult> {
   return db.transaction(async (tx) => {
-    const planned = await planPeopleCsv(tx, text);
+    const planned = await planPeopleCsv(tx, text, { skip });
     if (!planned.ok) throw new ImportRejectedError(planned.fatal);
     if (!planned.plan.canApply) throw rejectionFor(planned.plan);
     const snapshot = await loadPeopleSnapshot(tx);
@@ -104,7 +172,7 @@ export async function applyPeopleCsv(
         .values(personValues(rec))
         .onConflictDoUpdate({
           target: s.person.email,
-          set: { ...personValues(rec), managerId: null, assignedDeskId: null, updatedAt: new Date() },
+          set: { ...personValues(rec), assignedDeskId: null, updatedAt: new Date() },
         });
     }
 
@@ -121,9 +189,23 @@ export async function applyPeopleCsv(
     );
 
     for (const row of changed) {
+      await writeProfileIdentities(tx, idByEmail.get(row.record!.email)!, {});
+    }
+
+    const idByOfficeSlug = new Map(
+      (await tx.select({ id: s.location.id, slug: s.location.slug }).from(s.location)).map((l) => [l.slug, l.id]),
+    );
+
+    for (const row of changed) {
       const rec = row.record!;
       const personId = idByEmail.get(rec.email)!;
 
+      await writeProfileIdentities(tx, personId, rec.identities);
+      await writeManagers(
+        tx,
+        personId,
+        rec.managerEmails.map((email) => idByEmail.get(email)!),
+      );
       await tx.delete(s.teamMember).where(eq(s.teamMember.personId, personId));
       if (rec.teamSlugs.length > 0) {
         const teamIds = await tx
@@ -143,11 +225,13 @@ export async function applyPeopleCsv(
       await tx
         .update(s.person)
         .set({
-          managerId: rec.managerEmail ? (idByEmail.get(rec.managerEmail) ?? null) : null,
           assignedDeskId: rec.deskCode ? (idByDeskCode.get(rec.deskCode) ?? null) : null,
+          officeId: rec.officeSlug ? (idByOfficeSlug.get(rec.officeSlug) ?? null) : null,
         })
         .where(eq(s.person.id, personId));
     }
+
+    await syncInheritedMemberships(tx);
 
     for (const row of changed) {
       const personId = idByEmail.get(row.record!.email)!;
@@ -163,40 +247,47 @@ export async function applyPeopleCsv(
       });
     }
 
-    return {
-      created: planned.plan.counts.create,
-      updated: planned.plan.counts.update,
-      unchanged: planned.plan.counts.unchanged,
-    };
+    return applyCounts(planned.plan);
   });
 }
 
 function personValues(rec: PersonRecord) {
   return {
     email: rec.email,
-    name: rec.name,
+    givenName: rec.givenName,
+    familyName: rec.familyName,
     preferredName: rec.preferredName,
     title: rec.title,
     phone: rec.phone,
     homeRegion: rec.homeRegion,
     homeTimezone: rec.homeTimezone,
     startDate: rec.startDate,
+    endDate: rec.endDate,
     active: rec.active,
   };
 }
 
-export async function planTeamsCsv(db: Executor, text: string): Promise<PlanResult<TeamRecord>> {
+export async function planTeamsCsv(
+  db: Executor,
+  text: string,
+  options: PlanOptions = {},
+): Promise<PlanResult<TeamRecord>> {
   const parsed = parseTeamsCsv(text);
   if (parsed.fatal) return { ok: false, fatal: parsed.fatal };
   const existing = new Map((await loadTeamRecords(db)).map((t) => [t.slug, t]));
-  return { ok: true, plan: planTeamsImport(parsed.rows, parsed.issues, existing) };
+  return planWithSkips((skip) => planTeamsImport(parsed.rows, parsed.issues, existing, skip), options);
 }
 
 // Same three-pass shape as applyPeopleCsv. Team leads are not part of the spreadsheet, so an
 // import never changes them.
-export async function applyTeamsCsv(db: Database, actorEmail: string, text: string): Promise<ApplyResult> {
+export async function applyTeamsCsv(
+  db: Database,
+  actorEmail: string,
+  text: string,
+  skip: readonly number[] = [],
+): Promise<ApplyResult> {
   return db.transaction(async (tx) => {
-    const planned = await planTeamsCsv(tx, text);
+    const planned = await planTeamsCsv(tx, text, { skip });
     if (!planned.ok) throw new ImportRejectedError(planned.fatal);
     if (!planned.plan.canApply) throw rejectionFor(planned.plan);
     const existing = new Map((await loadTeamRecords(tx)).map((t) => [t.slug, t]));
@@ -207,7 +298,7 @@ export async function applyTeamsCsv(db: Database, actorEmail: string, text: stri
       const values = {
         slug: rec.slug,
         name: rec.name,
-        slackChannelId: rec.slackChannelId,
+        chatChannelId: rec.chatChannelId,
         color: rec.color,
       };
       await tx
@@ -225,6 +316,9 @@ export async function applyTeamsCsv(db: Database, actorEmail: string, text: stri
         .where(eq(s.team.slug, rec.slug));
     }
 
+    // A team that moved takes its members' inherited memberships with it.
+    await syncInheritedMemberships(tx);
+
     for (const row of changed) {
       const teamId = idBySlug.get(row.record!.slug)!;
       if (await hasTeamCycle(tx, teamId)) {
@@ -239,11 +333,7 @@ export async function applyTeamsCsv(db: Database, actorEmail: string, text: stri
       });
     }
 
-    return {
-      created: planned.plan.counts.create,
-      updated: planned.plan.counts.update,
-      unchanged: planned.plan.counts.unchanged,
-    };
+    return applyCounts(planned.plan);
   });
 }
 

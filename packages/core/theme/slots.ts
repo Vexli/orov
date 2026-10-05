@@ -162,7 +162,7 @@ export const SLOTS: readonly SlotDefinition[] = [
     name: "appName",
     kind: "text",
     cssVar: null,
-    light: "OfficeOrg",
+    light: "OrOv",
     description: "Product name in the header and title",
   },
   {

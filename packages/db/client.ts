@@ -17,12 +17,12 @@ export type Database = ReturnType<typeof createDb>["db"];
 // One pool per process. Next.js dev reloads modules, so the pool lives on globalThis.
 export function getDb(): Database {
   const g = globalThis as typeof globalThis & {
-    __officeorgDb?: ReturnType<typeof createDb>;
+    __orovDb?: ReturnType<typeof createDb>;
   };
-  if (!g.__officeorgDb) {
+  if (!g.__orovDb) {
     const url = process.env.DATABASE_URL;
     if (!url) throw new Error("DATABASE_URL is not set");
-    g.__officeorgDb = createDb(url);
+    g.__orovDb = createDb(url);
   }
-  return g.__officeorgDb.db;
+  return g.__orovDb.db;
 }

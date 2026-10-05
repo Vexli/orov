@@ -9,7 +9,7 @@ import {
   devAuthAllowed,
   parseSsoProviders,
   type SsoProviderId,
-} from "@officeorg/core/auth/policy";
+} from "@orov/core/auth/policy";
 
 // Edge-safe: the proxy imports this, so nothing here may touch the database driver.
 

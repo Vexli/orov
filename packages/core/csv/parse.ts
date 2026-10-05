@@ -12,6 +12,9 @@ export interface CsvIssue {
 
 export interface ParsedCsv {
   records: CsvRecord[];
+  // The columns the header row named, after aliases. Lets a caller tell a blank cell from a
+  // column the file doesn't have.
+  headers?: string[];
   fatal?: string;
 }
 
@@ -26,11 +29,16 @@ interface CsvShape {
 }
 
 // Header names are case-insensitive and trimmed. Unknown columns are ignored, so someone can
-// add a private column to the spreadsheet without breaking the import.
+// add a private column to the spreadsheet without breaking the import. The separator is read from
+// the header row: Excel writes tabs in "Unicode Text" files and semicolons in "CSV" files on
+// systems that use a decimal comma. Every cell is NFC-normalized, so a name typed on a Mac
+// (decomposed accents) matches the same name stored from elsewhere.
 export function parseCsv(text: string, shape: CsvShape): ParsedCsv {
+  let headers: string[] = [];
   try {
     const rows = parse(text, {
       bom: true,
+      delimiter: detectDelimiter(text),
       trim: true,
       skip_empty_lines: true,
       relax_column_count: true,
@@ -45,16 +53,35 @@ export function parseCsv(text: string, shape: CsvShape): ParsedCsv {
         if (missing.length > 0) {
           throw new Error(`Missing required column(s): ${missing.join(", ")}`);
         }
+        headers = normalized;
         return normalized;
       },
     }) as { record: Record<string, string | undefined>; info: { lines: number } }[];
 
     const records = rows.map(({ record, info }) => ({
       line: info.lines,
-      values: Object.fromEntries(shape.columns.map((key) => [key, (record[key] ?? "").trim()])),
+      values: Object.fromEntries(
+        shape.columns.map((key) => [key, (record[key] ?? "").trim().normalize("NFC")]),
+      ),
     }));
-    return { records };
+    return { records, headers };
   } catch (error) {
     return { records: [], fatal: error instanceof Error ? error.message : String(error) };
   }
+}
+
+// The most frequent of comma, semicolon and tab in the first line. The header row holds only
+// column names, so the separator inside a teams cell ("hr;payroll") can't mislead it.
+export function detectDelimiter(text: string): string {
+  const firstLine = text.replace(/^\uFEFF/, "").split(/\r?\n/, 1)[0] ?? "";
+  let best = ",";
+  let bestCount = 0;
+  for (const candidate of [",", ";", "\t"]) {
+    const count = firstLine.split(candidate).length - 1;
+    if (count > bestCount) {
+      best = candidate;
+      bestCount = count;
+    }
+  }
+  return best;
 }

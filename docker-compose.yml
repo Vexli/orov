@@ -1,17 +1,21 @@
+# The project name fixes the container and volume names (orov-db-1, orov_pgdata) whatever the
+# checkout's folder is called.
+name: orov
+
 services:
   db:
     image: postgres:16-alpine
     environment:
-      POSTGRES_USER: officeorg
-      POSTGRES_PASSWORD: officeorg
-      POSTGRES_DB: officeorg
+      POSTGRES_USER: orov
+      POSTGRES_PASSWORD: orov
+      POSTGRES_DB: orov
     ports:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
       - ./docker/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U officeorg"]
+      test: ["CMD-SHELL", "pg_isready -U orov"]
       interval: 2s
       timeout: 2s
       retries: 30

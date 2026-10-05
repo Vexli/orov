@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { parsePeopleCsv, peopleToCsv } from "./people";
+import { PROFILE_PROVIDER_IDS } from "../people/identities";
+import { LEGACY_NAME_NOTICE, PEOPLE_CSV_HEADERS, parsePeopleCsv, peopleToCsv } from "./people";
 
+// Most cases use the older single `name` column, which still imports (split at the last space).
 const HEADER = "email,name,preferred_name,title,home_region,home_timezone,phone,start_date,active,manager_email,desk,teams,primary_team";
 
 describe("parsePeopleCsv", () => {
@@ -12,19 +14,52 @@ describe("parsePeopleCsv", () => {
     expect(result.rows).toHaveLength(1);
     expect(result.rows[0]?.record).toEqual({
       email: "jane@example.com",
-      name: "Jane Doe",
+      givenName: "Jane",
+      familyName: "Doe",
       preferredName: "Jane",
       title: "Head of HR",
       phone: null,
       homeRegion: "CA",
       homeTimezone: "America/Toronto",
       startDate: "2024-02-01",
+      endDate: null,
       active: true,
-      managerEmail: null,
+      managerEmails: [],
       deskCode: "SF-2-014",
+      officeSlug: null,
       teamSlugs: ["hr", "people ops"],
       primaryTeamSlug: "hr",
+      identities: {},
     });
+  });
+
+  it("reads given_name and family_name", () => {
+    const csv = "email,given_name,family_name,home_region\nm@x.com,Mary Ann,Smith,US\np@x.com,Priya,,IN\n";
+    const { rows, notices } = parsePeopleCsv(csv);
+    expect(rows.map((r) => [r.record.givenName, r.record.familyName])).toEqual([
+      ["Mary Ann", "Smith"],
+      ["Priya", null],
+    ]);
+    expect(notices).toEqual([]);
+  });
+
+  it("splits the older name column at the last space, and says so", () => {
+    const { rows, notices } = parsePeopleCsv("email,name,home_region\nm@x.com,Mary Ann Smith,US\n");
+    expect(rows[0]?.record).toMatchObject({ givenName: "Mary Ann", familyName: "Smith" });
+    expect(notices).toEqual([LEGACY_NAME_NOTICE]);
+  });
+
+  it("prefers given_name when a file has both", () => {
+    const { rows, notices } = parsePeopleCsv("email,name,given_name,home_region\nm@x.com,Ignored Name,Mary,US\n");
+    expect(rows[0]?.record).toMatchObject({ givenName: "Mary", familyName: null });
+    expect(notices).toEqual([]);
+  });
+
+  it("needs a given name or a name column", () => {
+    expect(parsePeopleCsv("email,home_region\na@x.com,US\n").fatal).toBe("Missing required column(s): given_name");
+    expect(parsePeopleCsv("email,given_name,home_region\na@x.com,,US\n").issues[0]?.message).toBe(
+      "given_name is required",
+    );
   });
 
   it("treats a blank active cell as true and 'no' as false", () => {
@@ -82,27 +117,74 @@ describe("parsePeopleCsv", () => {
   });
 });
 
+describe("phone", () => {
+  it("is stored in E.164, read in the home region's country", () => {
+    const csv = `${HEADER}\na@x.com,A,,,US-CA,,(415) 555-0123,,,,,,\nb@x.com,B,,,GB,,020 7946 0018,,,,,,\n`;
+    const { rows } = parsePeopleCsv(csv);
+    expect(rows.map((r) => r.record.phone)).toEqual(["+14155550123", "+442079460018"]);
+  });
+
+  it("is a row error when it isn't a number", () => {
+    const { issues } = parsePeopleCsv(`${HEADER}\na@x.com,A,,,US,,call reception,,,,,,\n`);
+    expect(issues[0]?.message).toMatch(/^phone: Phone isn't a valid number/);
+  });
+});
+
+describe("home_timezone", () => {
+  it("is stored canonically, and a made-up zone is a row error", () => {
+    const csv = `${HEADER}\na@x.com,A,,,US,america/new_york,,,,,,,\nb@x.com,B,,,US,Mars/Olympus,,,,,,,\n`;
+    const { rows, issues } = parsePeopleCsv(csv);
+    expect(rows[0]?.record.homeTimezone).toBe("America/New_York");
+    expect(issues).toEqual([{ line: 3, message: expect.stringMatching(/^home_timezone is not an IANA time zone/) }]);
+  });
+});
+
+describe("identity columns", () => {
+  it("has one column per profile provider, in registry order", () => {
+    expect(PEOPLE_CSV_HEADERS.slice(-PROFILE_PROVIDER_IDS.length)).toEqual(PROFILE_PROVIDER_IDS);
+  });
+
+  it("normalizes handles and profile URLs", () => {
+    const csv = `${HEADER},github,linkedin\nbob@x.com,Bob,,,US,,,,,,,,,https://github.com/BobL/,linkedin.com/in/bob-l\n`;
+    const { rows, issues } = parsePeopleCsv(csv);
+    expect(issues).toEqual([]);
+    expect(rows[0]?.record.identities).toEqual({ github: "bobl", linkedin: "bob-l" });
+  });
+
+  it("rejects a value the provider doesn't accept", () => {
+    const csv = `${HEADER},github\nbob@x.com,Bob,,,US,,,,,,,,,https://gitlab.com/bob\n`;
+    const { rows, issues } = parsePeopleCsv(csv);
+    expect(rows).toEqual([]);
+    expect(issues[0]?.message).toMatch(/^github: GitHub is not valid/);
+  });
+});
+
 describe("peopleToCsv", () => {
   it("round-trips through parsePeopleCsv", () => {
     const original = [
       {
         email: "bob@x.com",
-        name: "Bob",
+        givenName: "Bob",
+        familyName: "Lindqvist",
         preferredName: null,
         title: "Analyst, Data",
         phone: null,
         homeRegion: "US-CA",
         homeTimezone: null,
         startDate: null,
+        endDate: null,
         active: false,
-        managerEmail: "max@x.com",
+        managerEmails: ["max@x.com"],
         deskCode: "SF-2-001",
+        officeSlug: null,
         teamSlugs: ["hr", "payroll"],
         primaryTeamSlug: "payroll",
+        identities: { github: "bobl", website: "https://bob.example.com/" },
       },
     ];
     const csv = peopleToCsv(original);
-    expect(csv.split("\n")[0]).toBe(HEADER);
+    expect(csv.split("\n")[0]).toBe(PEOPLE_CSV_HEADERS.join(","));
+    expect(csv.split("\n")[0]).toMatch(/^email,given_name,family_name,preferred_name,/);
     const { rows, issues } = parsePeopleCsv(csv);
     expect(issues).toEqual([]);
     expect(rows.map((r) => r.record)).toEqual(original);

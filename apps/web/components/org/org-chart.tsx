@@ -2,8 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { OrgChart as OrgChartType } from "d3-org-chart";
-import { escapeHtml } from "@officeorg/core/org/html";
-import { initiallyVisible, nodesToReveal, type OrgNode } from "@officeorg/core/org/tree";
+import { escapeHtml } from "@orov/core/org/html";
+import { initiallyVisible, nodesToReveal, standsFor, type OrgNode } from "@orov/core/org/tree";
 
 // d3-org-chart keeps its state as flags on the data objects themselves. `_expanded` makes a node
 // visible (it opens the node's ancestors), and `_centered` asks the next draw to pan to it.
@@ -170,7 +170,8 @@ function prepareDraw(
 
   const reveal = nodesToReveal(nodes, selectedId, highlightedIds);
   for (const d of state.data) {
-    d.selected = d.id === selectedId;
+    // Someone with several managers has a node under each; all of them show as selected (N1).
+    d.selected = standsFor(d.id, selectedId);
     d.highlighted = highlightedIds.has(d.id);
     if (reveal.has(d.id)) d._expanded = true;
   }

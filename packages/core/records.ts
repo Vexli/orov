@@ -1,27 +1,38 @@
+import type { Identities } from "./people/identities";
+
 // Flat, spreadsheet-shaped views of people and teams. References are by email and slug,
 // never by database id, so a CSV row and a database row compare directly.
 
 export interface PersonRecord {
   email: string;
-  name: string;
+  givenName: string;
+  familyName: string | null;
   preferredName: string | null;
   title: string | null;
   phone: string | null;
   homeRegion: string;
   homeTimezone: string | null;
   startDate: string | null;
+  // The last working day (N6). Admin-only: never sent to the directory, map or org chart.
+  endDate: string | null;
   active: boolean;
-  managerEmail: string | null;
+  // Everyone this person reports to, equally (N1). Order is kept but doesn't change the meaning.
+  managerEmails: string[];
   deskCode: string | null;
+  // Only for someone without a desk (N9); with a desk, the office is the desk's.
+  officeSlug: string | null;
   teamSlugs: string[];
   primaryTeamSlug: string | null;
+  // Profile accounts only (github, linkedin, …), by provider id. Messaging ids are not
+  // spreadsheet data: a match job writes them.
+  identities: Identities;
 }
 
 export interface TeamRecord {
   slug: string;
   name: string;
   parentSlug: string | null;
-  slackChannelId: string | null;
+  chatChannelId: string | null;
   color: string | null;
 }
 
@@ -53,23 +64,40 @@ function normalize(value: unknown): unknown {
 }
 
 export const PERSON_FIELDS = [
-  "name",
+  "givenName",
+  "familyName",
   "preferredName",
   "title",
   "phone",
   "homeRegion",
   "homeTimezone",
   "startDate",
+  "endDate",
   "active",
-  "managerEmail",
+  "managerEmails",
   "deskCode",
+  "officeSlug",
   "teamSlugs",
   "primaryTeamSlug",
 ] as const satisfies readonly (keyof PersonRecord)[];
 
+// PERSON_FIELDS plus one change per identity provider, named by the provider id.
+export function diffPersonRecords(before: PersonRecord, after: PersonRecord): FieldChange[] {
+  const changes = diffRecords(before, after, PERSON_FIELDS);
+  const providers = [
+    ...new Set([...Object.keys(before.identities), ...Object.keys(after.identities)]),
+  ].sort();
+  for (const provider of providers) {
+    const a = before.identities[provider] ?? null;
+    const b = after.identities[provider] ?? null;
+    if (a !== b) changes.push({ field: provider, before: a, after: b });
+  }
+  return changes;
+}
+
 export const TEAM_FIELDS = [
   "name",
   "parentSlug",
-  "slackChannelId",
+  "chatChannelId",
   "color",
 ] as const satisfies readonly (keyof TeamRecord)[];

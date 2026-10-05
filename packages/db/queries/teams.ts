@@ -1,8 +1,9 @@
 import { and, eq, ne, sql } from "drizzle-orm";
-import type { TeamForm, TeamRecord } from "@officeorg/core";
+import type { TeamForm, TeamRecord } from "@orov/core";
 import type { Database, Executor } from "../client";
 import * as s from "../schema";
 import { recordAudit } from "./audit";
+import { syncInheritedMemberships } from "./memberships";
 import { ValidationError } from "./errors";
 
 // True if walking up the parent chain from `teamId` returns to `teamId`. Same UNION guard as
@@ -44,7 +45,7 @@ function toTeamRecord(row: NonNullable<Awaited<ReturnType<typeof findTeamRow>>>)
     slug: row.slug,
     name: row.name,
     parentSlug: row.parent?.slug ?? null,
-    slackChannelId: row.slackChannelId,
+    chatChannelId: row.chatChannelId,
     color: row.color,
   };
 }
@@ -81,7 +82,7 @@ export async function listTeamsForAdmin(db: Executor) {
     parentName: row.parent?.name ?? null,
     leadId: row.lead?.id ?? null,
     leadName: row.lead?.name ?? null,
-    slackChannelId: row.slackChannelId,
+    chatChannelId: row.chatChannelId,
     color: row.color,
     memberCount: row.members.length,
     childCount: row.children.length,
@@ -96,7 +97,7 @@ export async function getTeamForEdit(db: Executor, id: string): Promise<TeamForm
     name: row.name,
     parentTeamId: row.parentTeamId,
     leadId: row.leadId,
-    slackChannelId: row.slackChannelId,
+    chatChannelId: row.chatChannelId,
     color: row.color,
   };
 }
@@ -135,12 +136,15 @@ export async function saveTeam(
       name: input.name,
       parentTeamId: input.parentTeamId,
       leadId: input.leadId,
-      slackChannelId: input.slackChannelId,
+      chatChannelId: input.chatChannelId,
       color: input.color,
     };
     const teamId = id
       ? (await tx.update(s.team).set(values).where(eq(s.team.id, id)).returning({ id: s.team.id }))[0]!.id
       : (await tx.insert(s.team).values(values).returning({ id: s.team.id }))[0]!.id;
+
+    // Moving a team under another moves its members' inherited memberships too.
+    await syncInheritedMemberships(tx);
 
     const after = await loadTeamRecord(tx, teamId);
     await recordAudit(tx, actorEmail, {
