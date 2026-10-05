@@ -21,8 +21,9 @@ the phase-by-phase delivery plan with progress notes.
 
 ## Status
 
-**Phase 1 (Foundation), Phase 2 (Maps), Phase 3 (Org chart and selection sync) and Phase 5.5
-(Branding) are complete.** None has been released to `main` yet. The parts that work today:
+**Phase 1 (Foundation), Phase 2 (Maps), Phase 3 (Org chart and selection sync), Phase 5.5
+(Branding) and Phase 7 (Improvement) are complete,** apart from Phase 7's two integration items,
+which wait for Phases 4 and 5. None has been released to `main` yet. The parts that work today:
 
 - Sign-in through any SSO provider Auth.js supports (Google, Microsoft Entra ID, Okta, AWS
   Cognito or any OpenID Connect issuer), limited to one company email domain, with `viewer` and

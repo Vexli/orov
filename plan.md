@@ -637,7 +637,7 @@ The five spikes from §2 and `docs/spikes.md`.
 
 The improvement backlog raised after Phases 1–3. Each item keeps its number from the original backlog note (a local, gitignored `note.md`, since replaced by a newer list). Finished items record what was built; open items carry the essentials of the note's design below, so nothing depends on that file any more. Items are in the note's suggested order: the vendor-neutral schema first (cheap while Phases 4 and 5 are unbuilt), then quick UI wins, data quality, the people model, settings, map and admin, and the rename last. Feature branches merge into `phase/7-improvement`.
 
-**Phase status:** in progress, started 2026-10-04.
+**Phase status:** closed 2026-10-05: every item that can be built without Google or Slack access is done and merged into `phase/7-improvement`, then `dev`. Not yet merged into `main`. #3 and #4–6 (interfaces) stay `[!] BLOCKED` and move with Phases 4 and 5. Integration run on the phase branch after #30: 558 unit, 149 database (Testcontainers) and 134 Playwright specs pass, plus the CI drift checks (migrations, theme defaults) and a Docker build of both targets with no database. Migrations `0004`–`0015`; the backup format refuses files from any other schema version, so take a fresh export after deploying. Started 2026-10-04.
 
 **G. Vendor-neutral schema**
 
@@ -815,10 +815,11 @@ Built after #21 step 2, #22 and #29, at the project owner's direction; #30 still
 
 **H. Rebrand**
 
-- [~] #30 Rename the project from OfficeOrg to OrOv
-    - **In Progress:** Started 2026-10-05
-    - **Branch:** `feature/rename-orov`
-    - **Depends on:** every other item; it touches nearly every file. Started with #3 and #4–6 still blocked, at the project owner's direction (2026-10-05), so Phases 4 and 5 are built under the new name.
+- [x] #30 Rename the project from OfficeOrg to OrOv
+    - **Completed:** 2026-10-05
+    - **Branch:** merged from `feature/rename-orov`
+    - **Depends on:** every other item; it touches nearly every file. Done with #3 and #4–6 still blocked, at the project owner's direction (2026-10-05), so Phases 4 and 5 are built under the new name.
+    - **Notes:** One mechanical commit (`OfficeOrg` → `OrOv`, `officeorg` → `orov`; nothing used `OFFICEORG_*`), plus one fix. Databases are `orov`, `orov_test`, `orov_e2e` (the main one never had a `_dev` suffix, so it stays without one), user and password `orov`. `docker-compose.yml` sets `name: orov`, so the volume is `orov_pgdata` whatever the folder is called: Postgres applies `POSTGRES_USER` only to a fresh volume, so a new volume was needed anyway, and the old `<folder>_pgdata` is left intact (README "Renamed from OfficeOrg" gives the switch-over steps). The theme advisory lock key is now `orov.theme`; don't run an old and a new replica together while applying a theme. **Fix:** the backup format id is now `orov-export`, and `decryptExport` still reads `officeorg-export` (`LEGACY_EXPORT_FORMATS`; the id isn't part of what GCM authenticates). A theme that was applied before keeps its stored `appName`; only the default changed. Acceptance: `pnpm install`, the dev database switch-over, and `docker build` of both targets (tagged `orov-web`, `orov-worker`) checked. Tests: 1 unit added, 1 extended.
     - **Design (from the note):** replace `OfficeOrg` → `OrOv` and `officeorg` → `orov` (and any `OFFICEORG_*` → `OROV_*`) across README, plan.md, docs, package names (`@orov/*`), `pnpm-workspace.yaml`, the Dockerfile, compose service and volume names, CI image and artifact names, `.env.example`, code comments and strings, and the database init script (`orov_dev`, `orov_test`, `orov_e2e`). Keep table names and type names. One commit with no logic changes. Acceptance: `pnpm install`, `pnpm dev` and the Docker build work with the new names; images tagged `orov-web` and `orov-worker`.
 
 ---
