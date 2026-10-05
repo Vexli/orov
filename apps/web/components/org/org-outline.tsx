@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { standsFor, type OrgNode } from "@officeorg/core/org/tree";
+import { standsFor, type OrgNode } from "@orov/core/org/tree";
 
 interface Props {
   nodes: OrgNode[];

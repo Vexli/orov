@@ -1,8 +1,8 @@
 import type { SearchParams } from "nuqs/server";
 import { MapView } from "@/components/map/map-view";
-import { getDb } from "@officeorg/db/client";
-import { loadDirectory } from "@officeorg/db/queries/directory";
-import { loadMap } from "@officeorg/db/queries/map";
+import { getDb } from "@orov/db/client";
+import { loadDirectory } from "@orov/db/queries/directory";
+import { loadMap } from "@orov/db/queries/map";
 import { loadMapParams } from "@/lib/url-state";
 import { regionFormatOf, requireUser } from "@/lib/session";
 

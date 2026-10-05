@@ -1,10 +1,10 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { bulkUpdateInputSchema, personFormSchema } from "@officeorg/core";
-import { getDb } from "@officeorg/db/client";
-import { ValidationError } from "@officeorg/db/queries/errors";
-import { bulkUpdatePeople, savePerson } from "@officeorg/db/queries/people";
+import { bulkUpdateInputSchema, personFormSchema } from "@orov/core";
+import { getDb } from "@orov/db/client";
+import { ValidationError } from "@orov/db/queries/errors";
+import { bulkUpdatePeople, savePerson } from "@orov/db/queries/people";
 import { requireAdmin } from "@/lib/session";
 
 export type SaveState = { ok: true; id: string } | { ok: false; error: string; field?: string };

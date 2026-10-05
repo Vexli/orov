@@ -1,5 +1,5 @@
 {
-  "$description": "OfficeOrg's default theme. Generated from packages/core/theme/slots.ts by `pnpm theme:defaults`; do not edit. See docs/theming.md.",
+  "$description": "OrOv's default theme. Generated from packages/core/theme/slots.ts by `pnpm theme:defaults`; do not edit. See docs/theming.md.",
   "bg": {
     "$type": "color",
     "$value": {
@@ -1212,6 +1212,6 @@
     "$value": "comfortable"
   },
   "appName": {
-    "$value": "OfficeOrg"
+    "$value": "OrOv"
   }
 }

@@ -1,6 +1,6 @@
 import Link from "next/link";
-import { getDb } from "@officeorg/db/client";
-import { listTeamsForAdmin } from "@officeorg/db/queries/teams";
+import { getDb } from "@orov/db/client";
+import { listTeamsForAdmin } from "@orov/db/queries/teams";
 import { TeamsTable, type TeamsTableRow } from "@/components/admin/teams-table";
 
 // Orders teams depth-first, so each sub-team sits under its parent.

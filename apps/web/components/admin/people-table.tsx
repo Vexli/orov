@@ -3,11 +3,11 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useQueryStates } from "nuqs";
-import { filterAdminPeople, type AdminPersonRow } from "@officeorg/core/admin/filter";
+import { filterAdminPeople, type AdminPersonRow } from "@orov/core/admin/filter";
 import { adminPeopleParsers } from "@/lib/url-state";
 import { TeamChip } from "../team-chip";
 import { BulkActionBar } from "./bulk-action-bar";
-import { sortByName } from "@officeorg/core/people/names";
+import { sortByName } from "@orov/core/people/names";
 
 export interface PeopleTableRow extends AdminPersonRow {
   id: string;

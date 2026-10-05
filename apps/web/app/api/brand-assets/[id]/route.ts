@@ -1,6 +1,6 @@
-import { ASSET_ID } from "@officeorg/core/theme/validate";
-import { getDb } from "@officeorg/db/client";
-import { getBrandAsset } from "@officeorg/db/queries/theme";
+import { ASSET_ID } from "@orov/core/theme/validate";
+import { getDb } from "@orov/db/client";
+import { getBrandAsset } from "@orov/db/queries/theme";
 
 // Uploaded logos, favicons and fonts, served same-origin (plan.md §9.1, §10). Public, because
 // the sign-in page shows the logo. Rows never change, so a response is cacheable for good.

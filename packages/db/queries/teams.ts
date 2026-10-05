@@ -1,5 +1,5 @@
 import { and, eq, ne, sql } from "drizzle-orm";
-import type { TeamForm, TeamRecord } from "@officeorg/core";
+import type { TeamForm, TeamRecord } from "@orov/core";
 import type { Database, Executor } from "../client";
 import * as s from "../schema";
 import { recordAudit } from "./audit";

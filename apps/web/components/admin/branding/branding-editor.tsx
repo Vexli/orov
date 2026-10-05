@@ -2,9 +2,9 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
-import { blockingErrors, contrastFailures } from "@officeorg/core/theme/build";
-import { suggestMapping, type MappingEntry, type SlotMapping } from "@officeorg/core/theme/map";
-import type { TokenFile } from "@officeorg/core/theme/parse";
+import { blockingErrors, contrastFailures } from "@orov/core/theme/build";
+import { suggestMapping, type MappingEntry, type SlotMapping } from "@orov/core/theme/map";
+import type { TokenFile } from "@orov/core/theme/parse";
 import {
   applyThemeAction,
   previewThemeAction,

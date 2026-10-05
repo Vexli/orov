@@ -7,7 +7,7 @@ import {
   type DirectoryPerson,
   type DirectoryTeam,
   type RegionFormat,
-} from "@officeorg/core";
+} from "@orov/core";
 import type { Executor } from "../client";
 import * as s from "../schema";
 import { profileIdentities } from "./people";

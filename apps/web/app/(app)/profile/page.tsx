@@ -1,5 +1,5 @@
-import { getDb } from "@officeorg/db/client";
-import { findOwnProfile } from "@officeorg/db/queries/people";
+import { getDb } from "@orov/db/client";
+import { findOwnProfile } from "@orov/db/queries/people";
 import { ProfileForm } from "@/components/profile/profile-form";
 import { requireUser } from "@/lib/session";
 

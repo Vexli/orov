@@ -2,9 +2,9 @@
 
 import { useRouter } from "next/navigation";
 import { useRef, useState, useTransition } from "react";
-import type { BulkPatch } from "@officeorg/core/people/bulk";
+import type { BulkPatch } from "@orov/core/people/bulk";
 import { bulkUpdatePeopleAction } from "@/app/admin/people/actions";
-import { sortByName } from "@officeorg/core/people/names";
+import { sortByName } from "@orov/core/people/names";
 
 type Action =
   | "deactivate"

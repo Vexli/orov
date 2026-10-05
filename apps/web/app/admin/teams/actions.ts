@@ -1,10 +1,10 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { teamFormSchema } from "@officeorg/core";
-import { getDb } from "@officeorg/db/client";
-import { ValidationError } from "@officeorg/db/queries/errors";
-import { deleteTeam, saveTeam } from "@officeorg/db/queries/teams";
+import { teamFormSchema } from "@orov/core";
+import { getDb } from "@orov/db/client";
+import { ValidationError } from "@orov/db/queries/errors";
+import { deleteTeam, saveTeam } from "@orov/db/queries/teams";
 import { requireAdmin } from "@/lib/session";
 
 export type TeamSaveState = { ok: true; id: string } | { ok: false; error: string; field?: string };

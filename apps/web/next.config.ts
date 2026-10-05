@@ -2,7 +2,7 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   // The workspace packages ship TypeScript source, so Next has to compile them.
-  transpilePackages: ["@officeorg/db", "@officeorg/core"],
+  transpilePackages: ["@orov/db", "@orov/core"],
   // Keep the Postgres driver out of the client bundle. jsdom (used to sanitize floor drawings)
   // reads its own files at runtime, so it has to load through Node rather than the bundler.
   serverExternalPackages: ["pg", "jsdom"],

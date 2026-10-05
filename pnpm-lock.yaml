@@ -11,10 +11,10 @@ importers:
       '@eslint/js':
         specifier: ^9.39.5
         version: 9.39.5
-      '@officeorg/core':
+      '@orov/core':
         specifier: workspace:*
         version: link:packages/core
-      '@officeorg/db':
+      '@orov/db':
         specifier: workspace:*
         version: link:packages/db
       '@playwright/test':
@@ -44,10 +44,10 @@ importers:
 
   apps/web:
     dependencies:
-      '@officeorg/core':
+      '@orov/core':
         specifier: workspace:*
         version: link:../../packages/core
-      '@officeorg/db':
+      '@orov/db':
         specifier: workspace:*
         version: link:../../packages/db
       '@tanstack/react-table':
@@ -142,7 +142,7 @@ importers:
 
   packages/db:
     dependencies:
-      '@officeorg/core':
+      '@orov/core':
         specifier: workspace:*
         version: link:../core
       '@paralleldrive/cuid2':

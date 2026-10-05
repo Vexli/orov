@@ -1,8 +1,8 @@
 "use client";
 
-import { ROOM_STATE_LABEL } from "@officeorg/core/map/room-status";
-import type { DirectoryPerson, MapArea, MapSeat, MapSpace } from "@officeorg/core";
-import { displayName } from "@officeorg/core/directory/filter";
+import { ROOM_STATE_LABEL } from "@orov/core/map/room-status";
+import type { DirectoryPerson, MapArea, MapSeat, MapSpace } from "@orov/core";
+import { displayName } from "@orov/core/directory/filter";
 
 // The floor's desks and rooms as a table, for keyboard and screen reader users (plan.md §6). It
 // shows the same state as the drawing (the open area, the selection, the highlighted team), and

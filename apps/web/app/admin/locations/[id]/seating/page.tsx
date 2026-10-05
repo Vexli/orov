@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getDb } from "@officeorg/db/client";
-import { getLocation } from "@officeorg/db/queries/floors";
-import { loadSeatingInput } from "@officeorg/db/queries/seating";
+import { getDb } from "@orov/db/client";
+import { getLocation } from "@orov/db/queries/floors";
+import { loadSeatingInput } from "@orov/db/queries/seating";
 import { SeatingPlanner } from "@/components/admin/seating-planner";
 
 // The seating planner (N10): seat each team together in one office, keeping locked people put.

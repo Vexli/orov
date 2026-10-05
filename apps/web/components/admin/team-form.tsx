@@ -3,9 +3,9 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import type { TeamForm } from "@officeorg/core";
+import type { TeamForm } from "@orov/core";
 import { deleteTeamAction, saveTeamAction, type TeamSaveState } from "@/app/admin/teams/actions";
-import { sortByName } from "@officeorg/core/people/names";
+import { sortByName } from "@orov/core/people/names";
 
 interface Props {
   id?: string;

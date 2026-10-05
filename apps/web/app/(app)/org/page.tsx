@@ -1,6 +1,6 @@
 import { OrgView } from "@/components/org/org-view";
-import { getDb } from "@officeorg/db/client";
-import { loadDirectory } from "@officeorg/db/queries/directory";
+import { getDb } from "@orov/db/client";
+import { loadDirectory } from "@orov/db/queries/directory";
 import { regionFormatOf, requireUser } from "@/lib/session";
 
 // The org chart builds both trees from the directory's data: fewer than 250 people, already

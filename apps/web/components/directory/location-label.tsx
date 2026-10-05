@@ -1,6 +1,6 @@
 import Link from "next/link";
-import type { DirectoryPerson } from "@officeorg/core/directory/model";
-import { locationSummary } from "@officeorg/core/directory/filter";
+import type { DirectoryPerson } from "@orov/core/directory/model";
+import { locationSummary } from "@orov/core/directory/filter";
 
 const badgeClass = "rounded bg-muted px-1.5 py-0.5 text-xs font-medium text-fg";
 

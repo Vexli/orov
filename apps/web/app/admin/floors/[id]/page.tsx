@@ -2,11 +2,11 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { FloorDrawingPanel } from "@/components/admin/floor-drawing";
 import { FloorFormEditor } from "@/components/admin/location-form";
-import { getDb } from "@officeorg/db/client";
-import { getFloorForAdmin, listFloorSpacesForAdmin } from "@officeorg/db/queries/floors";
+import { getDb } from "@orov/db/client";
+import { getFloorForAdmin, listFloorSpacesForAdmin } from "@orov/db/queries/floors";
 import { SpaceNames } from "@/components/admin/space-names";
 import { ArchiveControls } from "@/components/admin/archive-controls";
-import { formatDateTime, tierLabel } from "@officeorg/core";
+import { formatDateTime, tierLabel } from "@orov/core";
 import { requireAdmin } from "@/lib/session";
 
 export default async function FloorAdminPage({ params }: { params: Promise<{ id: string }> }) {

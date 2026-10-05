@@ -1,7 +1,7 @@
 "use client";
 
 import { useSyncExternalStore } from "react";
-import { timeZoneOptions } from "@officeorg/core/time/zones";
+import { timeZoneOptions } from "@orov/core/time/zones";
 
 const noop = () => () => {};
 // The same array on every call, as useSyncExternalStore requires.

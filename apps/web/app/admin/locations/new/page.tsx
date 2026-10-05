@@ -1,4 +1,4 @@
-import { DEFAULT_TIER_LABELS } from "@officeorg/core";
+import { DEFAULT_TIER_LABELS } from "@orov/core";
 import { LocationFormEditor } from "@/components/admin/location-form";
 
 export default function NewLocationPage() {

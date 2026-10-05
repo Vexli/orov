@@ -1,9 +1,9 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { floorFormSchema, locationFormSchema } from "@officeorg/core";
-import { getDb } from "@officeorg/db/client";
-import { ValidationError } from "@officeorg/db/queries/errors";
+import { floorFormSchema, locationFormSchema } from "@orov/core";
+import { getDb } from "@orov/db/client";
+import { ValidationError } from "@orov/db/queries/errors";
 import {
   deleteFloor,
   deleteLocation,
@@ -12,7 +12,7 @@ import {
   saveLocation,
   setFloorArchived,
   setLocationArchived,
-} from "@officeorg/db/queries/floors";
+} from "@orov/db/queries/floors";
 import { requireAdmin } from "@/lib/session";
 
 export type SpaceSaveState =

@@ -1,8 +1,8 @@
 import { notFound } from "next/navigation";
 import { TeamFormEditor } from "@/components/admin/team-form";
-import { getDb } from "@officeorg/db/client";
-import { listPeopleForAdmin } from "@officeorg/db/queries/people";
-import { getTeamForEdit, listTeamsForAdmin } from "@officeorg/db/queries/teams";
+import { getDb } from "@orov/db/client";
+import { listPeopleForAdmin } from "@orov/db/queries/people";
+import { getTeamForEdit, listTeamsForAdmin } from "@orov/db/queries/teams";
 
 export default async function EditTeamPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;

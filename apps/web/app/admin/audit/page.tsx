@@ -1,6 +1,6 @@
-import { formatDateTime, summarizeAuditChange } from "@officeorg/core";
-import { getDb } from "@officeorg/db/client";
-import { AUDIT_ENTITIES, listAudit } from "@officeorg/db/queries/audit";
+import { formatDateTime, summarizeAuditChange } from "@orov/core";
+import { getDb } from "@orov/db/client";
+import { AUDIT_ENTITIES, listAudit } from "@orov/db/queries/audit";
 import { auditQuery, parseAuditFilters } from "@/lib/audit-filters";
 import { requireAdmin } from "@/lib/session";
 

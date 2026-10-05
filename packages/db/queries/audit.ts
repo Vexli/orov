@@ -1,5 +1,5 @@
 import { and, desc, eq, gte, ilike, lt, type SQL } from "drizzle-orm";
-import { containsPattern, startOfDay } from "@officeorg/core";
+import { containsPattern, startOfDay } from "@orov/core";
 import type { Executor } from "../client";
 import { auditLog } from "../schema";
 

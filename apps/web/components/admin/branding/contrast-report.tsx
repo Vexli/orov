@@ -1,7 +1,7 @@
 "use client";
 
-import type { ContrastCheck } from "@officeorg/core/theme/contrast";
-import type { ThemeMode } from "@officeorg/core/theme/values";
+import type { ContrastCheck } from "@orov/core/theme/contrast";
+import type { ThemeMode } from "@orov/core/theme/values";
 
 // The contrast report (plan.md §9.1, step 3). Failures come first, each with the nearest shade
 // of the same hue that passes; one click maps the slot to it.

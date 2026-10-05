@@ -7,15 +7,15 @@ WORKDIR /app
 
 FROM base AS build
 COPY . .
-RUN pnpm install --frozen-lockfile && pnpm --filter @officeorg/web build
+RUN pnpm install --frozen-lockfile && pnpm --filter @orov/web build
 
 FROM build AS web
 ENV NODE_ENV=production
 EXPOSE 3000
 # Migrations run before the server starts. Drizzle's migrator is idempotent, but two replicas
 # starting at the same moment can race, so run one replica at a time during a schema change.
-CMD ["sh", "-c", "pnpm --filter @officeorg/db db:migrate && pnpm --filter @officeorg/web start -H 0.0.0.0 -p 3000"]
+CMD ["sh", "-c", "pnpm --filter @orov/db db:migrate && pnpm --filter @orov/web start -H 0.0.0.0 -p 3000"]
 
 FROM build AS worker
 ENV NODE_ENV=production
-CMD ["pnpm", "--filter", "@officeorg/worker", "start"]
+CMD ["pnpm", "--filter", "@orov/worker", "start"]

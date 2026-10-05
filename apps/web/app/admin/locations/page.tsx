@@ -1,7 +1,7 @@
 import Link from "next/link";
-import { getDb } from "@officeorg/db/client";
-import { listLocationsWithFloors } from "@officeorg/db/queries/floors";
-import { tierLabel } from "@officeorg/core";
+import { getDb } from "@orov/db/client";
+import { listLocationsWithFloors } from "@orov/db/queries/floors";
+import { tierLabel } from "@orov/core";
 
 // What an office calls its floors (#16).
 const tierOf = (l: { floorLabelSingular: string; floorLabelPlural: string }) => ({

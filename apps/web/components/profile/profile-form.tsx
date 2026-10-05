@@ -2,8 +2,8 @@
 
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import type { SelfProfileForm } from "@officeorg/core";
-import { PROFILE_PROVIDERS } from "@officeorg/core/people/identities";
+import type { SelfProfileForm } from "@orov/core";
+import { PROFILE_PROVIDERS } from "@orov/core/people/identities";
 import { saveProfileAction, type ProfileState } from "@/app/(app)/profile/actions";
 import { TimeZoneList } from "@/components/admin/time-zone-list";
 

@@ -7,7 +7,7 @@ export default defineConfig({
   dbCredentials: {
     url:
       process.env.DATABASE_URL ??
-      "postgres://officeorg:officeorg@localhost:5432/officeorg",
+      "postgres://orov:orov@localhost:5432/orov",
   },
   strict: true,
   verbose: true,

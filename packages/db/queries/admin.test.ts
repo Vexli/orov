@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { eq } from "drizzle-orm";
-import { selfProfileSchema, type PersonForm, type TeamForm } from "@officeorg/core";
+import { selfProfileSchema, type PersonForm, type TeamForm } from "@orov/core";
 import { seedDemoData } from "../seed";
 import * as s from "../schema";
 import { startTestDatabase, type TestDatabase } from "../test-utils";

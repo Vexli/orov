@@ -1,14 +1,14 @@
 import { BrandingEditor, type ThemeDraftState } from "@/components/admin/branding/branding-editor";
 import { ThemeVersions } from "@/components/admin/branding/theme-versions";
-import { formatDateTime } from "@officeorg/core";
-import { getDb } from "@officeorg/db/client";
+import { formatDateTime } from "@orov/core";
+import { getDb } from "@orov/db/client";
 import { requireAdmin } from "@/lib/session";
 import {
   getActiveTheme,
   getTheme,
   listBrandAssets,
   listThemeVersions,
-} from "@officeorg/db/queries/theme";
+} from "@orov/db/queries/theme";
 
 const EMPTY: ThemeDraftState = { files: [], mapping: {}, darkMode: true, fonts: [] };
 

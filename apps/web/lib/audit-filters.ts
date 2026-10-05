@@ -1,4 +1,4 @@
-import { AUDIT_ENTITIES, type AuditFilters } from "@officeorg/db/queries/audit";
+import { AUDIT_ENTITIES, type AuditFilters } from "@orov/db/queries/audit";
 
 type Params = Record<string, string | string[] | undefined>;
 

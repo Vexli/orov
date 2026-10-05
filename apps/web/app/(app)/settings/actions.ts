@@ -2,9 +2,9 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { isDateFormat, isRegionDisplay } from "@officeorg/core";
-import { getDb } from "@officeorg/db/client";
-import { setUserSettings } from "@officeorg/db/queries/app-users";
+import { isDateFormat, isRegionDisplay } from "@orov/core";
+import { getDb } from "@orov/db/client";
+import { setUserSettings } from "@orov/db/queries/app-users";
 import { requireUser } from "@/lib/session";
 
 // Any signed-in user can change their own settings, and only their own: the email comes from

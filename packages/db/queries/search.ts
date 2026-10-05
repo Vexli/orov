@@ -19,7 +19,7 @@ import {
   normalizeQuery,
   type SearchResults,
   type SearchRoom,
-} from "@officeorg/core/search/model";
+} from "@orov/core/search/model";
 import type { Executor } from "../client";
 import * as s from "../schema";
 

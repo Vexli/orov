@@ -1,9 +1,9 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { getDb } from "@officeorg/db/client";
-import { ValidationError } from "@officeorg/db/queries/errors";
-import { applySeating, previewSeating, type SeatingMove } from "@officeorg/db/queries/seating";
+import { getDb } from "@orov/db/client";
+import { ValidationError } from "@orov/db/queries/errors";
+import { applySeating, previewSeating, type SeatingMove } from "@orov/db/queries/seating";
 import { requireAdmin } from "@/lib/session";
 
 export type SeatingPreview =

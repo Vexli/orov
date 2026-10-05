@@ -2,8 +2,8 @@
 
 import { useMemo } from "react";
 import { useQueryStates } from "nuqs";
-import type { DirectoryPerson, DirectoryTeam } from "@officeorg/core/directory/model";
-import { displayName } from "@officeorg/core/directory/filter";
+import type { DirectoryPerson, DirectoryTeam } from "@orov/core/directory/model";
+import { displayName } from "@orov/core/directory/filter";
 import {
   managementChain,
   orgTree,
@@ -11,13 +11,13 @@ import {
   teamHighlightIds,
   type ChainLink,
   type OrgNode,
-} from "@officeorg/core/org/tree";
+} from "@orov/core/org/tree";
 import { PersonCard } from "@/components/directory/person-card";
 import { orgParsers } from "@/lib/url-state";
 import { OrgChart } from "./org-chart";
 import { FLOATING_PANEL_GUTTER, FloatingPanel, ViewBar } from "../view-bar";
 import { OrgOutline } from "./org-outline";
-import { sortByName } from "@officeorg/core/people/names";
+import { sortByName } from "@orov/core/people/names";
 
 interface Props {
   people: DirectoryPerson[];

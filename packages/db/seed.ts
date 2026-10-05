@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { eq } from "drizzle-orm";
-import { sanitizeSvg } from "@officeorg/core/svg/sanitize";
+import { sanitizeSvg } from "@orov/core/svg/sanitize";
 import { createDb, type Database } from "./client";
 import { syncInheritedMemberships } from "./queries/memberships";
 import { resetDatabase } from "./reset";

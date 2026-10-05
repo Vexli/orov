@@ -1,11 +1,11 @@
 import { notFound } from "next/navigation";
-import { fullName } from "@officeorg/core";
+import { fullName } from "@orov/core";
 import { PersonFormEditor } from "@/components/admin/person-form";
-import { getDb } from "@officeorg/db/client";
-import { listLocationsWithFloors } from "@officeorg/db/queries/floors";
-import { getPersonForEdit, listPeopleForAdmin } from "@officeorg/db/queries/people";
-import { listDeskOptions, listPickerFloors } from "@officeorg/db/queries/spaces";
-import { listTeamsForAdmin } from "@officeorg/db/queries/teams";
+import { getDb } from "@orov/db/client";
+import { listLocationsWithFloors } from "@orov/db/queries/floors";
+import { getPersonForEdit, listPeopleForAdmin } from "@orov/db/queries/people";
+import { listDeskOptions, listPickerFloors } from "@orov/db/queries/spaces";
+import { listTeamsForAdmin } from "@orov/db/queries/teams";
 
 export default async function EditPersonPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;

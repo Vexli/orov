@@ -1,9 +1,9 @@
 import Link from "next/link";
-import { displayPhone, formatDate } from "@officeorg/core";
+import { displayPhone, formatDate } from "@orov/core";
 import { requireAdmin } from "@/lib/session";
-import { getDb } from "@officeorg/db/client";
-import { listPeopleForAdmin } from "@officeorg/db/queries/people";
-import { listTeamsForAdmin } from "@officeorg/db/queries/teams";
+import { getDb } from "@orov/db/client";
+import { listPeopleForAdmin } from "@orov/db/queries/people";
+import { listTeamsForAdmin } from "@orov/db/queries/teams";
 import { PeopleTable } from "@/components/admin/people-table";
 
 export default async function PeopleAdminPage() {

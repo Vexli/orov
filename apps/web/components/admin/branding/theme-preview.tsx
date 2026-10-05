@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { ThemeValues } from "@officeorg/core/theme/values";
+import type { ThemeValues } from "@orov/core/theme/values";
 
 // A live preview of the draft theme in the real directory, map and org chart (plan.md §9.1,
 // step 5). The views load in a same-origin iframe, and the draft CSS is added to the frame's

@@ -2,8 +2,8 @@
 
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import type { FloorDiff } from "@officeorg/core";
-import type { TierLabels } from "@officeorg/core/spaces/tier";
+import type { FloorDiff } from "@orov/core";
+import type { TierLabels } from "@orov/core/spaces/tier";
 import {
   applyUploadAction,
   previewRollbackAction,
@@ -12,7 +12,7 @@ import {
   rollbackAction,
   type PreviewState,
 } from "@/app/admin/floors/actions";
-import type { DrawingEditInput } from "@officeorg/core/svg/edit-input";
+import type { DrawingEditInput } from "@orov/core/svg/edit-input";
 import { DrawingEditor } from "./drawing-editor";
 
 interface Version {

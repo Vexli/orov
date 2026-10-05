@@ -1,6 +1,6 @@
 import { createLoader, parseAsBoolean, parseAsString, parseAsStringLiteral } from "nuqs/server";
-import { DESK_FILTERS, PERSON_STATUSES } from "@officeorg/core/admin/filter";
-import { ORG_TREES } from "@officeorg/core/org/tree";
+import { DESK_FILTERS, PERSON_STATUSES } from "@orov/core/admin/filter";
+import { ORG_TREES } from "@orov/core/org/tree";
 
 // The one definition of URL state. Every view imports it, so the same person, team and filters
 // survive a switch between views (plan.md §7).

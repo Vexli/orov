@@ -1,5 +1,5 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
-import { getPersonForEdit, savePerson } from "@officeorg/db/queries/people";
+import { getPersonForEdit, savePerson } from "@orov/db/queries/people";
 import { resetE2eDatabase, withE2eDb } from "../support/database";
 import { signInAs, switchUser } from "../support/session";
 

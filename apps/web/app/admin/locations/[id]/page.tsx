@@ -1,8 +1,8 @@
 import { notFound } from "next/navigation";
 import { ArchiveControls } from "@/components/admin/archive-controls";
 import { LocationFormEditor } from "@/components/admin/location-form";
-import { getDb } from "@officeorg/db/client";
-import { listLocationsWithFloors } from "@officeorg/db/queries/floors";
+import { getDb } from "@orov/db/client";
+import { listLocationsWithFloors } from "@orov/db/queries/floors";
 
 export default async function EditLocationPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;

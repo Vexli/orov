@@ -1,5 +1,5 @@
 import { eq, sql } from "drizzle-orm";
-import type { DateFormat, RegionDisplay } from "@officeorg/core";
+import type { DateFormat, RegionDisplay } from "@orov/core";
 import type { Executor } from "../client";
 import { appUser, person } from "../schema";
 

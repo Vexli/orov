@@ -10,10 +10,10 @@ import {
   type LocationForm,
   type AreaEdit,
   type SpaceEdit,
-} from "@officeorg/core";
-import { DrawingEditError, editDrawing, type DrawingEdit } from "@officeorg/core/svg/edit";
-import { parseFloorSvg } from "@officeorg/core/svg/parse";
-import { sanitizeSvg, SvgError } from "@officeorg/core/svg/sanitize";
+} from "@orov/core";
+import { DrawingEditError, editDrawing, type DrawingEdit } from "@orov/core/svg/edit";
+import { parseFloorSvg } from "@orov/core/svg/parse";
+import { sanitizeSvg, SvgError } from "@orov/core/svg/sanitize";
 import type { Database, Executor } from "../client";
 import * as s from "../schema";
 import { recordAudit } from "./audit";
