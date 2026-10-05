@@ -630,9 +630,10 @@ Feature branches merge into `phase/6-polish`, which branched from `dev` after Ph
 - [ ] Optional HRIS sync, which replaces CSV as the people source
 - [ ] Live theme sync from the Figma Variables REST API (Enterprise plans only) or the Penpot API
 - [ ] Per-location theme overrides
-- [~] Searchable ISO 3166 region picker in the admin person and location forms, in place of the free-text code
-    - **In Progress:** Started 2026-10-05
-    - **Branch:** `feature/region-picker`
+- [x] Searchable ISO 3166 region picker in the admin person and location forms, in place of the free-text code
+    - **Completed:** 2026-10-05
+    - **Branch:** merged from `feature/region-picker`
+    - **Notes:** `components/admin/region-picker.tsx` is an ARIA combobox fed by `GET /api/regions?q=` (any signed-in user, cached privately for an hour), so the ISO 3166-2 list still never reaches the browser; the client imports only the `RegionOption` type. `searchRegions` in `core/regions/iso3166.ts` matches every query word as a prefix of the code or the "Region, Country" label, ignoring accents ("karnataka" finds Karnātaka). Ranking: the exact code, then countries before subdivisions, then names starting with the query. The current code's full name is the field's description, from the same request. A typed code is still submitted as-is (uppercased), and the server's `regionCodeSchema` remains the only validation. Note: the ISO list spells some names without accents ("Quebec"). Labels are English until the UI locale item lands; `searchRegions` already takes a `locale`. Tests: 6 unit, 1 Playwright plus one assertion in the office spec.
 - [ ] A UI locale setting (§7.1), so country names in region labels follow the user's language
 
 **Total: about 7.5–9 weeks for one engineer, or about 4.5–5.5 weeks for two.** Two engineers can split phases 2 and 3, and phases 4 and 5, in parallel. Phase 5.5 depends only on Phase 1's token layer, so it can run alongside any later phase.
