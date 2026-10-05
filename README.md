@@ -75,7 +75,8 @@ which wait for Phases 4 and 5. None has been released to `main` yet. The parts t
   admin, and exportable as CSV
 - ISO 3166 region codes (`US`, `US-CA`, `CA-ON`), picked in the admin forms by typing a country
   or region name or the code, and per-user settings for how regions are
-  displayed (optionally with the country's flag, or the flag alone) and how dates are written (ISO, day/month/year or month/day/year, in the user's own
+  displayed (optionally with the country's flag, or the flag alone), which language country names
+  are in, and how dates are written (ISO, day/month/year or month/day/year, in the user's own
   time zone)
 - A semantic theme layer: components are styled only through theme slots, never raw colors
 - Admin pages for offices and floors. Each office chooses what its floors are called (Floor,

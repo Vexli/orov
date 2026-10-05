@@ -1,5 +1,6 @@
 import { iso31661, iso31662 } from "iso-3166";
 import { z } from "zod";
+import { DEFAULT_UI_LOCALE } from "./locales";
 
 // Where someone (or an office) is, as one ISO 3166 code: a country ("US", ISO 3166-1 alpha-2)
 // or a subdivision of one ("US-CA", ISO 3166-2). A subdivision code starts with its country,
@@ -110,6 +111,8 @@ export function formatRegion(code: string, display: RegionDisplay, locale = "en"
 export interface RegionFormat {
   display: RegionDisplay;
   flag: boolean;
+  // The language for country names (a UiLocale); English when left out.
+  locale?: string;
 }
 
 export const DEFAULT_REGION_FORMAT: RegionFormat = { display: DEFAULT_REGION_DISPLAY, flag: false };
@@ -130,7 +133,8 @@ export interface RegionLabel {
   flagOnly: boolean;
 }
 
-export function regionLabel(code: string, format: RegionFormat, locale = "en"): RegionLabel {
+export function regionLabel(code: string, format: RegionFormat): RegionLabel {
+  const locale = format.locale ?? DEFAULT_UI_LOCALE;
   if (format.display === "flag") {
     const flag = flagEmoji(code);
     // No flag (an unassigned code): the code itself.
@@ -166,7 +170,9 @@ function searchIndex(locale: string): RegionEntry[] {
   index = codes.map((code) => {
     const label = formatRegion(code, "country_region", locale);
     const name = fold(subdivisionName(code) ?? countryName(code, locale));
-    return { code, label, name, words: [fold(code), ...fold(label).split(/[^\p{L}\p{N}]+/u).filter(Boolean)] };
+    // English names match in every language, so "germany" finds Deutschland too.
+    const text = locale === "en" ? label : `${label} ${formatRegion(code, "country_region")}`;
+    return { code, label, name, words: [fold(code), ...fold(text).split(/[^\p{L}\p{N}]+/u).filter(Boolean)] };
   });
   searchIndexes.set(locale, index);
   return index;

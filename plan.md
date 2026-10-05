@@ -202,6 +202,7 @@ messaging_user_token (personId, provider, encryptedToken, scopes, createdAt)   -
                  PK(personId, provider)
 app_user        (email PK, role: viewer|admin,
                  regionDisplay: code|country|region|country_region   -- default country_region
+                 locale text   -- default en; language for country names (Phase 6)
                  lastSeenAt)
 audit_log       (id, actorEmail, entity, entityId, action, before jsonb, after jsonb, at)
 integration_run (id, job, startedAt, finishedAt?, ok bool, stats jsonb, error?)
@@ -308,6 +309,8 @@ Anything without one of these prefixes is decoration.
 - Filters and URL state use codes, never labels, so a shared link works the same for every viewer.
 
 **Country flags** (`app_user.regionFlag`, Phase 7 #28): a checkbox under the region display that puts the country's flag emoji in front of every region label, in any display mode. The flag travels separately from the label (`regionLabel` returns `{ label, flag }`), is `aria-hidden` in the UI, and the text label always stays, since Windows shows flag emoji as letter pairs.
+
+**Language** (`app_user.locale`, Phase 6): the language country names are shown in, from `UI_LOCALES` in `packages/core/regions/locales.ts` (default English). It's part of `RegionFormat`, so every label `regionLabel` builds follows it, and the region picker searches in it as well as in English. Subdivision names stay as ISO 3166-2 publishes them, so German reads "California, Vereinigte Staaten". The rest of the interface is English.
 
 **Date format** (`app_user.dateFormat`, Phase 7 #27): `iso` (default, `2026-10-04 14:30`), `dmy` (`04/10/2026 14:30`) or `mdy` (`10/04/2026 2:30 PM`), formatted on the server by `formatDateTime` in `packages/core/dates/format.ts`. Times are shown in the viewer's home time zone if they have a person row, else their browser's (a `tz` cookie), else UTC, and timestamps carry the zone's abbreviation. Date filters (the audit log's) are read in the same zone. CSV files always use ISO 8601 in UTC.
 
@@ -634,7 +637,10 @@ Feature branches merge into `phase/6-polish`, which branched from `dev` after Ph
     - **Completed:** 2026-10-05
     - **Branch:** merged from `feature/region-picker`
     - **Notes:** `components/admin/region-picker.tsx` is an ARIA combobox fed by `GET /api/regions?q=` (any signed-in user, cached privately for an hour), so the ISO 3166-2 list still never reaches the browser; the client imports only the `RegionOption` type. `searchRegions` in `core/regions/iso3166.ts` matches every query word as a prefix of the code or the "Region, Country" label, ignoring accents ("karnataka" finds Karnātaka). Ranking: the exact code, then countries before subdivisions, then names starting with the query. The current code's full name is the field's description, from the same request. A typed code is still submitted as-is (uppercased), and the server's `regionCodeSchema` remains the only validation. Note: the ISO list spells some names without accents ("Quebec"). Labels are English until the UI locale item lands; `searchRegions` already takes a `locale`. Tests: 6 unit, 1 Playwright plus one assertion in the office spec.
-- [ ] A UI locale setting (§7.1), so country names in region labels follow the user's language
+- [x] A UI locale setting (§7.1), so country names in region labels follow the user's language
+    - **Completed:** 2026-10-05
+    - **Branch:** merged from `feature/ui-locale`
+    - **Notes:** Migration `0016` adds `app_user.locale` (text, default `en`); `UI_LOCALES` in `core/regions/locales.ts` lists 23 languages, labelled "Deutsch (German)". `getAppUser` reads an unlisted value as `en`. `RegionFormat.locale` (optional, English when absent) is set by `regionFormatOf`, so `loadDirectory`, `loadMap` and the org chart need no change. `/api/regions` labels suggestions in the user's language and matches English names too ("germany" finds Deutschland); it's now `no-store`, since a cached reply would outlive a language change. Settings examples follow the language. **Scope:** only country names; the interface, sorting and date formats are unaffected (dates have their own setting), and labels carry no `lang` attribute, so a screen reader reads "Kanada" with the page's English voice. The backup's schema version moved with the migration, so exports taken before it no longer import. Tests: 4 unit, 1 DB, 1 Playwright.
 
 **Total: about 7.5–9 weeks for one engineer, or about 4.5–5.5 weeks for two.** Two engineers can split phases 2 and 3, and phases 4 and 5, in parallel. Phase 5.5 depends only on Phase 1's token layer, so it can run alongside any later phase.
 
