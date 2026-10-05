@@ -1,10 +1,10 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { selfProfileSchema, type SelfProfileForm } from "@officeorg/core";
-import { getDb } from "@officeorg/db/client";
-import { ValidationError } from "@officeorg/db/queries/errors";
-import { saveOwnProfile } from "@officeorg/db/queries/people";
+import { selfProfileSchema, type SelfProfileForm } from "@orov/core";
+import { getDb } from "@orov/db/client";
+import { ValidationError } from "@orov/db/queries/errors";
+import { saveOwnProfile } from "@orov/db/queries/people";
 import { requireUser } from "@/lib/session";
 
 export type ProfileState = { ok: true; saved: SelfProfileForm } | { ok: false; error: string; field?: string };

@@ -1,7 +1,7 @@
 import Link from "next/link";
-import type { DirectoryPerson } from "@officeorg/core/directory/model";
-import { displayName, personInitials } from "@officeorg/core/directory/filter";
-import { identityLinks } from "@officeorg/core/people/identities";
+import type { DirectoryPerson } from "@orov/core/directory/model";
+import { displayName, personInitials } from "@orov/core/directory/filter";
+import { identityLinks } from "@orov/core/people/identities";
 import { TeamChip } from "../team-chip";
 import { LocationLabel } from "./location-label";
 

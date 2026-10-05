@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { applyTheme, saveBrandAsset } from "@officeorg/db/queries/theme";
+import { applyTheme, saveBrandAsset } from "@orov/db/queries/theme";
 import { resetE2eDatabase, withE2eDb } from "../support/database";
 import { signInAs } from "../support/session";
 

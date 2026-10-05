@@ -1,8 +1,8 @@
 "use client";
 
 import { memo, useEffect, useLayoutEffect, useRef, useState } from "react";
-import { labelLayout } from "@officeorg/core/map/labels";
-import { ROOM_STATE_LABEL, type RoomDisplayState } from "@officeorg/core/map/room-status";
+import { labelLayout } from "@orov/core/map/labels";
+import { ROOM_STATE_LABEL, type RoomDisplayState } from "@orov/core/map/room-status";
 import {
   TransformComponent,
   TransformWrapper,

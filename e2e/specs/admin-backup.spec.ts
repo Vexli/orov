@@ -22,9 +22,9 @@ test.describe("backup", () => {
       page.waitForEvent("download"),
       exportSection.getByRole("button", { name: "Download encrypted file" }).click(),
     ]);
-    expect(download.suggestedFilename()).toMatch(/^officeorg-export-\d{4}-\d\d-\d\d\.json$/);
+    expect(download.suggestedFilename()).toMatch(/^orov-export-\d{4}-\d\d-\d\d\.json$/);
     const file = await readFile((await download.path())!, "utf8");
-    expect(JSON.parse(file)).toMatchObject({ format: "officeorg-export", version: 1, cipher: { name: "AES-256-GCM" } });
+    expect(JSON.parse(file)).toMatchObject({ format: "orov-export", version: 1, cipher: { name: "AES-256-GCM" } });
     expect(file).not.toContain("Lindqvist");
 
     // Change Bob's title, then load the backup to put it back.

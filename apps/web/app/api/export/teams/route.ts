@@ -1,6 +1,6 @@
 import { getCurrentUser } from "@/lib/session";
-import { getDb } from "@officeorg/db/client";
-import { exportTeamsCsv } from "@officeorg/db/queries/import";
+import { getDb } from "@orov/db/client";
+import { exportTeamsCsv } from "@orov/db/queries/import";
 
 export async function GET() {
   const user = await getCurrentUser();

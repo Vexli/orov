@@ -1,7 +1,7 @@
 "use server";
 
 import { requireAdmin } from "@/lib/session";
-import { getDb } from "@officeorg/db/client";
+import { getDb } from "@orov/db/client";
 import {
   applyPeopleCsv,
   applyTeamsCsv,
@@ -10,8 +10,8 @@ import {
   planTeamsCsv,
   type ApplyResult,
   type PlanResult,
-} from "@officeorg/db/queries/import";
-import type { ImportPlan, PersonRecord, TeamRecord } from "@officeorg/core";
+} from "@orov/db/queries/import";
+import type { ImportPlan, PersonRecord, TeamRecord } from "@orov/core";
 
 // `skip` is the file lines to leave out. A preview can ask to skip every row with an error (and
 // the rows that depend on them); it returns the full skip list, which Apply then sends back.

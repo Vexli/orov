@@ -21,12 +21,12 @@ jobs:
       - name: Typecheck
         run: pnpm typecheck
       - name: Unit tests
-        run: pnpm --filter @officeorg/core test
+        run: pnpm --filter @orov/core test
       - name: Database tests (Testcontainers)
-        run: pnpm --filter @officeorg/db test
+        run: pnpm --filter @orov/db test
       - name: Migrations match the schema
         run: |
-          pnpm --filter @officeorg/db db:generate
+          pnpm --filter @orov/db db:generate
           # `git diff` misses new files, so check for any change under the migrations folder.
           if [ -n "$(git status --porcelain packages/db/migrations)" ]; then
             echo "Schema changed without a migration. Run pnpm db:generate and commit the result."
@@ -49,7 +49,7 @@ jobs:
             exit 1
           fi
       - name: Build
-        run: pnpm --filter @officeorg/web build
+        run: pnpm --filter @orov/web build
 
   e2e:
     runs-on: ubuntu-latest
@@ -57,12 +57,12 @@ jobs:
       postgres:
         image: postgres:16-alpine
         env:
-          POSTGRES_USER: officeorg
-          POSTGRES_PASSWORD: officeorg
-          POSTGRES_DB: officeorg_e2e
+          POSTGRES_USER: orov
+          POSTGRES_PASSWORD: orov
+          POSTGRES_DB: orov_e2e
         ports: ["5432:5432"]
         options: >-
-          --health-cmd "pg_isready -U officeorg"
+          --health-cmd "pg_isready -U orov"
           --health-interval 2s --health-timeout 2s --health-retries 30
     steps:
       - uses: actions/checkout@v4

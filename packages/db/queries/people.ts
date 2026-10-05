@@ -12,7 +12,7 @@ import {
   type Identities,
   type PersonForm,
   type PersonRecord,
-} from "@officeorg/core";
+} from "@orov/core";
 import type { Database, Executor } from "../client";
 import * as s from "../schema";
 import { recordAudit } from "./audit";

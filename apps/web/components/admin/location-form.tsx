@@ -3,14 +3,14 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import type { FloorForm, LocationForm } from "@officeorg/core";
+import type { FloorForm, LocationForm } from "@orov/core";
 import {
   saveFloorAction,
   saveLocationAction,
   type SpaceSaveState,
 } from "@/app/admin/locations/actions";
 import { TimeZoneList } from "./time-zone-list";
-import { TIER_PRESETS, tierLabel, type TierLabels } from "@officeorg/core/spaces/tier";
+import { TIER_PRESETS, tierLabel, type TierLabels } from "@orov/core/spaces/tier";
 
 const inputClass = "mt-1 w-full rounded-md border border-border bg-transparent px-3 py-2 text-sm";
 

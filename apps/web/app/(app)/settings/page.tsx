@@ -6,7 +6,7 @@ import {
   formatRegion,
   REGION_DISPLAY_LABELS,
   REGION_DISPLAYS,
-} from "@officeorg/core";
+} from "@orov/core";
 import { requireUser } from "@/lib/session";
 import { saveSettingsAction } from "./actions";
 

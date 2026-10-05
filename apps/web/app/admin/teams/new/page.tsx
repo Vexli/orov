@@ -1,7 +1,7 @@
 import { TeamFormEditor } from "@/components/admin/team-form";
-import { getDb } from "@officeorg/db/client";
-import { listPeopleForAdmin } from "@officeorg/db/queries/people";
-import { listTeamsForAdmin } from "@officeorg/db/queries/teams";
+import { getDb } from "@orov/db/client";
+import { listPeopleForAdmin } from "@orov/db/queries/people";
+import { listTeamsForAdmin } from "@orov/db/queries/teams";
 
 export default async function NewTeamPage() {
   const db = getDb();

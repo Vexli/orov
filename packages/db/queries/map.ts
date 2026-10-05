@@ -6,7 +6,7 @@ import {
   type MapData,
   type MapSeat,
   type RegionFormat,
-} from "@officeorg/core";
+} from "@orov/core";
 import type { Executor } from "../client";
 import * as s from "../schema";
 

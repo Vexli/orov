@@ -1,9 +1,9 @@
 import { PersonFormEditor } from "@/components/admin/person-form";
-import { getDb } from "@officeorg/db/client";
-import { listLocationsWithFloors } from "@officeorg/db/queries/floors";
-import { listPeopleForAdmin } from "@officeorg/db/queries/people";
-import { listDeskOptions, listPickerFloors } from "@officeorg/db/queries/spaces";
-import { listTeamsForAdmin } from "@officeorg/db/queries/teams";
+import { getDb } from "@orov/db/client";
+import { listLocationsWithFloors } from "@orov/db/queries/floors";
+import { listPeopleForAdmin } from "@orov/db/queries/people";
+import { listDeskOptions, listPickerFloors } from "@orov/db/queries/spaces";
+import { listTeamsForAdmin } from "@orov/db/queries/teams";
 
 export default async function NewPersonPage() {
   const db = getDb();

@@ -3,14 +3,14 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import type { PersonForm } from "@officeorg/core";
-import { PROFILE_PROVIDERS } from "@officeorg/core/people/identities";
-import { inheritedManager, inheritedTeams } from "@officeorg/core/teams/tree";
-import type { DeskOption, PickerFloor } from "@officeorg/db/queries/spaces";
+import type { PersonForm } from "@orov/core";
+import { PROFILE_PROVIDERS } from "@orov/core/people/identities";
+import { inheritedManager, inheritedTeams } from "@orov/core/teams/tree";
+import type { DeskOption, PickerFloor } from "@orov/db/queries/spaces";
 import { savePersonAction, type SaveState } from "@/app/admin/people/actions";
 import { SeatPicker } from "./seat-picker";
 import { TimeZoneList } from "./time-zone-list";
-import { sortByName } from "@officeorg/core/people/names";
+import { sortByName } from "@orov/core/people/names";
 
 export interface TeamChoice {
   id: string;

@@ -1,8 +1,8 @@
 "use client";
 
-import type { ThemeBuild } from "@officeorg/core/theme/build";
-import { canMap, type MappingEntry, type SlotMapping } from "@officeorg/core/theme/map";
-import { SLOTS, type SlotDefinition } from "@officeorg/core/theme/slots";
+import type { ThemeBuild } from "@orov/core/theme/build";
+import { canMap, type MappingEntry, type SlotMapping } from "@orov/core/theme/map";
+import { SLOTS, type SlotDefinition } from "@orov/core/theme/slots";
 import { AssetSlotControl, type BrandAsset } from "./asset-uploads";
 
 // The token → slot mapping editor (plan.md §9.1, step 2). Each slot takes a token of a matching
@@ -50,7 +50,7 @@ export function SlotTable({ mapping, build, darkMode, assets, onChange, onUpload
         </h2>
         <p className="mt-1 text-sm text-muted-fg">
           Every part of the app is styled through these slots. A slot left on its default keeps
-          OfficeOrg&apos;s value. Suggestions come from token names; change any of them.
+          OrOv&apos;s value. Suggestions come from token names; change any of them.
         </p>
       </div>
       {GROUPS.map((group) => (

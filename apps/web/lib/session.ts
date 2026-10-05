@@ -1,8 +1,8 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { getDb } from "@officeorg/db/client";
-import { canonicalTimeZone, type DateFormat, type RegionDisplay, type RegionFormat } from "@officeorg/core";
-import { findHomeTimeZone, getAppUser, type AppRole, type AppUser } from "@officeorg/db/queries/app-users";
+import { getDb } from "@orov/db/client";
+import { canonicalTimeZone, type DateFormat, type RegionDisplay, type RegionFormat } from "@orov/core";
+import { findHomeTimeZone, getAppUser, type AppRole, type AppUser } from "@orov/db/queries/app-users";
 import { auth } from "./auth";
 import { TIME_ZONE_COOKIE } from "./time-zone-cookie";
 

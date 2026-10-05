@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import type { SeatingMove } from "@officeorg/db/queries/seating";
+import type { SeatingMove } from "@orov/db/queries/seating";
 import { applySeatingAction, previewSeatingAction } from "@/app/admin/locations/[id]/seating/actions";
 
 interface Props {

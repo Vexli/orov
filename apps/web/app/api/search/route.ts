@@ -1,6 +1,6 @@
 import type { NextRequest } from "next/server";
-import { getDb } from "@officeorg/db/client";
-import { search } from "@officeorg/db/queries/search";
+import { getDb } from "@orov/db/client";
+import { search } from "@orov/db/queries/search";
 import { getCurrentUser } from "@/lib/session";
 
 // The ⌘K search (plan.md §7): people, teams and rooms for any signed-in user.

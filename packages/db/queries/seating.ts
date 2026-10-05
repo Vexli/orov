@@ -1,6 +1,6 @@
 import { and, eq, inArray, isNull } from "drizzle-orm";
-import { planSeating, type PlanDesk, type PlanPerson } from "@officeorg/core";
-import { deskCenters } from "@officeorg/core/svg/positions";
+import { planSeating, type PlanDesk, type PlanPerson } from "@orov/core";
+import { deskCenters } from "@orov/core/svg/positions";
 import type { Database, Executor } from "../client";
 import * as s from "../schema";
 import { recordAudit } from "./audit";

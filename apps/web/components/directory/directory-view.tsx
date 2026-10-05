@@ -8,19 +8,19 @@ import {
   getCoreRowModel,
   useReactTable,
 } from "@tanstack/react-table";
-import type { DirectoryPerson, DirectoryTeam } from "@officeorg/core/directory/model";
+import type { DirectoryPerson, DirectoryTeam } from "@orov/core/directory/model";
 import {
   displayName,
   filterDirectory,
   locationText,
   type DirectoryFilters,
-} from "@officeorg/core/directory/filter";
+} from "@orov/core/directory/filter";
 import { directoryParsers } from "@/lib/url-state";
 import { LocationLabel } from "./location-label";
 import { TeamChip } from "../team-chip";
 import { FLOATING_PANEL_GUTTER, FloatingPanel } from "../view-bar";
 import { PersonCard } from "./person-card";
-import { sortByName } from "@officeorg/core/people/names";
+import { sortByName } from "@orov/core/people/names";
 
 interface Props {
   people: DirectoryPerson[];

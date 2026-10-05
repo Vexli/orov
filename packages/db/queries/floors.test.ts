@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { and, eq } from "drizzle-orm";
-import { hasChanges } from "@officeorg/core";
+import { hasChanges } from "@orov/core";
 import { seedDemoData } from "../seed";
 import * as s from "../schema";
 import { startTestDatabase, type TestDatabase } from "../test-utils";

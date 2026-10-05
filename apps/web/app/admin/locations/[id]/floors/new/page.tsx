@@ -1,8 +1,8 @@
 import { notFound } from "next/navigation";
 import { FloorFormEditor } from "@/components/admin/location-form";
-import { getDb } from "@officeorg/db/client";
-import { getLocation } from "@officeorg/db/queries/floors";
-import { tierLabel } from "@officeorg/core";
+import { getDb } from "@orov/db/client";
+import { getLocation } from "@orov/db/queries/floors";
+import { tierLabel } from "@orov/core";
 
 export default async function NewFloorPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;

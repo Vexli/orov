@@ -1,5 +1,5 @@
 {
-  "name": "@officeorg/web",
+  "name": "@orov/web",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -11,8 +11,8 @@
     "theme:defaults": "tsx scripts/theme-defaults.ts"
   },
   "dependencies": {
-    "@officeorg/core": "workspace:*",
-    "@officeorg/db": "workspace:*",
+    "@orov/core": "workspace:*",
+    "@orov/db": "workspace:*",
     "@tanstack/react-table": "^8.21.3",
     "d3-org-chart": "3.1.1",
     "next": "^16.3.8",

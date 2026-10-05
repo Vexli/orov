@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import type { DrawingEditInput } from "@officeorg/core/svg/edit-input";
+import type { DrawingEditInput } from "@orov/core/svg/edit-input";
 import { Drawing } from "@/components/map/floor-map";
 
 type Tool = "desk" | "room" | "remove";

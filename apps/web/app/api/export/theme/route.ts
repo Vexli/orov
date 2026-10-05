@@ -1,4 +1,4 @@
-import { exportThemeTokens } from "@officeorg/core/theme/export";
+import { exportThemeTokens } from "@orov/core/theme/export";
 import { getCurrentUser } from "@/lib/session";
 import { getCurrentTheme } from "@/lib/theme";
 
@@ -11,7 +11,7 @@ export async function GET() {
   const theme = await getCurrentTheme();
   const tokens = exportThemeTokens(
     theme.values,
-    `${theme.values.light["appName"] ?? "OfficeOrg"} theme, exported from OfficeOrg. Logos, the favicon and fonts are uploads and aren't included.`,
+    `${theme.values.light["appName"] ?? "OrOv"} theme, exported from OrOv. Logos, the favicon and fonts are uploads and aren't included.`,
   );
   return new Response(`${JSON.stringify(tokens, null, 2)}\n`, {
     headers: {

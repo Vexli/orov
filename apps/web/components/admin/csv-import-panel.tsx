@@ -1,14 +1,14 @@
 "use client";
 
 import { useRef, useState, useTransition } from "react";
-import type { FieldChange, ImportPlan, PersonRecord, TeamRecord } from "@officeorg/core";
+import type { FieldChange, ImportPlan, PersonRecord, TeamRecord } from "@orov/core";
 import {
   CSV_ENCODING_LABELS,
   CSV_ENCODINGS,
   decodeCsv,
   type CsvEncoding,
   type DecodedCsv,
-} from "@officeorg/core/csv/decode";
+} from "@orov/core/csv/decode";
 import type { ApplyState, ImportInput, PreviewState } from "@/app/admin/import/actions";
 
 type Kind = "people" | "teams";

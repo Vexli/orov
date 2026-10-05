@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import type { BrandAssetKind } from "@officeorg/core/theme/assets";
+import type { BrandAssetKind } from "@orov/core/theme/assets";
 import { uploadBrandAssetAction } from "@/app/admin/branding/actions";
 
 // Logo, favicon and font uploads for the Branding page (plan.md §9.1). Files are stored as soon

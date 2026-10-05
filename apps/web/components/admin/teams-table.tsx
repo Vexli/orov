@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useMemo } from "react";
 import { useQueryStates } from "nuqs";
-import { filterAdminTeams } from "@officeorg/core/admin/filter";
+import { filterAdminTeams } from "@orov/core/admin/filter";
 import { adminTeamsParsers } from "@/lib/url-state";
 
 export interface TeamsTableRow {

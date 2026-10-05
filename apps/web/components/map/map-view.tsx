@@ -9,19 +9,19 @@ import type {
   MapLocation,
   MapSeat,
   MapSpace,
-} from "@officeorg/core";
-import { ROOM_STATE_LABEL, type RoomDisplayState } from "@officeorg/core/map/room-status";
-import { mapStateCss } from "@officeorg/core/map/state-css";
-import { DEFAULT_TIER_LABELS, tierLabel } from "@officeorg/core/spaces/tier";
-import { teamSeats, type TeamSeats } from "@officeorg/core/map/team-seats";
-import { displayName, personInitials } from "@officeorg/core/directory/filter";
+} from "@orov/core";
+import { ROOM_STATE_LABEL, type RoomDisplayState } from "@orov/core/map/room-status";
+import { mapStateCss } from "@orov/core/map/state-css";
+import { DEFAULT_TIER_LABELS, tierLabel } from "@orov/core/spaces/tier";
+import { teamSeats, type TeamSeats } from "@orov/core/map/team-seats";
+import { displayName, personInitials } from "@orov/core/directory/filter";
 import { PersonCard } from "@/components/directory/person-card";
 import { mapParsers } from "@/lib/url-state";
 import { FloorList, KIND_LABEL } from "./floor-list";
 import { RegionText } from "../directory/location-label";
 import { ViewBar } from "../view-bar";
 import { FloorMap, type Avatar, type MapLabel, type RoomCue } from "./floor-map";
-import { sortByName } from "@officeorg/core/people/names";
+import { sortByName } from "@orov/core/people/names";
 
 interface Props {
   map: MapData;

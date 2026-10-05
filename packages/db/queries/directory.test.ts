@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import type { RegionDisplay } from "@officeorg/core";
+import type { RegionDisplay } from "@orov/core";
 import { seedDemoData } from "../seed";
 import { startTestDatabase, type TestDatabase } from "../test-utils";
 import { loadDirectory } from "./directory";

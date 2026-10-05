@@ -1,12 +1,15 @@
 import { createCipheriv, createDecipheriv, randomBytes, scryptSync } from "node:crypto";
 
-// The encrypted organization export (#29), "officeorg-export" version 1:
+// The encrypted organization export (#29), "orov-export" version 1:
 //   { format, version, kdf: { name: "scrypt", N, r, p, salt }, cipher: { name: "AES-256-GCM", iv, tag }, ciphertext }
 // The key comes from the admin's passphrase through scrypt, so the file can travel by email or a
 // shared drive. GCM authenticates as well as encrypts: a wrong passphrase and a changed byte fail
 // the same way, and never decrypt to garbage. Server only (node:crypto); imported by path.
 
-export const EXPORT_FORMAT = "officeorg-export";
+export const EXPORT_FORMAT = "orov-export";
+// Files written before the project was renamed (#30). The format id isn't part of what GCM
+// authenticates, so reading it under either name changes nothing about the file's integrity.
+const LEGACY_EXPORT_FORMATS: readonly string[] = ["officeorg-export"];
 export const EXPORT_VERSION = 1;
 export const MIN_PASSPHRASE = 12;
 
@@ -15,7 +18,7 @@ const KDF = { N: 2 ** 15, r: 8, p: 1 };
 const MAXMEM = 64 * 1024 * 1024;
 
 export interface ExportFile {
-  format: typeof EXPORT_FORMAT;
+  format: string; // EXPORT_FORMAT, or a legacy id when reading
   version: number;
   kdf: { name: "scrypt"; N: number; r: number; p: number; salt: string };
   cipher: { name: "AES-256-GCM"; iv: string; tag: string };
@@ -52,7 +55,7 @@ export function decryptExport(fileText: string, passphrase: string): string {
   } catch {
     throw new ExportFileError("This isn't an export file: it isn't JSON.");
   }
-  if (file?.format !== EXPORT_FORMAT) throw new ExportFileError("This isn't an OfficeOrg export file.");
+  if (file?.format !== EXPORT_FORMAT && !LEGACY_EXPORT_FORMATS.includes(file?.format)) throw new ExportFileError("This isn't an OrOv export file.");
   if (file.version !== EXPORT_VERSION) {
     throw new ExportFileError(`This file is format version ${file.version}; this app reads version ${EXPORT_VERSION}.`);
   }

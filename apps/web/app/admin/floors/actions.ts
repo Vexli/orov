@@ -1,9 +1,9 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { areaEditSchema, drawingEditSchema, spaceEditSchema, type FloorDiff } from "@officeorg/core";
-import { getDb } from "@officeorg/db/client";
-import { ValidationError } from "@officeorg/db/queries/errors";
+import { areaEditSchema, drawingEditSchema, spaceEditSchema, type FloorDiff } from "@orov/core";
+import { getDb } from "@orov/db/client";
+import { ValidationError } from "@orov/db/queries/errors";
 import {
   applyFloorUpload,
   previewFloorRollback,
@@ -12,7 +12,7 @@ import {
   rollbackFloor,
   saveArea,
   saveSpace,
-} from "@officeorg/db/queries/floors";
+} from "@orov/db/queries/floors";
 import { requireAdmin } from "@/lib/session";
 
 // The drawing travels as text both times: once to preview, once to apply. Apply re-runs the

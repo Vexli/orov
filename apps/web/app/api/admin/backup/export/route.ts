@@ -1,6 +1,6 @@
-import { encryptExport, ExportFileError } from "@officeorg/core/backup/crypto";
-import { getDb } from "@officeorg/db/client";
-import { exportOrganizationAudited } from "@officeorg/db/queries/backup";
+import { encryptExport, ExportFileError } from "@orov/core/backup/crypto";
+import { getDb } from "@orov/db/client";
+import { exportOrganizationAudited } from "@orov/db/queries/backup";
 import { getCurrentUser } from "@/lib/session";
 
 // The whole organization as one passphrase-encrypted file (#29). POST, so the passphrase never
@@ -23,7 +23,7 @@ export async function POST(request: Request) {
   return new Response(JSON.stringify(file), {
     headers: {
       "Content-Type": "application/json",
-      "Content-Disposition": `attachment; filename="officeorg-export-${day}.json"`,
+      "Content-Disposition": `attachment; filename="orov-export-${day}.json"`,
       "Cache-Control": "no-store",
     },
   });

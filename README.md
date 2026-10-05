@@ -1,7 +1,7 @@
-# OfficeOrg
+# OrOv
 
 An internal web app for a small company (1–3 offices, fewer than 250 people) that replaces the
-spreadsheets tracking who works where. OfficeOrg is meant to be the **source of truth** for
+spreadsheets tracking who works where. OrOv is meant to be the **source of truth** for
 people, teams, reporting lines and seat assignments, shown as one linked view:
 person ↔ seat ↔ team ↔ manager ↔ presence ↔ Slack.
 
@@ -112,7 +112,7 @@ that only logs a heartbeat. See [`plan.md` §12](plan.md#12-delivery-plan) for t
 ```sh
 pnpm install
 
-# Start Postgres 16. This also creates the officeorg_test and officeorg_e2e databases.
+# Start Postgres 16. This also creates the orov_test and orov_e2e databases.
 pnpm db:up
 
 # Configure the web app. The defaults point at the database from the previous step.
@@ -133,7 +133,7 @@ Then create the schema, load the demo data and start the app:
 
 ```sh
 # The database scripts read DATABASE_URL from the shell, not from .env.local.
-export DATABASE_URL=postgres://officeorg:officeorg@localhost:5432/officeorg
+export DATABASE_URL=postgres://orov:orov@localhost:5432/orov
 
 pnpm db:migrate
 pnpm db:seed     # resets the database and loads the demo data
@@ -172,7 +172,7 @@ URL to register.
 - **Database tests** run against a throwaway Postgres started by Testcontainers, so Docker must
   be running. On macOS with Colima, set
   `DOCKER_HOST=unix://$HOME/.colima/default/docker.sock TESTCONTAINERS_RYUK_DISABLED=true`.
-- **End-to-end tests** run a production build against the `officeorg_e2e` database (created by
+- **End-to-end tests** run a production build against the `orov_e2e` database (created by
   `pnpm db:up`) and reseed it before each spec. Install the browser once with
   `pnpm exec playwright install chromium`.
 
@@ -231,8 +231,8 @@ validates with zod, writes in a transaction and records an audit entry.
 The `Dockerfile` builds one image with two targets:
 
 ```sh
-docker build --target web -t officeorg-web .
-docker build --target worker -t officeorg-worker .
+docker build --target web -t orov-web .
+docker build --target worker -t orov-worker .
 ```
 
 The web container applies migrations on start and then serves on port 3000. It needs
@@ -264,9 +264,31 @@ importing admin always stays an admin. A file must come from an instance on the 
 schema version; files from older versions can't be read yet. This complements the database's
 own backups and point-in-time recovery; it doesn't replace them.
 
+### Renamed from OfficeOrg
+
+The project was called OfficeOrg until 2026-10-05. Packages are now `@orov/*` and the images
+`orov-web` and `orov-worker`. A deployment needs no other change: the app reads the database
+named in `DATABASE_URL`, and no table or setting carries the old name. Backup files
+written before the rename (format `officeorg-export`) still import.
+
+A local checkout from before the rename has its database in the old Compose project, which still
+holds port 5432 and uses the `officeorg` user. Stop it, start the new one and point the env files
+at it:
+
+```sh
+docker compose -p <checkout folder name> stop db   # the old project was named after the folder
+pnpm db:up                                         # new project `orov`, user and password `orov`
+# In apps/web/.env.local (and your shell): DATABASE_URL=postgres://orov:orov@localhost:5432/orov
+pnpm db:migrate && pnpm db:seed
+```
+
+Without the Compose plugin, use `docker-compose -p <folder> stop db` and `docker-compose up -d db`
+for the first two lines. The old volume (`<folder>_pgdata`) is left alone; remove it with `docker volume rm` once you no
+longer need its data.
+
 ## Acknowledgements
 
-OfficeOrg is built on open-source work. Thank you to the people who maintain it.
+OrOv is built on open-source work. Thank you to the people who maintain it.
 
 **In use today**
 
