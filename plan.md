@@ -628,16 +628,21 @@ The five spikes from §2 and `docs/spikes.md`.
 
 ### Phase 6: Polish (ongoing)
 
-Feature branches merge into `phase/6-polish`, which branched from `dev` after Phase 7 (2026-10-05). Items that need outside access stay open: "Who's in today" needs presence (Phase 4), HRIS sync needs an HRIS, and live theme sync needs the Figma Variables REST API (Enterprise) or the Penpot API.
+Feature branches merge into `phase/6-polish`, which branched from `dev` after Phase 7 (2026-10-05).
+
+**Phase status:** closed 2026-10-05: every item that can be built without outside access is done and merged into `phase/6-polish`, then `dev`. Not yet merged into `main`. Three items stay `[!] BLOCKED`. Integration run on the phase branch: 578 unit, 151 database (Testcontainers) and 141 Playwright specs pass, plus the CI drift checks (migrations, theme defaults, raw palette classes), the production build, and a Docker build of both targets. Migrations `0016`–`0017`; take a fresh backup export after deploying, as the format refuses files from another schema version. **Pre-existing, not fixed:** the root `pnpm test` fails at once because `@orov/worker`'s `test` script runs `vitest`, which the worker doesn't depend on (`spawn ENOENT`, on `dev` too); CI is unaffected because it runs `pnpm --filter @orov/core test` and `--filter @orov/db test`.
 
 - [x] Mobile layout: map as full-screen sheet, directory first
     - **Completed:** 2026-10-05
     - **Branch:** merged from `feature/mobile-layout`
     - **Notes:** Below `lg` (1024 px): `FloatingPanel` (directory, org chart) and the map's new `SelectionSheet` show the selected card as a sheet fixed to the bottom of the screen (max 45dvh, scrolls), and `FLOATING_PANEL_GUTTER` adds matching bottom padding; the map's office overview stays in the page. The main menu is one row at 390 px: account links fold into a `<details>` "Menu", and Search and Menu show icons below `sm` with their names kept as `sr-only` text. **Full screen** is a "Full screen" toggle (`aria-pressed`) in the map's zoom controls at every width: the map container becomes `fixed inset-0` (`data-full-screen`) with the drawing pinned to the top so the sheet covers empty space; Escape or the toggle leaves it, and the drawing is refitted either way. It's a CSS mode, not the Fullscreen API, so the sheet (z-50) sits above it (z-40) and it works on iPhones. The view bar (floor and area buttons) is hidden while full screen. "Directory first" needed nothing: `/` already lands on the directory. **Not done:** the directory table still scrolls sideways on a phone rather than becoming a list of cards; the admin pages weren't reworked for phones. Tests: 3 Playwright (`e2e/specs/mobile.spec.ts`); the full suite (139) passes at desktop width.
 - [x] Click-to-place seat editor in the app, so new desks don't need a Figma round-trip (done as Phase 7 #21 step 2, 2026-10-04)
-- [ ] "Who's in today" dashboard per location (shown only when presence display is on, §8.5)
-- [ ] Optional HRIS sync, which replaces CSV as the people source
-- [ ] Live theme sync from the Figma Variables REST API (Enterprise plans only) or the Penpot API
+- [!] "Who's in today" dashboard per location (shown only when presence display is on, §8.5)
+    - **Blocked:** needs presence data and the `presence.display` setting from Phase 4, which waits on the Phase 0 spikes.
+- [!] Optional HRIS sync, which replaces CSV as the people source
+    - **Blocked:** needs a choice of HRIS (and API access to it) from the project owner.
+- [!] Live theme sync from the Figma Variables REST API (Enterprise plans only) or the Penpot API
+    - **Blocked:** needs a Figma Enterprise file and token, or a Penpot instance, and the Phase 0 design tokens spike's real exports.
 - [x] Per-location theme overrides
     - **Decided (2026-10-05):** map slots only, on that office's map only; the rest of the app keeps the organization's theme.
     - **Completed:** 2026-10-05
