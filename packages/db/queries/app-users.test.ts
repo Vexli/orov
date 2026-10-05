@@ -69,7 +69,16 @@ describe("region display preference", () => {
       regionDisplay: "country_region",
       regionFlag: false,
       dateFormat: "iso",
+      locale: "en",
     });
+  });
+
+  it("reads a language that's no longer offered as English", async () => {
+    await recordSignIn(t.db, "bob@example.com", false);
+    await setUserSettings(t.db, "bob@example.com", { locale: "de" });
+    await expect(getAppUser(t.db, "bob@example.com")).resolves.toMatchObject({ locale: "de" });
+    await t.db.update(appUser).set({ locale: "tlh" }).where(eq(appUser.email, "bob@example.com"));
+    await expect(getAppUser(t.db, "bob@example.com")).resolves.toMatchObject({ locale: "en" });
   });
 
   it("is stored per user, and a later sign-in keeps it", async () => {

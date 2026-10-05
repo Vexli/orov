@@ -12,6 +12,7 @@ import {
   type SpaceEdit,
 } from "@orov/core";
 import { DrawingEditError, editDrawing, type DrawingEdit } from "@orov/core/svg/edit";
+import type { LocationTheme } from "@orov/core/theme/location-override";
 import { parseFloorSvg } from "@orov/core/svg/parse";
 import { sanitizeSvg, SvgError } from "@orov/core/svg/sanitize";
 import type { Database, Executor } from "../client";
@@ -97,6 +98,28 @@ export async function saveLocation(
       after,
     });
     return { id: locationId };
+  });
+}
+
+// Sets or clears (null) an office's own map colors. The caller validates the override with
+// locationThemeSchema and checks contrast against the active theme, which lives in the web app.
+export async function setLocationMapTheme(
+  db: Database,
+  actorEmail: string,
+  id: string,
+  mapTheme: LocationTheme | null,
+): Promise<void> {
+  await db.transaction(async (tx) => {
+    const before = await getLocation(tx, id);
+    if (!before) throw new ValidationError("This office no longer exists.");
+    await tx.update(s.location).set({ mapTheme }).where(eq(s.location.id, id));
+    await recordAudit(tx, actorEmail, {
+      entity: "location",
+      entityId: id,
+      action: "update",
+      before: { mapTheme: before.mapTheme },
+      after: { mapTheme },
+    });
   });
 }
 

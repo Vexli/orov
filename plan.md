@@ -155,7 +155,8 @@ The schema builds on the model in `report.md` and adds cache, audit, and integra
 ```
 location      (id, slug UNIQUE, name, timezone, region (ISO 3166 code), externalBuildingId?,
                sortOrder, floorLabelSingular, floorLabelPlural,   -- default Floor/Floors (#16)
-               archivedAt?)                                       -- archives its floors too (#22)
+               archivedAt?,                                       -- archives its floors too (#22)
+               mapTheme? jsonb)                                   -- office's own map slots (Phase 6)
 floor         (id, locationId, slug, name, level int, svgAssetId, sortOrder)
                 UNIQUE(locationId, slug)
 svg_asset     (id, floorId, version int, sanitizedSvg text, sha256, uploadedBy, uploadedAt)
@@ -202,6 +203,7 @@ messaging_user_token (personId, provider, encryptedToken, scopes, createdAt)   -
                  PK(personId, provider)
 app_user        (email PK, role: viewer|admin,
                  regionDisplay: code|country|region|country_region   -- default country_region
+                 locale text   -- default en; language for country names (Phase 6)
                  lastSeenAt)
 audit_log       (id, actorEmail, entity, entityId, action, before jsonb, after jsonb, at)
 integration_run (id, job, startedAt, finishedAt?, ok bool, stats jsonb, error?)
@@ -309,6 +311,8 @@ Anything without one of these prefixes is decoration.
 
 **Country flags** (`app_user.regionFlag`, Phase 7 #28): a checkbox under the region display that puts the country's flag emoji in front of every region label, in any display mode. The flag travels separately from the label (`regionLabel` returns `{ label, flag }`), is `aria-hidden` in the UI, and the text label always stays, since Windows shows flag emoji as letter pairs.
 
+**Language** (`app_user.locale`, Phase 6): the language country names are shown in, from `UI_LOCALES` in `packages/core/regions/locales.ts` (default English). It's part of `RegionFormat`, so every label `regionLabel` builds follows it, and the region picker searches in it as well as in English. Subdivision names stay as ISO 3166-2 publishes them, so German reads "California, Vereinigte Staaten". The rest of the interface is English.
+
 **Date format** (`app_user.dateFormat`, Phase 7 #27): `iso` (default, `2026-10-04 14:30`), `dmy` (`04/10/2026 14:30`) or `mdy` (`10/04/2026 2:30 PM`), formatted on the server by `formatDateTime` in `packages/core/dates/format.ts`. Times are shown in the viewer's home time zone if they have a person row, else their browser's (a `tz` cookie), else UTC, and timestamps carry the zone's abbreviation. Date filters (the audit log's) are read in the same zone. CSV files always use ISO 8601 in UTC.
 
 ---
@@ -394,7 +398,7 @@ Presence display is **off by default**. An admin chooses the mode on the Presenc
 | ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Import**             | Upload a CSV for people, teams, or memberships. The people file's `home_region` column takes an ISO 3166 code (`US` or `US-CA`); files that still use the older `home_country` header import unchanged. Each row is validated with zod, then the admin sees a dry-run diff (create/update/error per row) and applies it. Rows can be skipped (one by one, or every row with an error); a row that depends on a skipped one (its manager, the other half of a desk swap, its parent team) becomes an error too, and Apply writes exactly what the dry run showed (Phase 7 #1). Managers are resolved by email in a second pass so the file order doesn't matter. |
 | **People / Teams**     | CRUD with cycle-safe manager and parent pickers, desk assignment through a seat picker (a mini map), team membership, and a primary-team flag.                                                                                                     |
-| **Locations / Floors** | Create, edit, and archive or delete (Phase 7 #22: archive hides an office or floor everywhere and keeps its history, after the admin confirms who loses a desk; only an office or floor that never had a drawing can be deleted). Each location has an ISO 3166 `region` code, validated like `home_region`), SVG upload with the diff from §6, and version history with rollback.                                                                                                                                                                         |
+| **Locations / Floors** | Create, edit, and archive or delete (Phase 7 #22: archive hides an office or floor everywhere and keeps its history, after the admin confirms who loses a desk; only an office or floor that never had a drawing can be deleted). Each location has an ISO 3166 `region` code, validated like `home_region`), SVG upload with the diff from §6, version history with rollback, and the office's own map colors (Phase 6, §9.1).                                                                                                                                                                         |
 | **Rooms**              | Google import diff, room ↔ svg id linking, and capacity overrides.                                                                                                                                                                                 |
 | **Presence**           | The display mode selector (`off` / `simple` / `detailed`, default `off`, §8.5) with a preview of each mode, and "Delete presence data". Below that, CRUD for rules, a "test this message" box, and the parsed-message log from §8.3.                                                                                                                                                                   |
 | **Integrations**       | The last run, status, and stats for each job from `integration_run`, with "run now" buttons. Unmatched Slack users are listed here.                                                                                                                |
@@ -442,7 +446,9 @@ Each slot supports a light value and an optional dark value, taken from the toke
 
 **Fonts and logos.** `next/font` works only at build time, so runtime brand fonts are uploaded WOFF2 files stored as `brand_asset` rows, served same-origin from `/api/brand-assets/[id]`, and declared with generated `@font-face`. SVG logos go through the same sanitize step as floor SVGs (§6). `appName` and the favicon feed Next.js `generateMetadata`.
 
-**Later (Phase 6).** Live sync from the Figma Variables REST API (Enterprise plans only) or the Penpot API, and per-location theme overrides. File upload covers every tool in v1.
+**Per-office map colors (Phase 6).** An office can override the map slots (`map.*`, `room.*`) for its own floors; the rest of the app keeps the active theme. Stored as `location.mapTheme` (values by mode, through the same value grammar), checked with the same contrast rules against the active theme, and emitted as custom properties scoped to `[data-location-theme="<location id>"]` around the map, which works because utilities read slots through `@theme inline`.
+
+**Later (Phase 6).** Live sync from the Figma Variables REST API (Enterprise plans only) or the Penpot API. File upload covers every tool in v1.
 
 ---
 
@@ -622,14 +628,34 @@ The five spikes from §2 and `docs/spikes.md`.
 
 ### Phase 6: Polish (ongoing)
 
-- [ ] Mobile layout: map as full-screen sheet, directory first
+Feature branches merge into `phase/6-polish`, which branched from `dev` after Phase 7 (2026-10-05).
+
+**Phase status:** closed 2026-10-05: every item that can be built without outside access is done and merged into `phase/6-polish`, then `dev`. Not yet merged into `main`. Three items stay `[!] BLOCKED`. Integration run on the phase branch: 578 unit, 151 database (Testcontainers) and 141 Playwright specs pass, plus the CI drift checks (migrations, theme defaults, raw palette classes), the production build, and a Docker build of both targets. Migrations `0016`–`0017`; take a fresh backup export after deploying, as the format refuses files from another schema version. **Pre-existing, not fixed:** the root `pnpm test` fails at once because `@orov/worker`'s `test` script runs `vitest`, which the worker doesn't depend on (`spawn ENOENT`, on `dev` too); CI is unaffected because it runs `pnpm --filter @orov/core test` and `--filter @orov/db test`.
+
+- [x] Mobile layout: map as full-screen sheet, directory first
+    - **Completed:** 2026-10-05
+    - **Branch:** merged from `feature/mobile-layout`
+    - **Notes:** Below `lg` (1024 px): `FloatingPanel` (directory, org chart) and the map's new `SelectionSheet` show the selected card as a sheet fixed to the bottom of the screen (max 45dvh, scrolls), and `FLOATING_PANEL_GUTTER` adds matching bottom padding; the map's office overview stays in the page. The main menu is one row at 390 px: account links fold into a `<details>` "Menu", and Search and Menu show icons below `sm` with their names kept as `sr-only` text. **Full screen** is a "Full screen" toggle (`aria-pressed`) in the map's zoom controls at every width: the map container becomes `fixed inset-0` (`data-full-screen`) with the drawing pinned to the top so the sheet covers empty space; Escape or the toggle leaves it, and the drawing is refitted either way. It's a CSS mode, not the Fullscreen API, so the sheet (z-50) sits above it (z-40) and it works on iPhones. The view bar (floor and area buttons) is hidden while full screen. "Directory first" needed nothing: `/` already lands on the directory. **Not done:** the directory table still scrolls sideways on a phone rather than becoming a list of cards; the admin pages weren't reworked for phones. Tests: 3 Playwright (`e2e/specs/mobile.spec.ts`); the full suite (139) passes at desktop width.
 - [x] Click-to-place seat editor in the app, so new desks don't need a Figma round-trip (done as Phase 7 #21 step 2, 2026-10-04)
-- [ ] "Who's in today" dashboard per location (shown only when presence display is on, §8.5)
-- [ ] Optional HRIS sync, which replaces CSV as the people source
-- [ ] Live theme sync from the Figma Variables REST API (Enterprise plans only) or the Penpot API
-- [ ] Per-location theme overrides
-- [ ] Searchable ISO 3166 region picker in the admin person and location forms, in place of the free-text code
-- [ ] A UI locale setting (§7.1), so country names in region labels follow the user's language
+- [!] "Who's in today" dashboard per location (shown only when presence display is on, §8.5)
+    - **Blocked:** needs presence data and the `presence.display` setting from Phase 4, which waits on the Phase 0 spikes.
+- [!] Optional HRIS sync, which replaces CSV as the people source
+    - **Blocked:** needs a choice of HRIS (and API access to it) from the project owner.
+- [!] Live theme sync from the Figma Variables REST API (Enterprise plans only) or the Penpot API
+    - **Blocked:** needs a Figma Enterprise file and token, or a Penpot instance, and the Phase 0 design tokens spike's real exports.
+- [x] Per-location theme overrides
+    - **Decided (2026-10-05):** map slots only, on that office's map only; the rest of the app keeps the organization's theme.
+    - **Completed:** 2026-10-05
+    - **Branch:** merged from `feature/location-theme`
+    - **Notes:** Migration `0017` adds `location.map_theme` (jsonb, null = none). `core/theme/location-override.ts`: `LOCATION_THEME_SLOTS` (the 8 map slots), `locationThemeSchema` (each value through `parseSlotValue`; blanks dropped; an empty override is null), `withLocationTheme` (a light-only slot keeps its value in dark; dark values are ignored for a light-only theme), `locationThemeReport` (the theme's contrast checks that involve an overridden slot), `emitLocationThemeCss` (re-parses every value and refuses an unsafe scope id). `setLocationMapTheme` writes with an audit entry (`location` update, before/after `mapTheme`). `loadMap` adds `locationId` and `locationTheme` to `MapFloor`; the map page emits the scoped `<style>` and `MapView` puts `data-location-theme` on its content grid, so the list view, cards and full-screen map are covered; the view bar isn't. Admin: "Map colors" on `/admin/locations/[id]`, a table of slots with a tick and a color (or opacity) input per mode, the Branding page's `ContrastReport` live, and "Save even though … checks fail". **Known gap:** applying a new organization theme doesn't re-check office overrides; `docs/theming.md` tells admins to re-check. The admin seat picker and drawing editor keep the organization's colors. Tests: 10 unit, 1 DB, 2 Playwright.
+- [x] Searchable ISO 3166 region picker in the admin person and location forms, in place of the free-text code
+    - **Completed:** 2026-10-05
+    - **Branch:** merged from `feature/region-picker`
+    - **Notes:** `components/admin/region-picker.tsx` is an ARIA combobox fed by `GET /api/regions?q=` (any signed-in user, cached privately for an hour), so the ISO 3166-2 list still never reaches the browser; the client imports only the `RegionOption` type. `searchRegions` in `core/regions/iso3166.ts` matches every query word as a prefix of the code or the "Region, Country" label, ignoring accents ("karnataka" finds Karnātaka). Ranking: the exact code, then countries before subdivisions, then names starting with the query. The current code's full name is the field's description, from the same request. A typed code is still submitted as-is (uppercased), and the server's `regionCodeSchema` remains the only validation. Note: the ISO list spells some names without accents ("Quebec"). Labels are English until the UI locale item lands; `searchRegions` already takes a `locale`. Tests: 6 unit, 1 Playwright plus one assertion in the office spec.
+- [x] A UI locale setting (§7.1), so country names in region labels follow the user's language
+    - **Completed:** 2026-10-05
+    - **Branch:** merged from `feature/ui-locale`
+    - **Notes:** Migration `0016` adds `app_user.locale` (text, default `en`); `UI_LOCALES` in `core/regions/locales.ts` lists 23 languages, labelled "Deutsch (German)". `getAppUser` reads an unlisted value as `en`. `RegionFormat.locale` (optional, English when absent) is set by `regionFormatOf`, so `loadDirectory`, `loadMap` and the org chart need no change. `/api/regions` labels suggestions in the user's language and matches English names too ("germany" finds Deutschland); it's now `no-store`, since a cached reply would outlive a language change. Settings examples follow the language. **Scope:** only country names; the interface, sorting and date formats are unaffected (dates have their own setting), and labels carry no `lang` attribute, so a screen reader reads "Kanada" with the page's English voice. The backup's schema version moved with the migration, so exports taken before it no longer import. Tests: 4 unit, 1 DB, 1 Playwright.
 
 **Total: about 7.5–9 weeks for one engineer, or about 4.5–5.5 weeks for two.** Two engineers can split phases 2 and 3, and phases 4 and 5, in parallel. Phase 5.5 depends only on Phase 1's token layer, so it can run alongside any later phase.
 

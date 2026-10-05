@@ -8,6 +8,7 @@ import {
   normalizeRegionCode,
   REGION_DISPLAYS,
   regionCodeSchema,
+  searchRegions,
   subdivisionName,
 } from "./iso3166";
 
@@ -147,5 +148,56 @@ describe("regionLabel", () => {
     });
     // A code without a country falls back to the code.
     expect(regionLabel("XX", { display: "flag", flag: false })).toEqual({ label: "XX", flag: null, flagOnly: false });
+  });
+});
+
+describe("searchRegions", () => {
+  const codes = (q: string, limit?: number) => searchRegions(q, limit).map((r) => r.code);
+
+  it("finds a subdivision by name, with its full label", () => {
+    expect(searchRegions("ontario")[0]).toEqual({ code: "CA-ON", label: "Ontario, Canada" });
+  });
+
+  it("puts an exact code first", () => {
+    expect(codes("us-ca")[0]).toBe("US-CA");
+    expect(codes("ca")[0]).toBe("CA");
+    expect(codes("US")[0]).toBe("US");
+  });
+
+  it("lists a country before its subdivisions", () => {
+    const found = codes("canada", 50);
+    expect(found[0]).toBe("CA");
+    expect(found).toContain("CA-ON");
+    expect(found).toContain("CA-QC");
+  });
+
+  it("matches every word as a prefix", () => {
+    expect(codes("new y")).toContain("US-NY");
+    expect(codes("york new")).toContain("US-NY");
+    expect(codes("new zzz")).toEqual([]);
+  });
+
+  it("ignores accents and case", () => {
+    expect(codes("karnataka")).toContain("IN-KA");
+    expect(codes("QUEBEC")).toContain("CA-QC");
+  });
+
+  it("returns nothing for a blank query and honors the limit", () => {
+    expect(searchRegions("  ")).toEqual([]);
+    expect(searchRegions("a", 5)).toHaveLength(5);
+  });
+});
+
+describe("place names in another language", () => {
+  it("translates country names, and keeps subdivision names as ISO publishes them", () => {
+    const de = { display: "country_region", flag: false, locale: "de" } as const;
+    expect(regionLabel("US-CA", de).label).toBe("California, Vereinigte Staaten");
+    expect(regionLabel("DE", de).label).toBe("Deutschland");
+    expect(regionLabel("DE", { display: "flag", flag: false, locale: "ja" }).label).toBe("ドイツ");
+  });
+
+  it("searches in the chosen language and in English", () => {
+    expect(searchRegions("deutschland", 5, "de")[0]).toEqual({ code: "DE", label: "Deutschland" });
+    expect(searchRegions("germany", 5, "de")[0]).toEqual({ code: "DE", label: "Deutschland" });
   });
 });

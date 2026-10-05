@@ -9,6 +9,7 @@ import {
   saveLocationAction,
   type SpaceSaveState,
 } from "@/app/admin/locations/actions";
+import { RegionPicker } from "./region-picker";
 import { TimeZoneList } from "./time-zone-list";
 import { TIER_PRESETS, tierLabel, type TierLabels } from "@orov/core/spaces/tier";
 
@@ -118,20 +119,12 @@ export function LocationFormEditor({ id, initial, slugLocked }: LocationProps) {
           <TimeZoneList id="office-time-zones" />
           {f.fieldError("timezone")}
         </label>
-        <label className="block text-sm font-medium">
-          Region
-          <input
-            className={inputClass}
-            placeholder="US-CA"
-            maxLength={6}
-            value={f.values.region}
-            onChange={(e) => f.set("region", e.target.value.toUpperCase())}
-          />
-          <span className="text-xs font-normal text-muted-fg">
-            ISO 3166 country (US) or subdivision (US-CA)
-          </span>
-          {f.fieldError("region")}
-        </label>
+        <RegionPicker
+          label="Region"
+          value={f.values.region}
+          onChange={(code) => f.set("region", code)}
+          error={f.fieldError("region")}
+        />
       </div>
       <fieldset>
         <legend className="text-sm font-medium">What this office calls its floors</legend>

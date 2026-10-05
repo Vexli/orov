@@ -9,6 +9,7 @@ import { inheritedManager, inheritedTeams } from "@orov/core/teams/tree";
 import type { DeskOption, PickerFloor } from "@orov/db/queries/spaces";
 import { savePersonAction, type SaveState } from "@/app/admin/people/actions";
 import { SeatPicker } from "./seat-picker";
+import { RegionPicker } from "./region-picker";
 import { TimeZoneList } from "./time-zone-list";
 import { sortByName } from "@orov/core/people/names";
 
@@ -158,21 +159,12 @@ export function PersonFormEditor({ id, initial, managers, desks, floors, teams, 
 
       <div className="space-y-4">
         <div className="grid grid-cols-2 gap-4">
-          <label className="block text-sm font-medium">
-            Home region
-            <input
-              className={inputClass}
-              maxLength={6}
-              placeholder="US-CA"
-              aria-describedby="home-region-hint"
-              value={values.homeRegion}
-              onChange={(e) => set("homeRegion", e.target.value.toUpperCase())}
-            />
-            <span id="home-region-hint" className="mt-1 block text-xs font-normal text-muted-fg">
-              ISO 3166 country (US) or subdivision (US-CA)
-            </span>
-            {fieldError("homeRegion")}
-          </label>
+          <RegionPicker
+            label="Home region"
+            value={values.homeRegion}
+            onChange={(code) => set("homeRegion", code)}
+            error={fieldError("homeRegion")}
+          />
           {/* The hint sits outside the label, so it describes the input without becoming part
               of its name. */}
           <div>

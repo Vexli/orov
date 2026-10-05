@@ -31,10 +31,11 @@ which wait for Phases 4 and 5. None has been released to `main` yet. The parts t
 - Directory with search, team and location filters, a person card, and selection kept in the URL.
   The directory, map and org chart use the full width of the window, with the main menu staying
   at the top, the map's and org chart's controls in a bar just below it, and the selected
-  person's card floating at the right.
+  person's card floating at the right. On a phone the main menu fits one row (account links
+  move into a menu) and the card slides up from the bottom of the screen.
   People have a given name and a family name, and lists sort by family name
 - Floor map: the floor drawing with an avatar at each occupied desk and each room's name, zoom
-  and pan, and a card for the person, desk or room you click. Switch offices and floors, open an
+  and pan (and a full-screen mode, for pinch-zooming on a phone), and a card for the person, desk or room you click. Switch offices and floors, open an
   area such as the South Wing as a zoomed view, and see each floor's headcount, desks and rooms.
   The map follows a selected person to their floor, and highlights a team's seats (with its
   sub-teams, unless you untick them) with a count per floor. A desk code in the directory or on
@@ -73,8 +74,10 @@ which wait for Phases 4 and 5. None has been released to `main` yet. The parts t
   skipped. Files saved by Excel (Windows-1252 or UTF-16, separated by commas, semicolons or tabs)
   are detected. CSV export, and an audit log of every admin change, filterable by entity, date and
   admin, and exportable as CSV
-- ISO 3166 region codes (`US`, `US-CA`, `CA-ON`), and per-user settings for how regions are
-  displayed (optionally with the country's flag, or the flag alone) and how dates are written (ISO, day/month/year or month/day/year, in the user's own
+- ISO 3166 region codes (`US`, `US-CA`, `CA-ON`), picked in the admin forms by typing a country
+  or region name or the code, and per-user settings for how regions are
+  displayed (optionally with the country's flag, or the flag alone), which language country names
+  are in, and how dates are written (ISO, day/month/year or month/day/year, in the user's own
   time zone)
 - A semantic theme layer: components are styled only through theme slots, never raw colors
 - Admin pages for offices and floors. Each office chooses what its floors are called (Floor,
@@ -83,7 +86,9 @@ which wait for Phases 4 and 5. None has been released to `main` yet. The parts t
   removed on the drawing itself in the browser, and the result is reviewed and saved as a new
   version, like an upload. A floor or office can be archived (hidden everywhere, history kept),
   or deleted if it never had a drawing. A seating planner rearranges an office so each team sits
-  together, keeping anyone locked in place, and shows every move before applying it Uploading a floor drawing (SVG)
+  together, keeping anyone locked in place, and shows every move before applying it. An office can
+  have its own map colors (selection, team highlight, room status, map background), checked for
+  contrast like a theme and used only on its own floors. Uploading a floor drawing (SVG)
   sanitizes it, shows what it
   adds, moves and removes before anything is saved, and keeps every version for rollback. How to
   draw one is in [`docs/map-authoring.md`](docs/map-authoring.md)
@@ -206,7 +211,7 @@ packages/
     import/       dry-run import planning
     map/          floor map model and the generated state stylesheet
     org/          the org chart's reporting and team trees
-    regions/      ISO 3166 validation and display formatting
+    regions/      ISO 3166 validation, display formatting and name search
     search/       search result types and query normalization
     spaces/       office and floor form validation
     svg/          floor drawing sanitize, parse and diff

@@ -1,5 +1,5 @@
 import { eq, sql } from "drizzle-orm";
-import type { DateFormat, RegionDisplay } from "@orov/core";
+import { DEFAULT_UI_LOCALE, isUiLocale, type DateFormat, type RegionDisplay, type UiLocale } from "@orov/core";
 import type { Executor } from "../client";
 import { appUser, person } from "../schema";
 
@@ -37,6 +37,7 @@ export interface AppUser {
   regionDisplay: RegionDisplay;
   regionFlag: boolean;
   dateFormat: DateFormat;
+  locale: UiLocale;
 }
 
 // The role and personal settings in one read, for the session check every page makes.
@@ -44,12 +45,13 @@ export interface AppUser {
 export async function getAppUser(db: Executor, email: string): Promise<AppUser | null> {
   const row = await db.query.appUser.findFirst({
     where: eq(appUser.email, email),
-    columns: { role: true, regionDisplay: true, regionFlag: true, dateFormat: true },
+    columns: { role: true, regionDisplay: true, regionFlag: true, dateFormat: true, locale: true },
   });
-  return row ?? null;
+  // A language dropped from UI_LOCALES falls back to the default rather than failing.
+  return row ? { ...row, locale: isUiLocale(row.locale) ? row.locale : DEFAULT_UI_LOCALE } : null;
 }
 
-export type UserSettings = Pick<AppUser, "regionDisplay" | "regionFlag" | "dateFormat">;
+export type UserSettings = Pick<AppUser, "regionDisplay" | "regionFlag" | "dateFormat" | "locale">;
 
 // A user's own preferences; fields left out keep their value. Not audited: they change only
 // what that user sees.

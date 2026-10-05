@@ -25,7 +25,7 @@ export function ViewTabs() {
   const pathname = usePathname();
   const [selection] = useQueryStates(selectionParsers);
   return (
-    <nav aria-label="Views" className="flex gap-4 text-sm">
+    <nav aria-label="Views" className="flex gap-3 text-sm sm:gap-4">
       {VIEWS.map((view) => {
         const active = pathname === view.href || pathname.startsWith(`${view.href}/`);
         return (

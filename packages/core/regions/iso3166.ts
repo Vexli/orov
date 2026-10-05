@@ -1,5 +1,6 @@
 import { iso31661, iso31662 } from "iso-3166";
 import { z } from "zod";
+import { DEFAULT_UI_LOCALE } from "./locales";
 
 // Where someone (or an office) is, as one ISO 3166 code: a country ("US", ISO 3166-1 alpha-2)
 // or a subdivision of one ("US-CA", ISO 3166-2). A subdivision code starts with its country,
@@ -110,6 +111,8 @@ export function formatRegion(code: string, display: RegionDisplay, locale = "en"
 export interface RegionFormat {
   display: RegionDisplay;
   flag: boolean;
+  // The language for country names (a UiLocale); English when left out.
+  locale?: string;
 }
 
 export const DEFAULT_REGION_FORMAT: RegionFormat = { display: DEFAULT_REGION_DISPLAY, flag: false };
@@ -130,11 +133,64 @@ export interface RegionLabel {
   flagOnly: boolean;
 }
 
-export function regionLabel(code: string, format: RegionFormat, locale = "en"): RegionLabel {
+export function regionLabel(code: string, format: RegionFormat): RegionLabel {
+  const locale = format.locale ?? DEFAULT_UI_LOCALE;
   if (format.display === "flag") {
     const flag = flagEmoji(code);
     // No flag (an unassigned code): the code itself.
     return flag ? { label: formatRegion(code, "flag", locale), flag, flagOnly: true } : { label: code, flag: null, flagOnly: false };
   }
   return { label: formatRegion(code, format.display, locale), flag: format.flag ? flagEmoji(code) : null, flagOnly: false };
+}
+
+// One suggestion for the region picker (Phase 6): the code, and how it reads in full.
+export interface RegionOption {
+  code: string;
+  label: string;
+}
+
+// Lowercase without accents, so "karnataka" finds "Karnātaka" and "quebec" finds "Québec".
+function fold(text: string): string {
+  return text.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase();
+}
+
+interface RegionEntry extends RegionOption {
+  // The folded label and code, split into words a query term can be a prefix of.
+  words: string[];
+  // The subdivision's own name (or the country's, for a country), folded.
+  name: string;
+}
+
+const searchIndexes = new Map<string, RegionEntry[]>();
+
+function searchIndex(locale: string): RegionEntry[] {
+  let index = searchIndexes.get(locale);
+  if (index) return index;
+  const codes = [...countries.keys(), ...subdivisions.keys()].filter(isKnownRegion);
+  index = codes.map((code) => {
+    const label = formatRegion(code, "country_region", locale);
+    const name = fold(subdivisionName(code) ?? countryName(code, locale));
+    // English names match in every language, so "germany" finds Deutschland too.
+    const text = locale === "en" ? label : `${label} ${formatRegion(code, "country_region")}`;
+    return { code, label, name, words: [fold(code), ...fold(text).split(/[^\p{L}\p{N}]+/u).filter(Boolean)] };
+  });
+  searchIndexes.set(locale, index);
+  return index;
+}
+
+// Region codes whose code or name matches every word of the query, as prefixes ("new y" finds
+// New York; "canada" finds Canada and each of its provinces). The exact code comes first, then
+// countries before subdivisions, then names that start with the query, then the rest.
+export function searchRegions(query: string, limit = 20, locale = "en"): RegionOption[] {
+  const folded = fold(query.trim());
+  const terms = folded.split(/[^\p{L}\p{N}-]+/u).filter(Boolean);
+  if (terms.length === 0) return [];
+  const rank = (e: RegionEntry) =>
+    (fold(e.code) === folded ? 0 : 4) + (e.code.length === 2 ? 0 : 2) + (e.name.startsWith(folded) ? 0 : 1);
+  return searchIndex(locale)
+    .filter((e) => terms.every((t) => e.words.some((w) => w.startsWith(t))))
+    .map((e) => ({ e, r: rank(e) }))
+    .sort((a, b) => a.r - b.r || a.e.label.localeCompare(b.e.label, locale))
+    .slice(0, limit)
+    .map(({ e }) => ({ code: e.code, label: e.label }));
 }

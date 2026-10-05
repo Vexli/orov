@@ -128,6 +128,12 @@ export const location = pgTable(
     floorLabelPlural: text("floor_label_plural").notNull().default("Floors"),
     // Archiving an office archives its floors too (#22).
     archivedAt: timestamp("archived_at", { withTimezone: true }),
+    // The office's own map colors (Phase 6): a LocationTheme from core/theme/location-override,
+    // validated on save and again when emitted. Null keeps the organization's theme.
+    mapTheme: jsonb("map_theme").$type<{
+      light: Record<string, string>;
+      dark: Record<string, string>;
+    }>(),
   },
   (t) => [check("location_region_iso3166", regionShape(t.region))],
 );
@@ -408,6 +414,9 @@ export const appUser = pgTable("app_user", {
   regionFlag: boolean("region_flag").notNull().default(false),
   // How this user sees dates and times (#27).
   dateFormat: dateFormat("date_format").notNull().default("iso"),
+  // The language for country names in region labels (Phase 6). Plain text, checked against
+  // UI_LOCALES in the app, so a new language needs no migration.
+  locale: text("locale").notNull().default("en"),
   lastSeenAt: timestamp("last_seen_at", { withTimezone: true }),
 });
 

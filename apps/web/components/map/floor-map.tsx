@@ -118,6 +118,11 @@ export function FloorMap({
   const drawingRef = useRef<HTMLDivElement>(null);
   const zoomRef = useRef<ReactZoomPanPinchContentRef>(null);
   const pointerDown = useRef<{ x: number; y: number } | null>(null);
+  // Full screen (Phase 6): the map covers the page, which on a phone is the only way to give the
+  // drawing room to pinch and pan. The drawing sits at the top, under the controls, so the
+  // selection sheet covers empty space rather than desks. A layout mode rather than the Fullscreen API, so the selection
+  // sheet can sit on top of it and it works on iPhones, which have no element fullscreen.
+  const [fullScreen, setFullScreen] = useState(false);
   const [measured, setMeasured] = useState<{
     assetId: string;
     viewBox: string;
@@ -171,6 +176,17 @@ export function FloorMap({
     return () => cancelAnimationFrame(frame);
   }, [focusAreaId, current]);
 
+  // Escape leaves full screen, and the drawing is refitted to its new box either way.
+  useEffect(() => {
+    void zoomRef.current?.resetTransform(0);
+    if (!fullScreen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setFullScreen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [fullScreen]);
+
   function handleClick(e: React.MouseEvent) {
     const start = pointerDown.current;
     if (start && Math.hypot(e.clientX - start.x, e.clientY - start.y) > CLICK_SLOP) return;
@@ -179,7 +195,14 @@ export function FloorMap({
   }
 
   return (
-    <div className="relative overflow-hidden rounded-lg border border-border bg-map-bg">
+    <div
+      data-full-screen={fullScreen ? "" : undefined}
+      className={
+        fullScreen
+          ? "fixed inset-0 z-40 overflow-hidden bg-map-bg pt-12"
+          : "relative overflow-hidden rounded-lg border border-border bg-map-bg"
+      }
+    >
       <TransformWrapper
         ref={zoomRef}
         minScale={1}
@@ -188,7 +211,10 @@ export function FloorMap({
         doubleClick={{ mode: "zoomIn", step: 0.7 }}
         wheel={{ step: 0.15 }}
       >
-        <TransformComponent wrapperClass="w-full!" contentClass="w-full!">
+        <TransformComponent
+          wrapperClass={fullScreen ? "w-full! h-full!" : "w-full!"}
+          contentClass="w-full!"
+        >
           <div
             role="img"
             aria-label={label}
@@ -261,7 +287,7 @@ export function FloorMap({
             ) : null}
           </div>
         </TransformComponent>
-        <ZoomControls />
+        <ZoomControls fullScreen={fullScreen} onFullScreen={setFullScreen} />
       </TransformWrapper>
     </div>
   );
@@ -293,7 +319,13 @@ function NameLabel({ label, box }: { label: MapLabel; box: Box }) {
   );
 }
 
-function ZoomControls() {
+function ZoomControls({
+  fullScreen,
+  onFullScreen,
+}: {
+  fullScreen: boolean;
+  onFullScreen: (on: boolean) => void;
+}) {
   const { zoomIn, zoomOut, resetTransform } = useControls();
   const button =
     "flex h-8 min-w-8 items-center justify-center rounded-md border border-border bg-card px-2 text-sm text-card-fg";
@@ -307,6 +339,9 @@ function ZoomControls() {
       </button>
       <button type="button" className={button} onClick={() => resetTransform()}>
         Reset
+      </button>
+      <button type="button" className={button} aria-pressed={fullScreen} onClick={() => onFullScreen(!fullScreen)}>
+        Full screen
       </button>
     </div>
   );

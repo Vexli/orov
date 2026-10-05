@@ -52,6 +52,28 @@ test.describe("region display setting", () => {
     );
   });
 
+  test("country names follow the chosen language, and region names stay as ISO publishes them", async ({
+    page,
+    context,
+  }) => {
+    await signInAs(context, "bob@example.com");
+    await page.goto("/settings");
+    const language = page.getByRole("combobox", { name: "Language for country names" });
+    await expect(language).toHaveValue("en");
+    await language.selectOption({ label: "Deutsch (German)" });
+    await page.getByRole("button", { name: "Save settings" }).click();
+    await expect(page.getByRole("status")).toContainText("Settings saved");
+    await expect(language).toHaveValue("de");
+    await expect(page.getByRole("radio", { name: /Region and country name/ })).toHaveAccessibleName(
+      /California, Vereinigte Staaten/,
+    );
+
+    await page.goto("/directory?person=p_jane");
+    await expect(page.getByRole("complementary", { name: "Jane Park details" })).toContainText(
+      "Ontario, Kanada SF-2-003",
+    );
+  });
+
   test("one user's choice doesn't change what anyone else sees", async ({ browser }) => {
     const bob = await browser.newContext();
     await signInAs(bob, "bob@example.com");
@@ -85,7 +107,10 @@ test.describe("region display setting", () => {
 test.describe("country flags", () => {
   test.beforeEach(resetE2eDatabase);
 
-  test("a user can show flags alone, with the country name kept for screen readers", async ({ page, context }) => {
+  test("a user can show flags alone, with the country name kept for screen readers", async ({
+    page,
+    context,
+  }) => {
     await signInAs(context, "bob@example.com");
     await page.goto("/settings");
     await page.getByRole("radio", { name: /Flag only/ }).check();
@@ -93,7 +118,9 @@ test.describe("country flags", () => {
     await expect(page.getByRole("status")).toContainText("Settings saved");
 
     await page.goto("/directory?person=p_jane");
-    const location = page.getByRole("complementary", { name: "Jane Park details" }).locator("[title=Canada]");
+    const location = page
+      .getByRole("complementary", { name: "Jane Park details" })
+      .locator("[title=Canada]");
     await expect(location).toHaveText("🇨🇦Canada");
     await expect(location.locator('[aria-hidden="true"]')).toHaveText("🇨🇦");
     await expect(location.locator(".sr-only")).toHaveText("Canada");
@@ -118,7 +145,9 @@ test.describe("country flags", () => {
 
     await switchUser(page, context, "max@example.com");
     await page.goto("/directory?person=p_jane");
-    await expect(page.getByRole("complementary", { name: "Jane Park details" })).not.toContainText("🇨🇦");
+    await expect(page.getByRole("complementary", { name: "Jane Park details" })).not.toContainText(
+      "🇨🇦",
+    );
   });
 });
 
@@ -126,7 +155,10 @@ test.describe("country flags", () => {
 test.describe("date format setting", () => {
   test.beforeEach(resetE2eDatabase);
 
-  test("switching to day/month/year changes the audit log for that user only", async ({ page, context }) => {
+  test("switching to day/month/year changes the audit log for that user only", async ({
+    page,
+    context,
+  }) => {
     await signInAs(context, "jane@example.com");
     // Something in the log to look at.
     await page.goto("/admin/people/p_bob");
