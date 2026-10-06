@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { and, eq } from "drizzle-orm";
 import { hasChanges } from "@orov/core";
-import { seedDemoData } from "../seed";
+import { seedTestFixture } from "../test-fixture";
 import * as s from "../schema";
 import { startTestDatabase, type TestDatabase } from "../test-utils";
 import { listAudit } from "./audit";
@@ -41,11 +41,11 @@ afterAll(async () => {
 
 beforeEach(async () => {
   await t.reset();
-  await seedDemoData(t.db);
+  await seedTestFixture(t.db);
 });
 
 const ACTOR = "jane@example.com";
-const FLOOR_2 = readFileSync(new URL("../seed-floors/sf-2.svg", import.meta.url), "utf8");
+const FLOOR_2 = readFileSync(new URL("../test-floors/sf-2.svg", import.meta.url), "utf8");
 const NO = { confirmDeskless: false };
 
 const spaceBySvg = (floorId: string, svgElementId: string) =>

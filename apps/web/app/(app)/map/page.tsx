@@ -1,4 +1,5 @@
 import type { SearchParams } from "nuqs/server";
+import { GettingStarted } from "@/components/getting-started";
 import { MapView } from "@/components/map/map-view";
 import { getDb } from "@orov/db/client";
 import { loadDirectory } from "@orov/db/queries/directory";
@@ -17,6 +18,10 @@ export default async function MapPage({ searchParams }: { searchParams: Promise<
     loadDirectory(db, regionFormatOf(user)),
     getCurrentTheme(),
   ]);
+  // No office at all: a new instance. (Offices without a drawing get MapView's own note.)
+  if (map.locations.length === 0) {
+    return <GettingStarted title="Map" isAdmin={user.role === "admin"} />;
+  }
   const shown = map.floor;
   const locationThemeCss = shown
     ? emitLocationThemeCss(shown.locationId, theme.values, shown.locationTheme)

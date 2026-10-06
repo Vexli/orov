@@ -16,6 +16,7 @@
     "db:generate": "pnpm --filter @orov/db db:generate",
     "db:migrate": "pnpm --filter @orov/db db:migrate",
     "db:seed": "pnpm --filter @orov/db db:seed",
+    "demo:build": "pnpm --filter @orov/db demo:build",
     "theme:defaults": "pnpm --filter @orov/web theme:defaults",
     "db:up": "docker compose up -d db",
     "db:down": "docker compose down",

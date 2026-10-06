@@ -14,7 +14,7 @@ apps/web  ──────────┐            apps/worker
   route handlers     │                   │
         │            ▼                   ▼
         │      packages/db ────────► Postgres 16
-        │        Drizzle schema, migrations, queries, seed
+        │        Drizzle schema, migrations, queries, demo
         ▼            │
   packages/core ◄────┘           packages/integrations
     pure domain logic              provider interfaces, registry, fakes,
@@ -141,5 +141,7 @@ To report a vulnerability, see [`SECURITY.md`](../SECURITY.md).
 | Database   | `packages/db/**/*.test.ts`                                      | Vitest against a throwaway Postgres (Testcontainers; needs Docker)                           |
 | End-to-end | `e2e/specs/*.spec.ts`, one or more per user story               | Playwright against a production build and the `orov_e2e` database, reseeded before each spec |
 
-The seed (`packages/db/seed.ts`) uses fixed ids (`p_bob`, `t_hr`, `sp_sf_2_014`, …) that the
-end-to-end specs rely on.
+The tests run against a small fixed organization, `packages/db/test-fixture.ts`, whose ids
+(`p_bob`, `t_hr`, `sp_sf_2_014`, …) the end-to-end specs rely on. It is separate from the demo
+organization (`packages/db/demo/`, shipped as `demo/orov-demo.json`), which is larger, generated,
+and loaded like any backup.

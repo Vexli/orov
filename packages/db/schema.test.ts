@@ -2,7 +2,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { eq, sql } from "drizzle-orm";
 import journal from "./migrations/meta/_journal.json";
 import { runMigrations } from "./migrate";
-import { seedDemoData } from "./seed";
+import { seedTestFixture } from "./test-fixture";
 import * as s from "./schema";
 import { startTestDatabase, type TestDatabase } from "./test-utils";
 
@@ -107,7 +107,7 @@ describe("invariants enforced by the database", () => {
   });
 
   it("allows at most one primary team per person", async () => {
-    await seedDemoData(t.db);
+    await seedTestFixture(t.db);
     // Bob's primary team is already payroll, so a second primary membership must fail.
     await expectUniqueViolation(
       t.db
@@ -118,7 +118,7 @@ describe("invariants enforced by the database", () => {
   });
 
   it("rejects a second signal with the same provider, source, source_ref and date", async () => {
-    await seedDemoData(t.db);
+    await seedTestFixture(t.db);
     const signal = {
       id: "sig_1",
       personId: "p_bob",
@@ -137,7 +137,7 @@ describe("invariants enforced by the database", () => {
   });
 
   it("requires unique desk codes, but lets rooms share a name across floors", async () => {
-    await seedDemoData(t.db);
+    await seedTestFixture(t.db);
     await t.db
       .insert(s.floor)
       .values({ id: "fl_b", locationId: "loc_sf", slug: "4", name: "Floor 4", level: 4 });
@@ -169,7 +169,7 @@ describe("invariants enforced by the database", () => {
   });
 
   it("cascades a person's team memberships when the person is deleted", async () => {
-    await seedDemoData(t.db);
+    await seedTestFixture(t.db);
     await t.db.delete(s.person).where(eq(s.person.id, "p_bob"));
     const rows = await t.db.select().from(s.teamMember).where(eq(s.teamMember.personId, "p_bob"));
     expect(rows).toEqual([]);
@@ -178,7 +178,7 @@ describe("invariants enforced by the database", () => {
 
 describe("demo seed", () => {
   it("loads Bob → Max → Jane with the expected desks and teams", async () => {
-    await seedDemoData(t.db);
+    await seedTestFixture(t.db);
 
     const bob = await t.db.query.person.findFirst({
       where: eq(s.person.id, "p_bob"),
