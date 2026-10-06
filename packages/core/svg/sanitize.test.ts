@@ -75,7 +75,7 @@ describe("sanitizeSvg", () => {
   it("keeps every id in the sample floors", () => {
     for (const name of ["sf-2", "sf-3"]) {
       const raw = readFileSync(
-        new URL(`../../db/seed-floors/${name}.svg`, import.meta.url),
+        new URL(`../../db/test-floors/${name}.svg`, import.meta.url),
         "utf8",
       );
       const ids = [...raw.matchAll(/id="([^"]+)"/g)].map((m) => m[1]);

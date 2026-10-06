@@ -105,7 +105,7 @@ export function TeamFormEditor({ id, initial, parents, leads }: Props) {
       <div className="grid gap-5 sm:grid-cols-2">
         <label className="block text-sm font-medium">
           Chat channel ID
-          <input className={inputClass} placeholder="C0123ABCD" value={values.chatChannelId ?? ""} onChange={(e) => set("chatChannelId", e.target.value || null)} />
+          <input className={inputClass} placeholder="The team's channel id in your chat tool" value={values.chatChannelId ?? ""} onChange={(e) => set("chatChannelId", e.target.value || null)} />
         </label>
         <label className="block text-sm font-medium">
           Colour

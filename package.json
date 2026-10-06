@@ -1,6 +1,7 @@
 {
   "name": "orov",
   "private": true,
+  "license": "MIT-0",
   "type": "module",
   "packageManager": "pnpm@11.22.0",
   "engines": {
@@ -15,6 +16,7 @@
     "db:generate": "pnpm --filter @orov/db db:generate",
     "db:migrate": "pnpm --filter @orov/db db:migrate",
     "db:seed": "pnpm --filter @orov/db db:seed",
+    "demo:build": "pnpm --filter @orov/db demo:build",
     "theme:defaults": "pnpm --filter @orov/web theme:defaults",
     "db:up": "docker compose up -d db",
     "db:down": "docker compose down",
@@ -26,9 +28,9 @@
     "@orov/db": "workspace:*",
     "@playwright/test": "^1.63.0",
     "@types/node": "^24.19.1",
+    "better-call": "1.4.0",
     "eslint": "^9.39.5",
     "eslint-config-next": "^16.3.8",
-    "next-auth": "5.0.0-beta.32",
     "prettier": "^3.6.2",
     "typescript": "~5.9.3",
     "typescript-eslint": "^8.71.0"

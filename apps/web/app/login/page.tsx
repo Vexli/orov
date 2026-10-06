@@ -3,8 +3,11 @@ import { getAuthSetup } from "@/lib/auth-providers";
 import { getBrand } from "@/lib/theme";
 import { signInWithDevBypass, signInWithDevPassword, signInWithProvider } from "./actions";
 
+// Codes from lib/auth.ts (SIGN_IN_ERROR), plus the one Better Auth uses when the session hook
+// refuses an account. Anything else, such as a cancelled sign-in, gets the general message.
 const MESSAGES: Record<string, string> = {
   AccessDenied: "Sign in with your company account to continue.",
+  unable_to_create_session: "Sign in with your company account to continue.",
   CredentialsSignin: "That email and password don't match.",
   Configuration: "Sign-in is not configured correctly. Ask an admin to check the server settings.",
 };
@@ -32,7 +35,7 @@ export default async function LoginPage({
           <BrandMark brand={brand} className="h-10 w-auto" />
         </h1>
         <p className="mt-2 text-sm text-muted-fg">
-          People, seats, teams and presence for our offices.
+          People, seats and teams across your offices.
         </p>
       </div>
       {message ? (
@@ -49,7 +52,7 @@ export default async function LoginPage({
         </form>
       ))}
 
-      {setup.devPassword || setup.devBypassEmail ? (
+      {setup.devPassword !== null || setup.devBypassEmail ? (
         <section
           aria-labelledby="dev-sign-in"
           className="flex flex-col gap-3 rounded-md border border-dashed border-accent-fg p-4"
@@ -57,7 +60,7 @@ export default async function LoginPage({
           <h2 id="dev-sign-in" className="text-sm font-medium text-accent-fg">
             Local development only
           </h2>
-          {setup.devPassword ? (
+          {setup.devPassword !== null ? (
             <form action={signInWithDevPassword} className="flex flex-col gap-2">
               <label className="flex flex-col gap-1 text-sm">
                 Email

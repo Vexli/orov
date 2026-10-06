@@ -1,9 +1,9 @@
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { getDb } from "@orov/db/client";
 import { canonicalTimeZone, type DateFormat, type RegionDisplay, type RegionFormat, type UiLocale } from "@orov/core";
 import { findHomeTimeZone, getAppUser, type AppRole, type AppUser } from "@orov/db/queries/app-users";
-import { auth } from "./auth";
+import { getAuth } from "./auth";
 import { TIME_ZONE_COOKIE } from "./time-zone-cookie";
 
 export interface CurrentUser {
@@ -33,12 +33,17 @@ async function currentUser(email: string, user: AppUser): Promise<CurrentUser> {
   return { email, ...user, timeZone: home ?? browser ?? "UTC" };
 }
 
+// The signed-in email, from the Better Auth session (null when signed out or expired).
+async function sessionEmail(): Promise<string | null> {
+  const session = await getAuth().api.getSession({ headers: await headers() });
+  return session?.user.email.toLowerCase() ?? null;
+}
+
 // Every page and server action calls one of these. The role and settings come from the database
 // on each call, so demoting an admin takes effect immediately rather than when their session
 // expires, and a changed setting applies on the next page load.
 export async function requireUser(): Promise<CurrentUser> {
-  const session = await auth();
-  const email = session?.user?.email;
+  const email = await sessionEmail();
   if (!email) redirect("/login");
 
   const user = await getAppUser(getDb(), email);
@@ -54,8 +59,7 @@ export async function requireAdmin(): Promise<CurrentUser> {
 
 // For route handlers, which should answer 403 rather than redirect to a page.
 export async function getCurrentUser(): Promise<CurrentUser | null> {
-  const session = await auth();
-  const email = session?.user?.email;
+  const email = await sessionEmail();
   if (!email) return null;
   const user = await getAppUser(getDb(), email);
   return user ? currentUser(email, user) : null;

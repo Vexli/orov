@@ -37,7 +37,11 @@ test.describe("mobile layout", () => {
 
     // The last row can still be scrolled clear of the sheet.
     const last = page.getByRole("row", { name: /Priya Raman/ });
-    await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+    // <main> scrolls, not the window (the app layout keeps the main menu in place).
+    await page.evaluate(() => {
+      const main = document.querySelector("main")!;
+      main.scrollTo(0, main.scrollHeight);
+    });
     expect((await last.boundingBox())!.y + 40).toBeLessThan(box.y);
   });
 

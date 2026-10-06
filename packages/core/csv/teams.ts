@@ -5,7 +5,7 @@ import { parseCsv, type CsvIssue, type CsvRecord } from "./parse";
 
 export const TEAMS_CSV_HEADERS = ["slug", "name", "parent_slug", "chat_channel_id", "color"];
 
-// chat_channel_id was slack_channel_id before the messaging provider became configurable.
+// Legacy header: files written before chat providers became configurable (migration 0005) still import.
 const ALIASES = { slack_channel_id: "chat_channel_id" };
 
 const blankToNull = (value: string) => (value === "" ? null : value);

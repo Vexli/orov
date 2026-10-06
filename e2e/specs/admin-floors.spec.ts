@@ -4,7 +4,7 @@ import { resetE2eDatabase, withE2eDb } from "../support/database";
 import { signInAs } from "../support/session";
 
 const FLOOR_2 = readFileSync(
-  new URL("../../packages/db/seed-floors/sf-2.svg", import.meta.url),
+  new URL("../../packages/db/test-floors/sf-2.svg", import.meta.url),
   "utf8",
 );
 

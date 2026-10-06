@@ -25,7 +25,7 @@ export default function ImportPage() {
       <CsvImportPanel
         kind="teams"
         title="Teams"
-        description="Columns: slug, name, parent_slug, chat_channel_id (the team's channel in the chat tool; files with the older slack_channel_id column still import), color. Import teams before people, so memberships can refer to them."
+        description="Columns: slug, name, parent_slug, chat_channel_id (the team's channel id in your chat tool, optional), color. Import teams before people, so memberships can refer to them."
         preview={previewTeamsImport}
         apply={applyTeamsImport}
       />

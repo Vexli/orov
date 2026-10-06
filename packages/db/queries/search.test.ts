@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { eq } from "drizzle-orm";
-import { seedDemoData } from "../seed";
+import { seedTestFixture } from "../test-fixture";
 import * as s from "../schema";
 import { startTestDatabase, type TestDatabase } from "../test-utils";
 import { search } from "./search";
@@ -17,7 +17,7 @@ afterAll(async () => {
 
 beforeEach(async () => {
   await t.reset();
-  await seedDemoData(t.db);
+  await seedTestFixture(t.db);
 });
 
 describe("search", () => {

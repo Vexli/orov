@@ -1,6 +1,6 @@
 import { createDb } from "@orov/db/client";
 import { resetDatabase } from "@orov/db/reset";
-import { seedDemoData } from "@orov/db/seed";
+import { seedTestFixture } from "@orov/db/test-fixture";
 
 export const E2E_DATABASE_URL =
   process.env.E2E_DATABASE_URL ?? "postgres://orov:orov@localhost:5432/orov_e2e";
@@ -11,7 +11,17 @@ export async function resetE2eDatabase(): Promise<void> {
   const { db, pool } = createDb(E2E_DATABASE_URL);
   try {
     await resetDatabase(db);
-    await seedDemoData(db);
+    await seedTestFixture(db);
+  } finally {
+    await pool.end();
+  }
+}
+
+// A new install: every table empty, as after `pnpm db:migrate` on a fresh database.
+export async function emptyE2eDatabase(): Promise<void> {
+  const { db, pool } = createDb(E2E_DATABASE_URL);
+  try {
+    await resetDatabase(db);
   } finally {
     await pool.end();
   }

@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { RegionDisplay } from "@orov/core";
-import { seedDemoData } from "../seed";
+import { seedTestFixture } from "../test-fixture";
 import { startTestDatabase, type TestDatabase } from "../test-utils";
 import { loadDirectory } from "./directory";
 
@@ -8,7 +8,7 @@ let t: TestDatabase;
 
 beforeAll(async () => {
   t = await startTestDatabase();
-  await seedDemoData(t.db);
+  await seedTestFixture(t.db);
 }, 180_000);
 
 afterAll(async () => {

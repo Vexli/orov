@@ -59,10 +59,10 @@ interface Props {
 // The drawing is injected once per asset and never re-rendered: React doesn't own its nodes, so
 // a change of selection only rewrites the small <style> block next to it (plan.md §6).
 export const Drawing = memo(
-  function Drawing({ svg }: { svg: string }) {
-    return <div dangerouslySetInnerHTML={{ __html: svg }} />;
+  function Drawing({ svg, className }: { svg: string; className?: string }) {
+    return <div className={className} dangerouslySetInnerHTML={{ __html: svg }} />;
   },
-  (a, b) => a.svg === b.svg,
+  (a, b) => a.svg === b.svg && a.className === b.className,
 );
 
 // Desk, room and point of interest boxes in drawing units, measured once per asset version after the first paint.
@@ -119,8 +119,7 @@ export function FloorMap({
   const zoomRef = useRef<ReactZoomPanPinchContentRef>(null);
   const pointerDown = useRef<{ x: number; y: number } | null>(null);
   // Full screen (Phase 6): the map covers the page, which on a phone is the only way to give the
-  // drawing room to pinch and pan. The drawing sits at the top, under the controls, so the
-  // selection sheet covers empty space rather than desks. A layout mode rather than the Fullscreen API, so the selection
+  // drawing room to pinch and pan. A layout mode rather than the Fullscreen API, so the selection
   // sheet can sit on top of it and it works on iPhones, which have no element fullscreen.
   const [fullScreen, setFullScreen] = useState(false);
   const [measured, setMeasured] = useState<{
@@ -200,7 +199,7 @@ export function FloorMap({
       className={
         fullScreen
           ? "fixed inset-0 z-40 overflow-hidden bg-map-bg pt-12"
-          : "relative overflow-hidden rounded-lg border border-border bg-map-bg"
+          : "relative h-full overflow-hidden rounded-lg border border-border bg-map-bg"
       }
     >
       <TransformWrapper
@@ -211,80 +210,87 @@ export function FloorMap({
         doubleClick={{ mode: "zoomIn", step: 0.7 }}
         wheel={{ step: 0.15 }}
       >
-        <TransformComponent
-          wrapperClass={fullScreen ? "w-full! h-full!" : "w-full!"}
-          contentClass="w-full!"
-        >
-          <div
-            role="img"
-            aria-label={label}
-            data-floor-map=""
-            className="relative w-full"
-            onPointerDown={(e) => (pointerDown.current = { x: e.clientX, y: e.clientY })}
-            onClick={handleClick}
-          >
-            <style>{stateCss}</style>
-            <div ref={drawingRef} key={assetId}>
-              <Drawing svg={svg} />
-            </div>
-            {current ? (
-              <svg
-                viewBox={current.viewBox}
-                aria-hidden="true"
-                className="pointer-events-none absolute inset-0 h-full w-full"
-              >
-                {/* Names first, so avatars and status cues sit on top. */}
-                {labels.map((l) => {
-                  const box = current.boxes.get(l.svgElementId);
-                  return box ? <NameLabel key={l.svgElementId} label={l} box={box} /> : null;
-                })}
-                {avatars.map((a) => {
-                  const box = current.boxes.get(a.svgElementId);
-                  if (!box) return null;
-                  const r = Math.max(6, Math.min(box.width, box.height) * 0.38);
-                  return (
-                    <g
-                      key={a.svgElementId}
-                      data-avatar={a.svgElementId}
-                      style={a.dimmed ? { opacity: "var(--map-dim-opacity)" } : undefined}
-                      transform={`translate(${box.x + box.width / 2} ${box.y + box.height / 2})`}
-                    >
-                      <title>{a.name}</title>
-                      <circle
-                        r={r}
-                        className={
-                          a.emphasis === "selected"
-                            ? "fill-primary stroke-bg"
-                            : a.emphasis === "highlighted"
-                              ? "fill-map-highlight stroke-bg"
-                              : "fill-muted stroke-border"
-                        }
-                        strokeWidth={2}
-                      />
-                      <text
-                        textAnchor="middle"
-                        dominantBaseline="central"
-                        fontSize={r * 0.85}
-                        fontWeight={600}
-                        className={
-                          a.emphasis === "selected"
-                            ? "fill-primary-fg"
-                            : a.emphasis === "highlighted"
-                              ? "fill-bg"
-                              : "fill-fg"
-                        }
+        {/* The drawing fills the map's box less a margin (deeper at the top, clear of the zoom
+            controls), scaled to fit and centered (data-fit, globals.css), so a floor of any shape
+            is whole on screen at the default zoom. */}
+        <TransformComponent wrapperClass="w-full! h-full!" contentClass="w-full! h-full!">
+          {/* The margin is on a div of its own: the library's stylesheet zeroes its content's
+              padding, and an unlayered rule beats Tailwind's utilities. */}
+          <div className="h-full w-full p-4 pt-12 sm:p-6 sm:pt-12">
+            <div
+              role="img"
+              aria-label={label}
+              data-floor-map=""
+              data-fit=""
+              className="relative h-full w-full"
+              onPointerDown={(e) => (pointerDown.current = { x: e.clientX, y: e.clientY })}
+              onClick={handleClick}
+            >
+              <style>{stateCss}</style>
+              <div ref={drawingRef} key={assetId} className="h-full">
+                <Drawing svg={svg} className="h-full" />
+              </div>
+              {current ? (
+                <svg
+                  viewBox={current.viewBox}
+                  aria-hidden="true"
+                  className="pointer-events-none absolute inset-0 h-full w-full"
+                >
+                  {/* Names first, so avatars and status cues sit on top. */}
+                  {labels.map((l) => {
+                    const box = current.boxes.get(l.svgElementId);
+                    return box ? <NameLabel key={l.svgElementId} label={l} box={box} /> : null;
+                  })}
+                  {avatars.map((a) => {
+                    const box = current.boxes.get(a.svgElementId);
+                    if (!box) return null;
+                    const r = Math.max(6, Math.min(box.width, box.height) * 0.38);
+                    return (
+                      <g
+                        key={a.svgElementId}
+                        data-avatar={a.svgElementId}
+                        style={a.dimmed ? { opacity: "var(--map-dim-opacity)" } : undefined}
+                        transform={`translate(${box.x + box.width / 2} ${box.y + box.height / 2})`}
                       >
-                        {a.initials}
-                      </text>
-                    </g>
-                  );
-                })}
-                {roomCues.map((cue) => {
-                  const box = current.boxes.get(cue.svgElementId);
-                  return box ? <RoomStatusCue key={cue.svgElementId} cue={cue} box={box} /> : null;
-                })}
-              </svg>
-            ) : null}
+                        <title>{a.name}</title>
+                        <circle
+                          r={r}
+                          className={
+                            a.emphasis === "selected"
+                              ? "fill-primary stroke-bg"
+                              : a.emphasis === "highlighted"
+                                ? "fill-map-highlight stroke-bg"
+                                : "fill-muted stroke-border"
+                          }
+                          strokeWidth={2}
+                        />
+                        <text
+                          textAnchor="middle"
+                          dominantBaseline="central"
+                          fontSize={r * 0.85}
+                          fontWeight={600}
+                          className={
+                            a.emphasis === "selected"
+                              ? "fill-primary-fg"
+                              : a.emphasis === "highlighted"
+                                ? "fill-bg"
+                                : "fill-fg"
+                          }
+                        >
+                          {a.initials}
+                        </text>
+                      </g>
+                    );
+                  })}
+                  {roomCues.map((cue) => {
+                    const box = current.boxes.get(cue.svgElementId);
+                    return box ? (
+                      <RoomStatusCue key={cue.svgElementId} cue={cue} box={box} />
+                    ) : null;
+                  })}
+                </svg>
+              ) : null}
+            </div>
           </div>
         </TransformComponent>
         <ZoomControls fullScreen={fullScreen} onFullScreen={setFullScreen} />
@@ -340,7 +346,12 @@ function ZoomControls({
       <button type="button" className={button} onClick={() => resetTransform()}>
         Reset
       </button>
-      <button type="button" className={button} aria-pressed={fullScreen} onClick={() => onFullScreen(!fullScreen)}>
+      <button
+        type="button"
+        className={button}
+        aria-pressed={fullScreen}
+        onClick={() => onFullScreen(!fullScreen)}
+      >
         Full screen
       </button>
     </div>
