@@ -848,6 +848,16 @@ Built after #21 step 2, #22 and #29, at the project owner's direction; #30 still
     - **Notes:** One mechanical commit (`OfficeOrg` → `OrOv`, `officeorg` → `orov`; nothing used `OFFICEORG_*`), plus one fix. Databases are `orov`, `orov_test`, `orov_e2e` (the main one never had a `_dev` suffix, so it stays without one), user and password `orov`. `docker-compose.yml` sets `name: orov`, so the volume is `orov_pgdata` whatever the folder is called: Postgres applies `POSTGRES_USER` only to a fresh volume, so a new volume was needed anyway, and the old `<folder>_pgdata` is left intact (README "Renamed from OfficeOrg" gives the switch-over steps). The theme advisory lock key is now `orov.theme`; don't run an old and a new replica together while applying a theme. **Fix:** the backup format id is now `orov-export`, and `decryptExport` still reads `officeorg-export` (`LEGACY_EXPORT_FORMATS`; the id isn't part of what GCM authenticates). A theme that was applied before keeps its stored `appName`; only the default changed. Acceptance: `pnpm install`, the dev database switch-over, and `docker build` of both targets (tagged `orov-web`, `orov-worker`) checked. Tests: 1 unit added, 1 extended.
     - **Design (from the note):** replace `OfficeOrg` → `OrOv` and `officeorg` → `orov` (and any `OFFICEORG_*` → `OROV_*`) across README, plan.md, docs, package names (`@orov/*`), `pnpm-workspace.yaml`, the Dockerfile, compose service and volume names, CI image and artifact names, `.env.example`, code comments and strings, and the database init script (`orov_dev`, `orov_test`, `orov_e2e`). Keep table names and type names. One commit with no logic changes. Acceptance: `pnpm install`, `pnpm dev` and the Docker build work with the new names; images tagged `orov-web` and `orov-worker`.
 
+### Phase 8: Public release
+
+The first public release ships without any chat, calendar or room-booking connection. This phase makes the code and docs tool-agnostic, builds the provider-neutral start of the integrations, and brings the documentation up to a standard that outside contributors and adopters can work from. Feature branches merge into `phase/8-public-release`, branched from `dev` on 2026-10-06. The project is licensed under MIT No Attribution (`LICENSE.md`).
+
+- [ ] Root `pnpm test` passes (the worker's `test` script had no `vitest`)
+- [ ] Vendor-neutral code and copy, with a CI guard against vendor names
+- [ ] `packages/integrations`: provider interfaces, registry, fakes and contract tests
+- [ ] Integration architecture docs, and §2–§4, §8, §10, §11, §13 and Phases 4–5 rewritten around providers
+- [ ] Public docs: README, CONTRIBUTING, architecture, configuration, adapting, SECURITY, CHANGELOG
+
 ---
 
 ## 13. Risks and open questions
