@@ -104,7 +104,8 @@ export function MapView({ map, people, teams, locationThemeCss = "" }: Props) {
 
   const focusArea = floor?.areas.find((a) => a.slug === params.area) ?? null;
   // What this office calls its floors (#16).
-  const tier = map.locations.find((l) => l.slug === floor?.locationSlug)?.floorLabels ?? DEFAULT_TIER_LABELS;
+  const tier =
+    map.locations.find((l) => l.slug === floor?.locationSlug)?.floorLabels ?? DEFAULT_TIER_LABELS;
 
   const peopleById = useMemo(() => new Map(people.map((p) => [p.id, p])), [people]);
   const seatsHere = useMemo(
@@ -254,81 +255,94 @@ export function MapView({ map, people, teams, locationThemeCss = "" }: Props) {
           ))}
         </div>
       </ViewBar>
-    <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]" data-location-theme={floor.locationId}>
-      {locationThemeCss ? <style>{locationThemeCss}</style> : null}
-      <section aria-label={`${tier.singular} map`} className="min-w-0" aria-busy={navigating}>
-        <h1 className="text-xl font-heading">
-          {floor.locationName}, {floor.name}
-          {focusArea ? `, ${focusArea.name}` : ""}
-        </h1>
-        <div className={`mt-4 transition-opacity ${navigating ? "opacity-60" : ""}`}>
-          {params.view === "list" ? (
-            <FloorList
-              floorName={`${floor.locationName}, ${floor.name}`}
-              spaces={floor.spaces}
-              areas={floor.areas}
-              seats={seatsHere}
-              peopleById={peopleById}
-              areaId={focusArea?.id ?? null}
-              selectedSvgId={personSeatHere?.svgElementId ?? selectedSpace?.svgElementId ?? null}
-              highlightedPersonIds={teamPeople}
-              onSelect={select}
-            />
+      {/* Fills the height left under the menus (Phase 8). The map section takes all of it, so the
+          drawing never runs below the fold; on a phone the office overview follows below it. */}
+      <div
+        className="flex min-h-0 flex-1 flex-col gap-6 lg:grid lg:grid-cols-[minmax(0,1fr)_22rem] lg:grid-rows-[minmax(0,1fr)]"
+        data-location-theme={floor.locationId}
+      >
+        {locationThemeCss ? <style>{locationThemeCss}</style> : null}
+        <section
+          aria-label={`${tier.singular} map`}
+          className="flex h-full min-w-0 shrink-0 flex-col lg:min-h-0"
+          aria-busy={navigating}
+        >
+          <h1 className="shrink-0 text-xl font-heading">
+            {floor.locationName}, {floor.name}
+            {focusArea ? `, ${focusArea.name}` : ""}
+          </h1>
+          <div
+            className={`mt-4 min-h-0 flex-1 transition-opacity ${params.view === "list" ? "overflow-y-auto" : ""} ${navigating ? "opacity-60" : ""}`}
+          >
+            {params.view === "list" ? (
+              <FloorList
+                floorName={`${floor.locationName}, ${floor.name}`}
+                spaces={floor.spaces}
+                areas={floor.areas}
+                seats={seatsHere}
+                peopleById={peopleById}
+                areaId={focusArea?.id ?? null}
+                selectedSvgId={personSeatHere?.svgElementId ?? selectedSpace?.svgElementId ?? null}
+                highlightedPersonIds={teamPeople}
+                onSelect={select}
+              />
+            ) : (
+              <FloorMap
+                assetId={floor.assetId}
+                svg={floor.svg}
+                stateCss={stateCss}
+                avatars={avatars}
+                roomCues={roomCues}
+                labels={labels}
+                label={`${tier.singular} plan of ${floor.locationName}, ${floor.name}`}
+                onSelect={select}
+                focusAreaId={focusArea?.svgElementId ?? null}
+              />
+            )}
+          </div>
+        </section>
+
+        <div className="lg:min-h-0 lg:overflow-y-auto">
+          {selectedPerson && !personSeat ? (
+            <p role="note" className="mb-3 rounded-md bg-muted p-3 text-sm">
+              {displayName(selectedPerson)} has no desk, so they aren&apos;t on the map.
+            </p>
+          ) : null}
+          {selectedPerson && personSeat && !seatFloorHasDrawing ? (
+            <p role="note" className="mb-3 rounded-md bg-muted p-3 text-sm">
+              {personSeat.deskName} is on {personSeat.locationName}, {personSeat.floorName}, which
+              has no drawing yet.
+            </p>
+          ) : null}
+          {selectedPerson ? (
+            <SelectionSheet>
+              <PersonCard
+                person={selectedPerson}
+                onSelectPerson={(id) => setParams({ person: id, space: null })}
+                onClose={() => setParams({ person: null })}
+              />
+            </SelectionSheet>
+          ) : selectedSpace ? (
+            <SelectionSheet>
+              <SpaceCard
+                space={selectedSpace}
+                areaName={floor.areas.find((a) => a.id === selectedSpace.areaId)?.name ?? null}
+                onClose={() => setParams({ space: null })}
+              />
+            </SelectionSheet>
           ) : (
-            <FloorMap
-              assetId={floor.assetId}
-              svg={floor.svg}
-              stateCss={stateCss}
-              avatars={avatars}
-              roomCues={roomCues}
-              labels={labels}
-              label={`${tier.singular} plan of ${floor.locationName}, ${floor.name}`}
-              onSelect={select}
-              focusAreaId={focusArea?.svgElementId ?? null}
+            <OfficeOverview
+              location={map.locations.find((l) => l.slug === floor.locationSlug)!}
+              currentFloor={floor.slug}
+              seats={map.seats}
+              withoutDesk={
+                people.filter((p) => !p.desk && p.office?.slug === floor.locationSlug).length
+              }
+              onFloor={goTo}
             />
           )}
         </div>
-      </section>
-
-      <div className="lg:sticky lg:top-6 lg:self-start">
-        {selectedPerson && !personSeat ? (
-          <p role="note" className="mb-3 rounded-md bg-muted p-3 text-sm">
-            {displayName(selectedPerson)} has no desk, so they aren&apos;t on the map.
-          </p>
-        ) : null}
-        {selectedPerson && personSeat && !seatFloorHasDrawing ? (
-          <p role="note" className="mb-3 rounded-md bg-muted p-3 text-sm">
-            {personSeat.deskName} is on {personSeat.locationName}, {personSeat.floorName}, which has
-            no drawing yet.
-          </p>
-        ) : null}
-        {selectedPerson ? (
-          <SelectionSheet>
-            <PersonCard
-              person={selectedPerson}
-              onSelectPerson={(id) => setParams({ person: id, space: null })}
-              onClose={() => setParams({ person: null })}
-            />
-          </SelectionSheet>
-        ) : selectedSpace ? (
-          <SelectionSheet>
-            <SpaceCard
-              space={selectedSpace}
-              areaName={floor.areas.find((a) => a.id === selectedSpace.areaId)?.name ?? null}
-              onClose={() => setParams({ space: null })}
-            />
-          </SelectionSheet>
-        ) : (
-          <OfficeOverview
-            location={map.locations.find((l) => l.slug === floor.locationSlug)!}
-            currentFloor={floor.slug}
-            seats={map.seats}
-            withoutDesk={people.filter((p) => !p.desk && p.office?.slug === floor.locationSlug).length}
-            onFloor={goTo}
-          />
-        )}
       </div>
-    </div>
     </>
   );
 }
@@ -500,7 +514,11 @@ function OfficeOverview({
     <aside aria-label={`${location.name} overview`} className="rounded-lg border border-border p-5">
       <h2 className="text-lg font-heading">{location.name}</h2>
       <p className="text-sm text-muted-fg">
-        <RegionText flag={location.regionFlag} flagOnly={location.regionFlagOnly} label={location.regionLabel} />
+        <RegionText
+          flag={location.regionFlag}
+          flagOnly={location.regionFlagOnly}
+          label={location.regionLabel}
+        />
       </p>
       <table className="mt-4 w-full text-left text-sm">
         <thead className="border-b border-border text-xs uppercase text-muted-fg">

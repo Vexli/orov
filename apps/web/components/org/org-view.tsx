@@ -50,7 +50,9 @@ export function OrgView({ people, teams }: Props) {
     () =>
       // People, not nodes: someone with several managers has more than one node (N1).
       params.team
-        ? [...teamHighlightIds("reporting", params.team, params.sub, teams, people)].filter((id) => !id.includes(">")).length
+        ? [...teamHighlightIds("reporting", params.team, params.sub, teams, people)].filter(
+            (id) => !id.includes(">"),
+          ).length
         : 0,
     [params.team, params.sub, teams, people],
   );
@@ -129,10 +131,14 @@ export function OrgView({ people, teams }: Props) {
           ) : null}
         </div>
       </ViewBar>
-      {/* Full width (N2); the card floats at the right while someone is selected. */}
-      <section aria-label="Org chart" className={`min-w-0 ${selectedPerson ? FLOATING_PANEL_GUTTER : ""}`}>
-        <h1 className="text-xl font-heading">Org chart</h1>
-        <div className="mt-4">
+      {/* Full width (N2) and the height left under the menus (Phase 8); the card floats at the
+          right while someone is selected, and the gutter keeps the chart clear of it. */}
+      <section
+        aria-label="Org chart"
+        className={`flex min-h-0 min-w-0 flex-1 flex-col ${selectedPerson ? FLOATING_PANEL_GUTTER : ""}`}
+      >
+        <h1 className="shrink-0 text-xl font-heading">Org chart</h1>
+        <div className={`mt-4 min-h-0 flex-1 ${params.view === "list" ? "overflow-y-auto" : ""}`}>
           {params.view === "list" ? (
             <OrgOutline
               nodes={nodes}
