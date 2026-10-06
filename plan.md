@@ -891,6 +891,9 @@ The first public release ships without any chat, calendar or room-booking connec
     - **Completed:** 2026-10-06
     - **Branch:** merged from `feature/public-docs`
     - **Notes:** The README is rewritten for outside readers (what it is, features by area, an Integrations section, a documentation index, license); the OfficeOrg rename steps moved to `CHANGELOG.md` (0.1.0, unreleased). New: `CONTRIBUTING.md` (setup, every CI check, conventions, migrations, workflow and the `plan.md` progress format), `docs/architecture.md` (the system as built), `docs/configuration.md` (every environment variable), `docs/adapting.md` (setting up an instance; configuration vs. code), `SECURITY.md` (GitHub private vulnerability reporting). Every `package.json` has `"license": "MIT-0"`; `.env.example` points at `docs/configuration.md`. **Known gap, documented:** §10's site-wide Content-Security-Policy was never built; only `/api/brand-assets/*` sends one. `docs/architecture.md` and `SECURITY.md` say so.
+- [ ] Map and org chart fill the screen between the menus and the selected card, with the floor fitted whole and space around it
+- [ ] Sign-in on Better Auth instead of Auth.js, which is in maintenance mode, keeping every setting and provider id
+- [ ] Clean install: no demo data by default; a comprehensive demo organization ships as a backup file anyone can import, and `pnpm db:seed` loads it
 
 **Release checklist** (outward-facing, for the maintainer; not done in this phase):
 
