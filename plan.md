@@ -1,8 +1,10 @@
 # OrOv: Implementation Plan
 
-This plan turns the build-from-scratch option in `report.md` into concrete work. OrOv is an internal web app with four parts: a floor map, a people directory, an org chart, and optional live presence (off by default, §8.5). It also shows Google Calendar room status and has Slack chat shortcuts. It covers 1–3 offices and fewer than 250 people.
+> **How to read this file.** Sections 1–11 are the design: goals, architecture, data model, and how each part works. Where the built code departs from them, the progress notes in §12 say so, and the notes win. Section 12 is the delivery plan and the progress log, one entry per feature, in the format described in [`CONTRIBUTING.md`](CONTRIBUTING.md). For the system as it is built today, start with [`docs/architecture.md`](docs/architecture.md); for integrations, [`docs/integrations/`](docs/integrations/README.md).
 
-Where this plan departs from `report.md`, it says so. One change in particular: **WFH and sick status come from keyword messages in a public Slack channel** (the requirement in the report's Context section), not from Slack profile status emoji (the design in the report's Integrations section).
+OrOv is an internal web app with four parts: a floor map, a people directory, an org chart, and optional live presence (off by default, §8.5). It can also show meeting-room status from a room provider and offer shortcuts into the organization's chat tool (§8). It covers 1–3 offices and fewer than 250 people.
+
+The plan began as the build option of an internal buy-versus-build evaluation, which isn't part of this repository. One requirement from it shapes §8: **WFH and sick status come from keyword messages in a status channel** that people already post in, not from chat profile status emoji.
 
 ---
 
@@ -11,13 +13,13 @@ Where this plan departs from `report.md`, it says so. One change in particular: 
 ### Goals
 
 - The tool is the **source of truth** for people, teams, reporting lines, and seat assignments. Those currently live in spreadsheets.
-- It provides one linked view: person ↔ seat ↔ team ↔ manager ↔ presence ↔ Slack.
-- All integrations are read-only, except the group-DM creation the viewer starts.
+- It provides one linked view: person ↔ seat ↔ team ↔ manager ↔ presence ↔ chat.
+- All integrations are read-only, except the group chat the viewer starts. No chat, calendar or room-booking vendor is assumed: each is a provider chosen per deployment (§8).
 - The app can be restyled to an organization's brand guidelines (colors, fonts, logo, sizing, spacing, density) **without code changes**, by importing design tokens exported from Figma, Penpot, or Tokens Studio (§9.1).
 
 ### Non-goals (v1)
 
-- Room or desk **booking**, hot-desking, kiosks, or room panels. Buy Robin, Skedda, or a similar product if these are needed later.
+- Room or desk **booking**, hot-desking, kiosks, or room panels. Use a dedicated booking product if these are needed; OrOv can show its room status through a room provider (§8.1).
 - HRIS sync. The design should leave room for it, but v1 doesn't build it.
 - Native mobile apps. A responsive web app is enough.
 
@@ -31,7 +33,7 @@ Where this plan departs from `report.md`, it says so. One change in particular: 
 | U4  | See that **Jane is based in Ontario, Canada (`CA-ON`) and also has a desk** in SF                         | dir, map  |
 | U5  | See which meeting rooms are busy (red) or free (green) right now                                          | map       |
 | U6  | Open the **South Wing** as a zoomed area view of its floor                                                | map       |
-| U7  | Chat with one person, start a group DM with 2–8 people, or open a team's channel                          | all       |
+| U7  | In the organization's chat tool, chat with one person, start a group chat with several people (up to the tool's limit), or open a team's channel | all       |
 | U8  | When an admin has turned presence display on: in **simple** mode, see who isn't in today because they're greyed out. In **detailed** mode, see who is on vacation, sick, or WFH, with a badge on their desk and a pill in the directory. With display **off** (the default), no presence appears anywhere | all       |
 | U9  | Switch between directory, map, and org chart without losing the selected person or team                   | all       |
 | U10 | An admin imports the existing spreadsheets, then edits people, teams, and seats in the app                | admin     |
@@ -41,42 +43,43 @@ Where this plan departs from `report.md`, it says so. One change in particular: 
 
 ---
 
-## 2. Phase 0: integration spikes (2–3 days, before anything else)
+## 2. Integration spikes
 
-These are throwaway scripts in `spikes/`. Each spike checks an assumption that later phases depend on. If a spike fails, rework the matching phase before building it.
+A spike is a short throwaway script (in `spikes/`, not shipped) that checks an assumption a later phase depends on, against the real tool, before that phase is built. If a spike fails, rework the phase first. Run one per capability for each tool being considered, once someone has access to it. The questions are the same whatever the tool; [`docs/integrations/provider-notes.md`](docs/integrations/provider-notes.md) has what is already known about specific tools.
 
-| Spike                 | Steps                                                                                                                                                                                               | Pass criteria                                                                                                                |
-| --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
-| **freeBusy**          | Create a service account with domain-wide delegation (DWD). Call `resources.calendars.list` while impersonating an admin. Call `freebusy.query` for 2–3 room resource emails.                       | Busy blocks match the Calendar UI. Building, floor, and section fields are populated.                                        |
-| **Calendar presence** | Impersonate 3–5 volunteers and call `events.list` with `eventTypes=outOfOffice` and `eventTypes=workingLocation`.                                                                                   | OOO events are returned. `workingLocationProperties.type` distinguishes home from office.                                    |
-| **Slack channel**     | Create a bot with `channels:history` and add it to the status channel. Pull 60 days of `conversations.history`.                                                                                     | You end up with a list of real phrasings to seed the keyword rule table, and a rough share of messages that are unambiguous. |
-| **Slack chat**        | Using a test **user** token, call `conversations.open users=U1,U2` and open `slack://channel?team=T&id=<returned id>`. Separately, run `users.lookupByEmail` for everyone on the staff spreadsheet. | The group DM opens in the desktop client. More than 95% of emails match.                                                     |
-| **Design tokens** | Export real token files from Figma (via Tokens Studio or the Variables export available on the org's plan) and from Penpot's design tokens panel. Run each through Style Dictionary or a draft parser. | Aliases and light/dark modes resolve to concrete values. The exported field names and quirks are recorded, so the parser fixtures match reality. |
+| Spike                  | What it must show                                                                                                                                                                                                         |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Room status**        | The tool lists rooms with stable ids (and, ideally, building, floor and section), or the admin can find each room's id by hand. Busy times for 2–3 rooms match the tool's own UI. The read-only access needed is acceptable to the tool's administrator. |
+| **Calendar presence**  | For 3–5 volunteers, out-of-office events come back, and where the tool has working locations, home is distinguishable from office. Reading other people's calendars is possible with access the administrator will grant. |
+| **Status channel**     | A bot can read a channel's history and, ideally, receive new, edited and deleted messages without a public URL. Pull 60 days of a real channel to collect the phrasings that seed the keyword rules (§8.3), and a rough share of messages that are unambiguous. |
+| **Chat**               | Staff emails match the tool's accounts (aim for more than 95%). Links open a person and a channel in the desktop and mobile clients. Opening a group chat works as the viewer, and its size limit is known. |
+| **Design tokens**      | Real token files exported from Figma (via Tokens Studio or the Variables export available on the org's plan) and from Penpot's design tokens panel resolve their aliases and light/dark modes to concrete values. Record the exported field names and quirks, so the parser fixtures match reality. |
 
-Write down the outcomes, especially the real Slack phrasings, in `docs/spikes.md`.
+Write each spike's outcome, with sample payloads and the scopes that turned out to be needed, under the tool's heading in `docs/integrations/provider-notes.md`.
 
 ---
 
 ## 3. Architecture
 
 ```
-┌──────────────────────────── one repo (pnpm workspace) ───────────────────────────┐
+┌──────────────────────────── one repo (pnpm workspace) ─────────────────────────────┐
 │                                                                                    │
 │  apps/web  (Next.js App Router)            apps/worker  (Node, long-running)       │
 │  ─ UI: /directory /map /org /admin         ─ pg-boss scheduled jobs:               │
-│  ─ Route handlers: /api/*                    · rooms:freebusy      every 60s       │
-│  ─ Server actions for admin writes           · presence:calendar   every 60 min    │
-│  ─ Auth.js (pluggable SSO, domain-restricted) · presence:slack-backfill  every 15 min│
-│  ─ Reads cached integration data only        · slack:match-users   nightly         │
-│                                             ─ Slack Bolt in Socket Mode:            │
-│                                               message events from #status channel   │
+│  ─ Route handlers: /api/*                    · rooms:status              every 60s │
+│  ─ Server actions for admin writes           · presence:calendar         hourly    │
+│  ─ Auth.js (pluggable SSO, domain-restricted) · presence:messages-backfill  15 min │
+│  ─ Reads cached integration data only        · messaging:match-users     nightly   │
+│                                             ─ live status-channel listener, when   │
+│                                               the messaging provider offers one    │
 │                        \                        /                                  │
 │                         └── packages/db (Drizzle schema + queries) ──┐             │
-│                             packages/core (pure domain logic)         │             │
-│                             packages/integrations (Google/Slack adapters + fakes)   │
-└───────────────────────────────────────────────────────────────────────┼────────────┘
-                                                                        ▼
-                                                                   Postgres 16
+│                             packages/core (pure domain logic)        │             │
+│                             packages/integrations (provider interfaces, registry,  │
+│                               fakes, contract tests; adapters in providers/<id>/)  │
+└──────────────────────────────────────────────────────────────────────┼─────────────┘
+                                                                       ▼
+                                                                  Postgres 16
 ```
 
 ### Key decisions
@@ -85,9 +88,10 @@ Write down the outcomes, especially the real Slack phrasings, in `docs/spikes.md
 | --------------- | -------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Framework       | Next.js (App Router) + TypeScript, strict mode                                               | Required stack.                                                                                                                                                                     |
 | DB / ORM        | Postgres 16 + **Drizzle** (with drizzle-kit migrations)                                      | SQL-shaped queries suit recursive CTEs (team trees, org chains), and the schema stays in TypeScript.                                                                                |
-| Background work | A separate **worker process**, scheduled with **pg-boss**                                    | Next.js has no reliable in-process scheduler. pg-boss stores its queue in Postgres, so you don't need Redis. Slack Socket Mode needs a persistent connection anyway.                |
-| Slack events    | **Socket Mode** (Bolt) in the worker                                                         | You don't need a public webhook URL, so the web app can sit behind a VPN or IAP. If hosting later makes a public URL easy, switch to the Events API (an HTTP route in the web app). |
+| Background work | A separate **worker process**, scheduled with **pg-boss**                                    | Next.js has no reliable in-process scheduler. pg-boss stores its queue in Postgres, so you don't need Redis. A live status-channel listener needs a persistent connection anyway.                |
+| Live events     | An **outbound connection** from the worker, where the messaging provider offers one; otherwise a webhook route in the web app | No public URL is needed, so the web app can sit behind a VPN or IAP. A provider that only offers webhooks needs a public route that verifies each request's signature. |
 | Auth            | **Auth.js** with the SSO providers listed in `AUTH_PROVIDERS`: `google`, `microsoft-entra-id`, `okta`, `cognito`, or any `oidc` issuer. Reject sign-in unless the email is on `COMPANY_DOMAIN`; Google also needs `hd === COMPANY_DOMAIN` and `email_verified`, and Entra needs a tenant-specific issuer. Local development can add a shared-password login (`AUTH_DEV_PASSWORD`) and an automatic sign-in (`AUTH_DEV_BYPASS_EMAIL`); both are ignored unless running `next dev` on a localhost `AUTH_URL`. | Single sign-on with whichever identity provider the organization already uses. Roles live in the DB (`viewer` by default, `admin` bootstrapped from the `ADMIN_EMAILS` env var). |
+| Integrations    | **Provider interfaces** in `packages/integrations`, chosen per capability by env (`MESSAGING_PROVIDER`, `CALENDAR_PROVIDER`, `ROOMS_PROVIDER`) | Each organization uses different tools, and may mix vendors across capabilities. The rest of the app depends only on the interfaces and their capability flags. |
 | URL state       | **nuqs** (type-safe search params)                                                           | The selection lives in the URL (§7), and nuqs gives typed parsers and shallow updates.                                                                                              |
 | Map             | Inline sanitized SVG + **react-zoom-pan-pinch**                                              | Zooming to an area is a `zoomToElement` call. No canvas or WebGL is needed at this scale.                                                                                           |
 | Org chart       | **d3-org-chart** (MIT), wrapped in a client component                                        | Expand/collapse, `setCentered`, and `setHighlighted` cover U3 and U9 out of the box. Fall back to React Flow + elkjs only if heavy customization is needed.                         |
@@ -96,22 +100,19 @@ Write down the outcomes, especially the real Slack phrasings, in `docs/spikes.md
 | Validation      | **zod** at every boundary (CSV rows, API input, integration payloads)                        | Bad spreadsheet data is the main risk in the first two weeks.                                                                                                                       |
 | Tests           | Vitest (core + db against a real Postgres via testcontainers), Playwright (end-to-end)       | See §11.                                                                                                                                                                            |
 
-### Integration adapter rule
+### Integration provider rule
 
-Everything external goes behind an interface in `packages/integrations`. For example:
+Everything external goes behind an interface in `packages/integrations`: `MessagingProvider`, `CalendarProvider` and `RoomProvider`. For example:
 
 ```ts
-interface RoomCalendar {
-	listRooms(): Promise<RoomResource[]>;
-	freeBusy(
-		emails: string[],
-		from: Date,
-		to: Date,
-	): Promise<Map<string, BusyBlock[]>>;
+interface RoomProvider {
+	readonly capabilities: { directory: boolean };
+	freeBusy(resourceIds: string[], from: Date, to: Date): Promise<Map<string, BusyBlock[]>>;
+	listRooms?(): Promise<RoomResource[]>;
 }
 ```
 
-Each interface has a real Google or Slack implementation and a `Fake*` implementation that seeded tests and local development use. `INTEGRATIONS=fake` in `.env.local` runs the whole app offline.
+Each capability is chosen per deployment by env and defaults to `none`. `INTEGRATIONS=fake` selects in-memory fakes, which tests and local development use, so the whole app runs offline. A vendor's adapter lives in `packages/integrations/providers/<id>/` and must pass its capability's contract suite. Adapters report facts (an event, a busy block, a message); `packages/core` decides what they mean. The full design and the checklist for adding a provider are in [`docs/integrations/README.md`](docs/integrations/README.md).
 
 ---
 
@@ -127,22 +128,24 @@ apps/
       (app)/org/page.tsx
       (app)/settings/{page,actions}.ts(x)  -- per-user settings (§7.1)
       admin/{people,teams,locations,floors,rooms,presence-rules,import,integrations,branding,audit}/
-      api/{rooms/status,presence,search,slack/oauth/*,slack/group-dm,brand-assets/[id]}/route.ts
+      api/{rooms/status,presence,search,chat/connect/*,chat/group,brand-assets/[id]}/route.ts
       theme.css/route.ts          -- active theme as a cached stylesheet (§9.1)
     components/{map,org,directory,selection,admin}/
     lib/{auth.ts,url-state.ts,permissions.ts}
   worker/
-    src/{index.ts,jobs/*.ts,slack/socket.ts}
+    src/{index.ts,jobs/*.ts,listener.ts}
 packages/
   db/        schema.ts, migrations/, queries/{people,teams,spaces,presence}.ts, seed.ts
   core/      presence/{rules.ts,resolve.ts}, svg/{parse.ts,sanitize.ts,diff.ts},
-             teams/tree.ts, csv/{people.ts,teams.ts}, slack/links.ts,
+             teams/tree.ts, csv/{people.ts,teams.ts},
              regions/iso3166.ts,
              theme/{slots.ts,parse.ts,resolve.ts,map.ts,validate.ts,contrast.ts,emit-css.ts}
-  integrations/ google/{rooms.ts,calendar.ts}, slack/{users.ts,history.ts}, fakes/
+  integrations/ types.ts, {messaging,calendar,rooms}.ts, registry.ts, fakes/, contract/,
+             providers/<id>/            -- one folder per real adapter (none yet)
 theme/ default.tokens.json         -- deploy-time default theme (DTCG)
 spikes/
-docs/ spikes.md, map-authoring.md, runbook.md, theming.md
+docs/ architecture.md, configuration.md, adapting.md, map-authoring.md, theming.md,
+      integrations/{README.md,provider-notes.md}, runbook.md
 e2e/  Playwright specs per user story
 ```
 
@@ -150,7 +153,7 @@ e2e/  Playwright specs per user story
 
 ## 5. Data model
 
-The schema builds on the model in `report.md` and adds cache, audit, and integration tables. All ids are text (`p_…`, `t_…`; use `cuid2`) so they're safe to put in URLs. Integration columns are vendor-neutral (Phase 7 #4–6): no column, enum value or CSV header names Slack or Google, so a Microsoft 365, Teams or room-booking adapter needs no schema change.
+The schema covers the organization (offices, floors, people, teams) plus cache, audit, and integration tables. All ids are text (`p_…`, `t_…`; use `cuid2`) so they're safe to put in URLs. Integration columns are vendor-neutral (Phase 7 #4–6): no column, enum value or CSV header names a vendor, so any provider fits without a schema change.
 
 ```
 location      (id, slug UNIQUE, name, timezone, region (ISO 3166 code), externalBuildingId?,
@@ -182,12 +185,12 @@ team_member   (personId, teamId, isPrimary bool, source: explicit | inherited)
 person_identity (personId → person ON DELETE CASCADE, provider, value)
                 PK(personId, provider), UNIQUE(provider, value)
                 provider: github | gitlab | linkedin | website (profile, admin-edited)
-                          | messaging ids from #4 (written by the match job)
+                          | the messaging provider's id (user ids, written by the match job)
 
 presence_signal (id, personId, date, status, source, provider, sourceRef, note?, observedAt,
                  retractedAt?)
                  source: message | calendar_ooo | calendar_working_location | manual
-                 provider: slack | google | microsoft | manual | …
+                 provider: the messaging or calendar provider's id | manual
                  UNIQUE(provider, source, sourceRef, date)   -- idempotent upserts
 presence_day    (personId, date, status, winningSignalId?, PK(personId, date))  -- derived
 presence_rule   (id, priority int, pattern text, matchType: keyword|regex,
@@ -319,36 +322,38 @@ Anything without one of these prefixes is decoration.
 
 ## 8. Integrations
 
-### 8.1 Google: room status (U5)
+Three capabilities, each served by a provider chosen per deployment: **rooms** (§8.1), **calendar** (§8.2) and **messaging** (§8.3, §8.6). Each defaults to `none`, which hides the feature. The interfaces, data-flow rules, job list and the checklist for adding a provider are in [`docs/integrations/README.md`](docs/integrations/README.md); what is known about specific tools is in [`provider-notes.md`](docs/integrations/provider-notes.md). This section describes the behaviour every provider shares.
 
-- **Import** (an admin button that shows a diff): call `admin.directory.resources.calendars.list` while impersonating `GOOGLE_ADMIN_SUBJECT`. Match rooms to `location` by `buildingId`, to `floor` by `floorName`, and to `area` by `floorSection`. Then the admin links each room to its `room-*` svg id with a dropdown of unlinked ids, pre-filled by fuzzy name matching.
-- **Worker `rooms:freebusy` (every 60s, 08:00–19:00 in each location's timezone; every 10 min otherwise):** one `freebusy.query` per 50 rooms for the window from now to the end of the day. The worker derives `free` / `busy` / `soon` (free now, booked within 15 min) and upserts `room_status`.
+### 8.1 Room status (U5)
+
+- **Import** (an admin button that shows a diff, when the provider has `capabilities.directory`): `RoomProvider.listRooms()`. Match rooms to `location` by `buildingId` (`location.externalBuildingId`), to `floor` by `floorName`, and to `area` by `section`. Then the admin links each room to its `room-*` svg id with a dropdown of unlinked ids, pre-filled by fuzzy name matching. Without a directory, the admin enters each room's resource id by hand. Either way the id is stored in `space.calendarResourceId`.
+- **Worker `rooms:status` (every 60s, 08:00–19:00 in each location's timezone; every 10 min otherwise):** `RoomProvider.freeBusy` in batches of `maxResourcesPerCall`, for the window from now to the end of the day. A pure `deriveRoomState(blocks, now)` in `packages/core/map/room-status.ts` gives `free` / `busy` / `soon` (free now, booked within 15 min), and the job upserts `room_status`. A room the provider doesn't know is skipped, not an error.
 - **UI:** `/api/rooms/status?floor=…` returns a small JSON map, which SWR polls every 30s. Server-sent events aren't worth the complexity at this scale. If `checkedAt` is more than 5 min old, show rooms grey with a "status stale" note rather than wrong colors. The free, busy, soon, and stale colors come from the `room.*` theme slots (§9.1).
-- **Scopes:** `calendar.freebusy` and `admin.directory.resource.calendar.readonly`.
+- **Access:** read-only access to room calendars or bookings. Record the exact scopes each provider needed in its setup guide.
 
-### 8.2 Google: presence from Calendar (U8)
+### 8.2 Presence from the calendar (U8)
 
-- **Worker `presence:calendar` (hourly, plus once at 07:00 local time):** for each active person, impersonate them and call `events.list` for today through today+7 with:
-    - `eventTypes=outOfOffice` → `vacation` (or `ooo` if the event title doesn't look like vacation; the keyword list is configurable)
-    - `eventTypes=workingLocation` → `homeOffice` → `wfh`, `officeLocation` → `in_office`, `customLocation` → leave unset
-- Upsert into `presence_signal` with `sourceRef = eventId`. Mark signals whose events have disappeared as `retractedAt`.
-- Like the Slack source (§8.3), this job is a no-op while `presence.display` is `off`.
-- **Scope:** `calendar.events.readonly`. With fewer than 250 users, that's about 250 calls per hour, far under quota.
+- **Worker `presence:calendar` (hourly, plus once at 07:00 local time):** for each active person, `CalendarProvider.presenceEvents(email, today, today+7)`. The provider returns facts only; core maps them:
+    - `out_of_office` → `vacation` (or `ooo` if the event title doesn't look like vacation; the keyword list is configurable)
+    - `working_location` `home` → `wfh`, `office` → `in_office`, `other` → leave unset
+- Upsert into `presence_signal` with `source` `calendar_ooo` or `calendar_working_location`, `provider` = the calendar provider's id, and `sourceRef` = the event's `ref`. Mark signals whose events have disappeared as `retractedAt`.
+- Like the status channel (§8.3), this job is a no-op while `presence.display` is `off`.
+- **Access:** read-only access to people's calendars, which usually means organization-wide (delegated or application) access that the tool's administrator must grant (§13 R2). With fewer than 250 users, one call per person per hour is far under any quota seen so far.
 
-### 8.3 Slack: presence from channel messages (U8)
+### 8.3 Presence from status-channel messages (U8)
 
-This is the requirement: people post in a public channel, for example `#office-status`, and keywords mean WFH or sick. This channel is the main source for the presence display modes in §8.5. While `presence.display` is `off`, the listener and backfill skip the channel entirely: no signals are stored and no reactions are added. The Slack connection still runs for identity and chat (§8.6).
+This is the requirement: people post in a channel in the chat tool, for example `#office-status`, and keywords mean WFH or sick. This channel is the main source for the presence display modes in §8.5. It needs a messaging provider with `capabilities.statusHistory` (and, ideally, `liveEvents`). While `presence.display` is `off`, the listener and backfill skip the channel entirely: no signals are stored and no reactions are added. The messaging provider still serves identity and chat (§8.6).
 
-- **Live:** Bolt in Socket Mode subscribes to `message.channels`, filtered to `SLACK_STATUS_CHANNEL_ID`. It handles new messages plus the `message_changed` and `message_deleted` subtypes (which update or retract the signal), and ignores thread replies unless a setting turns them on.
-- **Backfill** (on worker start, then every 15 min): call `conversations.history` for the last 48 h, because Socket Mode can drop events while the worker is down. Upserts are idempotent through `UNIQUE(source, sourceRef, date)`, where `sourceRef` is the message `ts`.
+- **Live** (when the provider has `liveEvents`): `MessagingProvider.listen` on the configured status channel delivers new, edited and deleted messages (which create, update or retract the signal). Thread replies are ignored unless a setting turns them on.
+- **Backfill** (on worker start, then every 15 min): `statusHistory` for the last 48 h, because a live connection can drop events while the worker is down. Without `liveEvents`, backfill alone gives presence a delay of up to 15 minutes. Upserts are idempotent through `UNIQUE(provider, source, sourceRef, date)`, where `sourceRef` is the message's `ref`.
 - **Parsing** (`packages/core/presence/rules.ts`, a pure function with heavy tests):
-    1. Normalize the text: lowercase, strip emoji codes into tokens, and collapse whitespace.
-    2. Evaluate the enabled `presence_rule` rows by priority. Seed them from the spike, for example `wfh|working from home|remote today` → `wfh` and `sick|unwell|out sick|:face_with_thermometer:` → `sick`.
+    1. Normalize the text: lowercase, turn emoji (Unicode or the tool's `:name:` codes, which the adapter passes through as text) into tokens, and collapse whitespace.
+    2. Evaluate the enabled `presence_rule` rows by priority. Seed them from the spike, for example `wfh|working from home|remote today` → `wfh` and `sick|unwell|out sick|🤒` → `sick`.
     3. Resolve the date scope. The default is **today in the poster's location timezone**. "tomorrow" means +1 day. In v1, `parse` handles only `mon`–`fri` and `until <weekday>` (a range). Don't build a general date parser for v1.
     4. Treat negations ("not sick anymore", "back in office") as their own higher-priority rules that map to `in_office` and override earlier signals that day.
-- **Feedback loop:** when a message matches, the bot adds a reaction (for example 🏠 or 🤒) so the poster knows it was understood. When nothing matches, it does nothing. This is the cheapest way to keep the rule table honest. Scope: `reactions:write`.
+- **Feedback loop** (when the provider has `reactions`): when a message matches, the worker reacts with a Unicode emoji (for example 🏠 or 🤒) so the poster knows it was understood. When nothing matches, it does nothing. This is the cheapest way to keep the rule table honest.
 - An admin page shows **the last 7 days of messages, how each was parsed, and the rule that matched**, so the rules can be tuned against real data.
-- **Bot scopes:** `channels:history`, `channels:read`, `users:read`, `users:read.email`, `reactions:write`. Socket Mode also needs an app-level token with `connections:write`.
+- **Access:** read the status channel, read users' emails, and add reactions. Nothing else.
 
 ### 8.4 Presence resolution
 
@@ -358,7 +363,7 @@ This is the requirement: people post in a public channel, for example `#office-s
 resolve(signals for person+date) → status
 precedence: sick > vacation > ooo > wfh > in_office > unknown
 tie within same status: latest observedAt wins
-explicit "back in office" Slack message on a date overrides wfh signals from Calendar that day
+an explicit "back in office" status message on a date overrides wfh signals from the calendar that day
 ```
 
 `presence_day` is recomputed for the affected (person, date) pairs whenever a signal changes. With no signals, the status is `unknown`, and the UI shows no badge rather than claiming the person is in the office.
@@ -373,22 +378,21 @@ Presence display is **off by default**. An admin chooses the mode on the Presenc
 | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------- |
 | `off` (default)      | No presence anywhere: no pills, badges, greying, or presence filter. The "Who's in today" dashboard (Phase 6) is hidden. People appear exactly as they do before Phases 4–5.                                                                                                                                              | None. The presence jobs and listener are no-ops |
 | `simple`             | Anyone whose resolved status is anything other than `in_office` or `unknown` is **greyed out**: their directory row, person card, org chart node, and map desk and avatar are rendered at `presence.absent-opacity`. **No reason is shown to anyone**, admins included. Each greyed element also carries the text "Not in today" (a tooltip plus a visually hidden label) so the state isn't conveyed by opacity alone. | Same as `detailed`                              |
-| `detailed`           | The status pills and desk badges from U8, with the sick and vacation masking from §8.4.                                                                                                                                                                                                                            | Slack channel (§8.3) and Calendar (§8.2)        |
+| `detailed`           | The status pills and desk badges from U8, with the sick and vacation masking from §8.4.                                                                                                                                                                                                                            | Status channel (§8.3) and calendar (§8.2)       |
 
 - `unknown` is never greyed. With no signal, the app makes no claim either way, which matches the no-badge rule in §8.4.
 - The mode is resolved **on the server**. `/api/presence` and the server components read `presence.display` first. In `off` mode they return no presence fields. In `simple` mode they return only a boolean `away` per person, never the status, so the reason can't be read from the network tab.
-- Turning display on from `off` triggers one Slack backfill run (48 h) and one Calendar run, so today's state is filled in without waiting for the next schedule. Turning it off stops ingestion and hides display immediately. Existing signals age out through the normal 90-day retention (§10), and an admin can purge them early with a "Delete presence data" button.
+- Turning display on from `off` triggers one status-channel backfill run (48 h) and one calendar run, so today's state is filled in without waiting for the next schedule. Turning it off stops ingestion and hides display immediately. Existing signals age out through the normal 90-day retention (§10), and an admin can purge them early with a "Delete presence data" button.
 - A `usePresenceDisplay()` hook (from a server-provided context) is the only way components learn the mode, so every view switches together.
 
-### 8.6 Slack: identity and chat (U7)
+### 8.6 Messaging: identity and chat (U7)
 
-- **Matching** (`slack:match-users`, nightly, plus an admin button with a diff): call `users.lookupByEmail` for each person without a `slack` row in `person_identity`. Unmatched people show up in an admin list for manual entry.
-- **1:1 chat:** a link to `slack://user?team=T&id=U`, with `https://app.slack.com/client/T/U` as the fallback. This needs no API call.
-- **Team chat:** `slack://channel?team=T&id=C` from `team.chatChannelId`.
-- **Group DM (2–8 others):**
-    1. If the viewer has no Slack row in `messaging_user_token`, the first click sends them through **Connect Slack** (an OAuth v2 user flow with the user scopes `im:write` and `mpim:write`). The token is stored encrypted with AES-256-GCM using `TOKEN_ENC_KEY`.
-    2. `POST /api/slack/group-dm {personIds}` calls `conversations.open users=…` as the viewer and returns the channel id. The browser then navigates to the `slack://channel` deep link.
-    3. Slack caps a group DM at 9 people including the viewer. Enforce that in the selection tray.
+- **Matching** (`messaging:match-users`, nightly, plus an admin button with a diff): `MessagingProvider.matchUsers` for each person without a `person_identity` row for the messaging provider. Unmatched people show up in an admin list for manual entry, validated by the provider's `normalizeUserId`.
+- **1:1 and team chat:** `personLink(userId)` and `channelLink(team.chatChannelId)`, built by the adapter without an API call. Each has an `https` web link and, where the tool has one, an app deep link tried first. Buttons appear only when a link exists.
+- **Group chat (when `capabilities.groupChat`):**
+    1. If the tool needs to act as the viewer and the viewer has no `messaging_user_token` row for the provider, the first click sends them through **Connect** (the tool's OAuth user flow, with only the scopes group chats need). The token is stored encrypted with AES-256-GCM using `TOKEN_ENC_KEY`.
+    2. `POST /api/chat/group {personIds}` calls `openGroupChat` as the viewer and returns a link, which the browser opens.
+    3. The selection tray enforces the provider's `maxGroupSize`.
 
 ---
 
@@ -399,9 +403,9 @@ Presence display is **off by default**. An admin chooses the mode on the Presenc
 | **Import**             | Upload a CSV for people, teams, or memberships. The people file's `home_region` column takes an ISO 3166 code (`US` or `US-CA`); files that still use the older `home_country` header import unchanged. Each row is validated with zod, then the admin sees a dry-run diff (create/update/error per row) and applies it. Rows can be skipped (one by one, or every row with an error); a row that depends on a skipped one (its manager, the other half of a desk swap, its parent team) becomes an error too, and Apply writes exactly what the dry run showed (Phase 7 #1). Managers are resolved by email in a second pass so the file order doesn't matter. |
 | **People / Teams**     | CRUD with cycle-safe manager and parent pickers, desk assignment through a seat picker (a mini map), team membership, and a primary-team flag.                                                                                                     |
 | **Locations / Floors** | Create, edit, and archive or delete (Phase 7 #22: archive hides an office or floor everywhere and keeps its history, after the admin confirms who loses a desk; only an office or floor that never had a drawing can be deleted). Each location has an ISO 3166 `region` code, validated like `home_region`), SVG upload with the diff from §6, version history with rollback, and the office's own map colors (Phase 6, §9.1).                                                                                                                                                                         |
-| **Rooms**              | Google import diff, room ↔ svg id linking, and capacity overrides.                                                                                                                                                                                 |
+| **Rooms**              | Room import diff (when the room provider has a directory), room ↔ svg id linking, and capacity overrides.                                                                                                                                                                                 |
 | **Presence**           | The display mode selector (`off` / `simple` / `detailed`, default `off`, §8.5) with a preview of each mode, and "Delete presence data". Below that, CRUD for rules, a "test this message" box, and the parsed-message log from §8.3.                                                                                                                                                                   |
-| **Integrations**       | The last run, status, and stats for each job from `integration_run`, with "run now" buttons. Unmatched Slack users are listed here.                                                                                                                |
+| **Integrations**       | The last run, status, and stats for each job from `integration_run`, with "run now" buttons. People the messaging tool didn't match are listed here, and the configured providers and their capabilities are shown.                                                                                                                |
 | **Branding**           | Upload a tokens file, edit the token → slot mapping, see a live preview of the directory, map, and org chart with the draft theme, read the contrast report, upload logos and fonts, and roll back to an earlier theme version. Export the active theme as DTCG JSON (§9.1). |
 | **Seating**            | Per office: lock people in place, plan seating so each primary team sits together across the office's desks, review the moves, apply them in one transaction (Phase 7 N10). |
 | **Backup**             | Export the organization as one passphrase-encrypted file and import one, merging or replacing, with a preview first (Phase 7 #29). |
@@ -456,12 +460,12 @@ Each slot supports a light value and an optional dark value, taken from the toke
 
 - **Authentication:** every route except `/api/auth/*`, `/login`, `/dev/sign-in` (404 outside local development), `/api/health`, and the theme files the sign-in page needs (`/theme.css`, `/api/brand-assets/*`) is protected by the proxy. The domain check (and Google's `hd` check) runs in the Auth.js `signIn` callback, not just in the client prompt hint. Development sign-in methods are not registered in a production build, and `canSignIn` rejects them again if they were.
 - **Authorization:** `viewer` can read everything except presence reasons (§8.4). `admin` can write. Every user can change their own settings (§7.1) and a few fields of their own directory entry on `/profile` (preferred name, phone, home time zone, other accounts; Phase 7 #20), found by their session email and audited with them as the actor, and nothing else. Presence is also gated by the display mode (§8.5): `off` exposes nothing, and `simple` exposes only an away flag, to every role.
-- **Secrets:** the Google service-account JSON, Slack bot, app and signing tokens, `TOKEN_ENC_KEY`, and `AUTH_SECRET` come from the host's secret store and never live in the repo.
-- **DWD blast radius:** grant the service account only the four read-only scopes listed above. Document this in `docs/runbook.md` for the Workspace admin.
+- **Secrets:** integration credentials (service accounts, bot and app tokens, webhook signing secrets), `TOKEN_ENC_KEY`, and `AUTH_SECRET` come from the host's secret store and never live in the repo.
+- **Delegated access blast radius:** where a provider reads other people's calendars or rooms through organization-wide access, grant only the read-only scopes its spike found necessary, and list them in the provider's setup guide for the tool's administrator.
 - **SVG sanitizing** is described in §6. Also send a CSP with `script-src 'self'` and no `unsafe-inline` scripts.
 - **Theme uploads** (§9.1): token values must pass the strict value grammar, so a token file can't inject arbitrary CSS. Uploaded fonts and PNGs are checked by magic bytes, not just the extension, and capped in size (2 MB per font, 1 MB per logo). SVG logos go through the §6 sanitizer. Fonts load same-origin only (`font-src 'self'`).
 - **Data retention:** delete `presence_signal` rows older than 90 days in a nightly job.
-- **Hosting:** two containers (web and worker) from one Dockerfile with different entrypoints, plus managed Postgres. Good fits: Cloud Run (web) with a GCE VM or a Cloud Run job with `min-instances=1` (worker), Fly.io, or Render. The worker must run always-on because Socket Mode holds a persistent connection.
+- **Hosting:** two containers (web and worker) from one Dockerfile with different entrypoints, plus managed Postgres. Good fits: Cloud Run (web) with a GCE VM or a Cloud Run job with `min-instances=1` (worker), Fly.io, or Render. The worker must run always-on, because scheduled jobs and a live status-channel listener run in it.
 - **Monitoring:** the worker writes a heartbeat row, and `/api/health` reports stale jobs. Send errors to Sentry, or log to stdout if you don't use Sentry.
 - **Backups:** use the managed Postgres point-in-time recovery. Once this tool is the source of truth, backups matter.
 
@@ -471,9 +475,9 @@ Each slot supports a light value and an optional dark value, taken from the toke
 
 | Layer        | Tool                                               | What it covers                                                                                                                                                                 |
 | ------------ | -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Core (pure)  | Vitest                                             | Presence rule parsing (a table-driven test fed by the phrasings from the spike), presence resolution precedence, SVG parsing and diffing, CSV validation, Slack link builders. Theme parsing, alias and mode resolution, and mapping (table-driven against the Penpot and Tokens Studio fixtures from the spike), contrast math, and CSS-emit snapshots. |
+| Core (pure)  | Vitest                                             | Presence rule parsing (a table-driven test fed by the phrasings from the spike), presence resolution precedence, SVG parsing and diffing, CSV validation. Theme parsing, alias and mode resolution, and mapping (table-driven against the Penpot and Tokens Studio fixtures from the spike), contrast math, and CSS-emit snapshots. |
 | DB           | Vitest + testcontainers Postgres                   | Recursive CTEs, cycle rejection, the desk uniqueness swap, idempotent signal upserts.                                                                                          |
-| Integrations | Vitest with recorded fixtures                      | Mapping Google and Slack payloads to the domain types. The fakes satisfy the same interface tests.                                                                             |
+| Integrations | Vitest with recorded fixtures                      | Each provider's payload mapping, against recorded responses. Every provider, and the fakes, pass the contract suite for its capability (`packages/integrations/contract/`).                                                                                          |
 | End-to-end   | Playwright on `INTEGRATIONS=fake` with a seeded DB | One spec per user story U1–U13 (U12 applies a fixture theme and asserts the computed `--primary` and logo in each view; U8 runs once per display mode and asserts no presence in `off`, greying with no reason in `simple`, including in the `/api/presence` response, and pills and badges in `detailed`). The seed includes Bob → Max → Jane, HR with two sub-teams, Jane `homeRegion=CA-ON` with a desk, people with both subdivision and country-only codes, a South Wing area, and rooms in each state.      |
 | CI           | GitHub Actions                                     | Lint (eslint + typescript-eslint), `tsc --noEmit`, unit, DB, and e2e tests, plus a drizzle migration check.                                                                    |
 
@@ -483,11 +487,12 @@ Each slot supports a light value and an optional dark value, taken from the toke
 
 These estimates assume one or two engineers. Each phase ends with its user stories passing in Playwright and a demo.
 
-### Phase 0: Spikes (2–3 days)
+### Phase 0: Spikes (2–3 days per tool)
 
-The five spikes from §2 and `docs/spikes.md`.
+The spikes from §2, recorded in `docs/integrations/provider-notes.md`.
 
-- [ ] TODO — Not started. Phase 1 was built first at the user's direction. The spikes need a Google Workspace service account with domain-wide delegation, a Slack workspace, and Figma or Penpot token exports. Phases 4, 5 and 5.5 depend on their outcomes; Phases 2 and 3 do not.
+- [!] BLOCKED — Not started. Phase 1 was built first at the project owner's direction.
+    - **Blocked:** the integration spikes need a decision on which chat, calendar and room tools to support first (§13 Q6) and access to them; the design tokens spike needs real Figma or Penpot exports. The per-provider items in Phases 4 and 5 depend on them; their provider-independent items, and Phases 2, 3 and 5.5, do not.
 
 ### Phase 1: Foundation (1–1.5 weeks) → U1 (directory part), U4, U10, U13
 
@@ -582,28 +587,42 @@ The five spikes from §2 and `docs/spikes.md`.
     - **Branch:** merged from `feature/selection-e2e`
     - **Notes:** `e2e/specs/selection.spec.ts` (U9) selects Bob in each view in turn (a directory row, a map desk, an org chart node), goes round all three tabs, and checks each view's own sign of focus: the directory row's `aria-selected` and card, the desk's fill from `--map-selection`, and the org chart node's `data-selected` with the reporting line. It also checks that a new selection in one view is what the next shows, that `team` and `sub` carry into all three, and that closing the card clears the selection for the other tabs. Tests: 6 Playwright.
 
-### Phase 4: Google (1 week) → U5, U8 (Calendar part)
+### Phase 4: Rooms and calendar presence (1 week, plus about 2 days per provider) → U5, U8 (calendar part)
 
-- [ ] Service account wiring and adapters, with fakes
-- [ ] Room import diff and svg id linking UI
-- [ ] `rooms:freebusy` job, `/api/rooms/status`, red/green/amber/stale rendering
-    - **Note:** the rendering is done (Phase 5.5, `feature/room-status-cue`): `loadMap` reads `room_status` and the map, card and list show each state. What remains is the job, the endpoint, and SWR polling that refreshes `MapSpace.status` between page loads.
-- [ ] `presence:calendar` job, `presence_signal` → `presence_day` resolution
+Built against the fakes (`INTEGRATIONS=fake`), then one adapter per chosen tool. Each provider-independent item can start now.
+
+**Provider-independent**
+
+- [ ] pg-boss in the worker, with `integration_run` bookkeeping for every job
+- [ ] `deriveRoomState(blocks, now)` in `core/map/room-status.ts` and the `rooms:status` job, `/api/rooms/status`, and SWR polling that refreshes `MapSpace.status` between page loads
+    - **Note:** the rendering is done (Phase 5.5, `feature/room-status-cue`): `loadMap` reads `room_status` and the map, card and list show each state.
+- [ ] Room import diff (when `capabilities.directory`) and the room ↔ svg id linking UI, or manual resource ids without a directory
+- [ ] `core/presence/resolve.ts` and the `presence:calendar` job, `presence_signal` → `presence_day`
 - [ ] `app_setting` table and the `presence.display` setting (default `off`), with presence jobs that do nothing while it is off
 - [ ] Display modes (§8.5): `simple` greying and `detailed` pills, desk badges, and privacy masking across directory, map, and org chart. Server-side filtering of presence fields by mode
 - [ ] Display mode selector on the Presence admin page, with "Delete presence data"
 
-### Phase 5: Slack (1–1.5 weeks) → U7, U8 (Slack part)
+**Per provider** (blocked until a tool is chosen and access is granted; §2 spikes first)
 
-- [ ] Slack app manifest checked into the repo (`slack/manifest.yaml`)
-- [ ] `slack:match-users` and the unmatched list
-- [ ] 1:1 and team deep links, selection tray, Connect Slack OAuth, group DM endpoint
-- [ ] Socket Mode listener for the status channel, backfill job, rule engine, reaction feedback, all gated on `presence.display` (§8.5), plus a backfill when display is switched on
+- [!] A `RoomProvider` adapter for the chosen room tool
+- [!] A `CalendarProvider` adapter for the chosen calendar
+
+### Phase 5: Messaging (1–1.5 weeks, plus about 3 days per provider) → U7, U8 (status-channel part)
+
+**Provider-independent**
+
+- [ ] `messaging:match-users` and the unmatched list on the Integrations admin page
+- [ ] Chat buttons on the person card and team chips from `personLink`/`channelLink`, the selection tray (`multi` joins `selectionParsers`), the Connect flow storing `messaging_user_token` encrypted with `TOKEN_ENC_KEY`, and `POST /api/chat/group`, all driven by capabilities
+- [ ] `core/presence/rules.ts` (keyword rules), the status-channel backfill job and live listener, and reaction feedback, all gated on `presence.display` (§8.5), plus a backfill when display is switched on
 - [ ] Presence rules admin, "test this message" box, parsed-message log
+
+**Per provider** (blocked until a tool is chosen and access is granted; §2 spikes first)
+
+- [!] A `MessagingProvider` adapter for the chosen chat tool, with its app registration (a manifest or setup guide) under `docs/integrations/`
 
 ### Phase 5.5: Branding (1 week) → U12
 
-**Phase status:** all items done and merged into `phase/5.5-branding`, then `dev` (2026-10-04), ahead of Phases 4 and 5 at the user's direction (no Google or Slack access); it depends only on Phase 1's token layer. Integration run on the phase branch: 330 unit, 94 database (Testcontainers) and 89 Playwright specs pass, plus the CI drift checks (migrations, theme defaults, raw palette classes) and a production build with no database. U12 has a passing spec (`e2e/specs/admin-branding.spec.ts`). Not yet merged into `main`. One migration (`0003`, `theme` and `brand_asset`). **Not verified against real exports:** the Phase 0 design tokens spike hasn't run, so parsing is tested on hand-written fixtures of the Figma, Tokens Studio and Penpot formats; run real exports through the Branding page when the spike happens. Decisions later phases should know: every page now reads the active theme (`getBrand` calls `connection()`), so the e2e server migrates before starting; `/theme.css` and `/api/brand-assets/*` are public; presence UI (Phase 4) must use the `presence.*` slots and `presence.absent-opacity`; room status rendering is done, and Phase 4 adds the worker, `/api/rooms/status` and polling. Also on this phase: the search specs' ⌘K helper retries until hydration, because the render-blocking theme stylesheet widened a pre-existing race. Default colors changed: light `room.busy` `#b91c1c`, light `room.stale` `#6b7280`.
+**Phase status:** all items done and merged into `phase/5.5-branding`, then `dev` (2026-10-04), ahead of Phases 4 and 5 at the user's direction (no access to integration tools yet); it depends only on Phase 1's token layer. Integration run on the phase branch: 330 unit, 94 database (Testcontainers) and 89 Playwright specs pass, plus the CI drift checks (migrations, theme defaults, raw palette classes) and a production build with no database. U12 has a passing spec (`e2e/specs/admin-branding.spec.ts`). Not yet merged into `main`. One migration (`0003`, `theme` and `brand_asset`). **Not verified against real exports:** the Phase 0 design tokens spike hasn't run, so parsing is tested on hand-written fixtures of the Figma, Tokens Studio and Penpot formats; run real exports through the Branding page when the spike happens. Decisions later phases should know: every page now reads the active theme (`getBrand` calls `connection()`), so the e2e server migrates before starting; `/theme.css` and `/api/brand-assets/*` are public; presence UI (Phase 4) must use the `presence.*` slots and `presence.absent-opacity`; room status rendering is done, and Phase 4 adds the worker, `/api/rooms/status` and polling. Also on this phase: the search specs' ⌘K helper retries until hydration, because the render-blocking theme stylesheet widened a pre-existing race. Default colors changed: light `room.busy` `#b91c1c`, light `room.stale` `#6b7280`.
 
 - [x] `docs/theming.md` and `theme/default.tokens.json`
     - **Completed:** 2026-10-03
@@ -663,7 +682,7 @@ Feature branches merge into `phase/6-polish`, which branched from `dev` after Ph
 
 The improvement backlog raised after Phases 1–3. Each item keeps its number from the original backlog note (a local, gitignored `note.md`, since replaced by a newer list). Finished items record what was built; open items carry the essentials of the note's design below, so nothing depends on that file any more. Items are in the note's suggested order: the vendor-neutral schema first (cheap while Phases 4 and 5 are unbuilt), then quick UI wins, data quality, the people model, settings, map and admin, and the rename last. Feature branches merge into `phase/7-improvement`.
 
-**Phase status:** closed 2026-10-05: every item that can be built without Google or Slack access is done and merged into `phase/7-improvement`, then `dev`. Not yet merged into `main`. #3 and #4–6 (interfaces) stay `[!] BLOCKED` and move with Phases 4 and 5. Integration run on the phase branch after #30: 558 unit, 149 database (Testcontainers) and 134 Playwright specs pass, plus the CI drift checks (migrations, theme defaults) and a Docker build of both targets with no database. Migrations `0004`–`0015`; the backup format refuses files from any other schema version, so take a fresh export after deploying. Started 2026-10-04.
+**Phase status:** closed 2026-10-05: every item that can be built without access to integration tools is done and merged into `phase/7-improvement`, then `dev`. Not yet merged into `main`. #3 and #4–6 (interfaces) stay `[!] BLOCKED` and move with Phases 4 and 5. Integration run on the phase branch after #30: 558 unit, 149 database (Testcontainers) and 134 Playwright specs pass, plus the CI drift checks (migrations, theme defaults) and a Docker build of both targets with no database. Migrations `0004`–`0015`; the backup format refuses files from any other schema version, so take a fresh export after deploying. Started 2026-10-04.
 
 **G. Vendor-neutral schema**
 
@@ -674,7 +693,7 @@ The improvement backlog raised after Phases 1–3. Each item keeps its number fr
 - [x] #4–6 Provider-agnostic messaging, calendar and room status: schema renames
     - **Completed:** 2026-10-04
     - **Branch:** merged from `feature/vendor-neutral-schema`
-    - **Notes:** Migration `0005` (§5 updated): `person.slack_user_id` → a `slack` row in `person_identity` (the registry has a `slack` provider of kind `messaging`, read-only: the form schema refuses it and saves keep it); `slack_user_token` → `messaging_user_token` with PK `(person_id, provider)`; `team.slack_channel_id` → `chat_channel_id`; `space.google_resource_email` → `calendar_resource_id`; `location.google_building_id` → `external_building_id`; `presence_source` values → `message`, `calendar_ooo`, `calendar_working_location`, `manual`, plus `presence_signal.provider` (NOT NULL), now part of the `presence_signal_source` unique index. Existing values are carried over, not dropped. The teams CSV reads `slack_channel_id` as an alias; the team form says "Chat channel ID". **The migration is hand-written**, because drizzle-kit asks interactively about renames. The snapshot was produced from `schema.ts` with `generateDrizzleJson` from `drizzle-kit/api`, keeping the id chain of a `generate --custom` file. `drizzle-kit generate` reports no changes, and a database built from `0000`–`0005` dumps the same schema as one built by `drizzle-kit push` (compared once by hand). Use the same method for the next rename. §3, §4 and §8 still describe Slack and Google directly; rewrite them with the interfaces item below. Tests: 5 unit, 1 DB updated.
+    - **Notes:** Migration `0005` (§5 updated): `person.slack_user_id` → a `slack` row in `person_identity` (the registry has a `slack` provider of kind `messaging`, read-only: the form schema refuses it and saves keep it); `slack_user_token` → `messaging_user_token` with PK `(person_id, provider)`; `team.slack_channel_id` → `chat_channel_id`; `space.google_resource_email` → `calendar_resource_id`; `location.google_building_id` → `external_building_id`; `presence_source` values → `message`, `calendar_ooo`, `calendar_working_location`, `manual`, plus `presence_signal.provider` (NOT NULL), now part of the `presence_signal_source` unique index. Existing values are carried over, not dropped. The teams CSV reads `slack_channel_id` as an alias; the team form says "Chat channel ID". **The migration is hand-written**, because drizzle-kit asks interactively about renames. The snapshot was produced from `schema.ts` with `generateDrizzleJson` from `drizzle-kit/api`, keeping the id chain of a `generate --custom` file. `drizzle-kit generate` reports no changes, and a database built from `0000`–`0005` dumps the same schema as one built by `drizzle-kit push` (compared once by hand). Use the same method for the next rename. §3, §4 and §8 were rewritten around providers in Phase 8. Tests: 5 unit, 1 DB updated.
 
 **A. Quick UI wins**
 
@@ -832,9 +851,9 @@ Built after #21 step 2, #22 and #29, at the project owner's direction; #30 still
 
 **G. Integrations (with Phases 4 and 5)**
 
-- [!] #4–6 Provider-agnostic interfaces in `packages/integrations`
-    - **Blocked:** built with Phases 4 and 5, which wait on the Phase 0 spikes (a Google Workspace service account and a Slack workspace). The schema half is done above.
-    - **Design (from the note):** `MessagingProvider` (`matchUsers(emails)`, `listProfiles()` for #3, `personLink`/`channelLink` with web fallback, `openGroupChat(viewerToken, ids)`, `maxGroupSize`, `subscribeStatusChannel`/`history(since)`, `react(messageRef, emoji)`), `CalendarProvider` (`outOfOffice`, `workingLocation`), `RoomDirectory` + `RoomStatusSource` (`listRooms()`, `freeBusy(resourceIds, from, to)`), fakes for each. Selected by env: `MESSAGING_PROVIDER`, `CALENDAR_PROVIDER`, `ROOMS_PROVIDER`; `INTEGRATIONS=fake` sets them all. Providers declare capabilities (`supportsGroupChat`, `supportsReactions`) and the UI hides what's missing. Later targets: Microsoft Teams + M365 (Graph; chat deep links need no API call), Robin/Skedda/Envoy (room status only), Google Chat/Mattermost/Discord (spike each). Rewrite §3, §4, §8 and §10 around providers when this lands.
+- [x] #4–6 Provider-agnostic interfaces in `packages/integrations`
+    - **Completed:** 2026-10-06, in Phase 8 (`feature/integrations-scaffold`); see its notes. The adapters themselves are per-provider items in Phases 4 and 5.
+    - **Design (from the note):** `MessagingProvider` (`matchUsers(emails)`, `listProfiles()` for #3, `personLink`/`channelLink` with web fallback, `openGroupChat(viewerToken, ids)`, `maxGroupSize`, `subscribeStatusChannel`/`history(since)`, `react(messageRef, emoji)`), `CalendarProvider` (`outOfOffice`, `workingLocation`), `RoomDirectory` + `RoomStatusSource` (`listRooms()`, `freeBusy(resourceIds, from, to)`), fakes for each. Selected by env: `MESSAGING_PROVIDER`, `CALENDAR_PROVIDER`, `ROOMS_PROVIDER`; `INTEGRATIONS=fake` sets them all. Providers declare capabilities (`supportsGroupChat`, `supportsReactions`) and the UI hides what's missing. Candidate tools are in `docs/integrations/provider-notes.md`.
 - [!] #3 Sync photo and title from the messaging tool
     - **Blocked:** needs #4's `MessagingProvider.listProfiles()`, so Phase 5; #2 is done
     - **Design (from the note):** wire `photoUrl` through `DirectoryPerson`, the card, the map overlay (`<image>` with a circular clip, falling back to initials) and org nodes (scheme-checked, through `escapeHtml`). A nightly `profiles:sync` job plus an admin "Sync now" with a diff (reuse `diffRecords` and the import dry-run UI). Per-field precedence (`person.title_source: manual | synced`; an admin edit flips it to manual). Proxy images same-origin (`/api/avatars/[personId]`) to keep CSP `img-src 'self'`. Open question: sync titles at all? Recommended: photos on by default, titles opt-in per deployment.
@@ -873,14 +892,15 @@ The first public release ships without any chat, calendar or room-booking connec
 
 | #   | Item                                                                                   | Owner / default                                                                                                                                                  |
 | --- | -------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| R1  | Slack keyword messages are free text, so parsing will be imperfect.                    | Mitigated by reaction feedback, the parsed-message log, and editable rules. Could later add a `/status` slash command for structured input.                      |
-| R2  | Workspace admins may hesitate to grant domain-wide delegation.                         | Ask early with the scoped list in §8. If they refuse, rooms still work with one shared delegated calendar user, but Calendar presence would need per-user OAuth. |
+| R1  | Status-channel messages are free text, so parsing will be imperfect.                   | Mitigated by reaction feedback, the parsed-message log, and editable rules. Could later add a structured command in the chat tool (a slash command or form), where the tool supports one. |
+| R2  | The tools' administrators may hesitate to grant organization-wide read access to calendars and rooms. | Ask early, with the scoped list from the spike (§2). If refused, room status can still work through one account that can see the room calendars, but calendar presence would need per-user OAuth. |
 | R3  | Showing health status (`sick`) to colleagues.                                          | **Open:** confirm with HR. Presence display is off by default. `simple` mode never shows a reason, and `detailed` mode masks sick as "Away" for viewers.                                                                                         |
 | R4  | Floor drawings don't exist yet, or exist only as PDFs.                                 | **Open:** who draws them? Budget 0.5–1 day per floor in Figma.                                                                                                   |
 | R5  | Spreadsheet data quality (duplicate names, missing managers).                          | The dry-run import surfaces every bad row before anything is written.                                                                                            |
 | R6  | Brand palettes often fail WCAG AA, especially for status colors on the map. | The contrast gate in §9.1 blocks failing themes by default and suggests the nearest passing shade. Room status also has a non-color cue. |
-| Q1  | Which Slack channel is the status channel, and is there one per office?                | Default: one channel, configured by env var. A per-location channel is a small extension.                                                                        |
+| Q1  | Which channel in the chat tool is the status channel, and is there one per office?     | Default: one channel, configured by env var. A per-location channel is a small extension.                                                                        |
 | Q2  | Should people be able to edit their own profile (photo, phone) without being an admin? | **Resolved (Phase 7 #20):** yes, for preferred name, phone, home time zone and other accounts. Photos wait for uploads or the synced photo (#3), so no free photo URLs. |
-| Q3  | Hosting target and network access (public with Google SSO, or behind VPN/IAP)?         | Socket Mode works for either.                                                                                                                                    |
+| Q3  | Hosting target and network access (public with SSO, or behind VPN/IAP)?                | Prefer providers whose live events use an outbound connection, which works for either; a webhook-only provider needs a public route.                            |
 | Q4  | Do deskless or remote people belong on the map at all?                                 | Default: no. They appear in the directory and org chart with a "{region} [Remote]" card, in the viewer's region format (§7.1).                                    |
 | Q5  | Does the organization have an exported token file, or only a PDF brand guide? | Default: start from `theme/default.tokens.json` and set the slots directly in the Branding mapping editor. A token file isn't required. |
+| Q6  | Which chat, calendar and room tools to support first?                                  | **Open.** Decided per adopting organization; the first chosen tools unblock Phase 0's spikes and the per-provider items in Phases 4 and 5. |
