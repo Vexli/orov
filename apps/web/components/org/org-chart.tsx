@@ -72,8 +72,29 @@ export function OrgChart({ nodes, selectedId, highlightedIds, label, onSelect }:
       chartRef.current = chart;
       setReady(true);
     });
+    // The chart fills the height the view leaves it (Phase 8), which changes with the window and
+    // when the person card opens. d3-org-chart reads the height once, so give it the new one and
+    // redraw; a redraw after the first keeps the viewer's pan and zoom.
+    let last = { width: container.clientWidth, height: container.clientHeight };
+    const resize = new ResizeObserver(() => {
+      const chart = chartRef.current;
+      const size = { width: container.clientWidth, height: container.clientHeight };
+      if (
+        !chart ||
+        size.height === 0 ||
+        (size.width === last.width && size.height === last.height)
+      ) {
+        return;
+      }
+      last = size;
+      chart.svgHeight(size.height);
+      // render() also re-reads the container's width.
+      if (chart.data()?.length) chart.render();
+    });
+    resize.observe(container);
     return () => {
       cancelled = true;
+      resize.disconnect();
       chartRef.current?.clear();
       chartRef.current = null;
       drawn.current = emptyDrawState();
@@ -109,13 +130,13 @@ export function OrgChart({ nodes, selectedId, highlightedIds, label, onSelect }:
   }, [ready, nodes, selectedId, highlightedIds]);
 
   return (
-    <div className="relative">
+    <div className="relative h-full">
       <div
         ref={containerRef}
         data-org-chart=""
         role="group"
         aria-label={label}
-        className="h-[36rem] overflow-hidden rounded-lg border border-border bg-bg"
+        className="h-full overflow-hidden rounded-lg border border-border bg-bg"
       />
       <div className="absolute right-2 top-2 flex gap-1">
         <ChartButton label="Zoom in" onClick={() => chartRef.current?.zoomIn()}>

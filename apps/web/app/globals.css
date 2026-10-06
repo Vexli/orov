@@ -78,6 +78,13 @@
   color: var(--muted-fg);
 }
 
+/* The viewer's map (components/map/floor-map.tsx) fits the drawing to its box. An SVG's default
+   preserveAspectRatio (xMidYMid meet) letterboxes and centers it, and the overlay layer, with the
+   same viewBox and box, lines up with it. The admin seat picker keeps the natural height. */
+[data-floor-map][data-fit] svg {
+  height: 100%;
+}
+
 [data-floor-map] :is([id^="desk-"], [id^="desk-"] *) {
   fill: var(--card) !important;
   stroke: var(--border) !important;
