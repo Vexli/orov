@@ -1,4 +1,3 @@
-*.md
 node_modules
 .next
 dist
@@ -10,7 +9,13 @@ next-env.d.ts
 playwright-report
 test-results
 .venv
-!plan.md
-!README.md
-!docs/*.md
-!LICENSE.md
+
+# Local working notes, never published. Every other Markdown file is documentation and is tracked.
+/note.md
+/claude.md
+/CLAUDE.md
+/report.md
+
+# Written by `next dev` for coding agents; regenerated on every run.
+/apps/web/AGENTS.md
+/apps/web/CLAUDE.md
