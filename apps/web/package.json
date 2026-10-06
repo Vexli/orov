@@ -1,6 +1,7 @@
 {
   "name": "@orov/web",
   "version": "0.0.0",
+  "license": "MIT-0",
   "private": true,
   "type": "module",
   "scripts": {

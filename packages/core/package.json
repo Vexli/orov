@@ -1,6 +1,7 @@
 {
   "name": "@orov/core",
   "version": "0.0.0",
+  "license": "MIT-0",
   "private": true,
   "type": "module",
   "exports": {

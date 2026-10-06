@@ -1,109 +1,82 @@
 # OrOv
 
-An internal web app for a small company (1–3 offices, fewer than 250 people) that replaces the
-spreadsheets tracking who works where. OrOv is meant to be the **source of truth** for
-people, teams, reporting lines and seat assignments, shown as one linked view:
-person ↔ seat ↔ team ↔ manager ↔ presence ↔ Slack.
+OrOv is a self-hosted web app that shows **who works where** in an organization: a people
+directory, interactive floor maps, and an org chart, linked so that selecting a person or team in
+one view carries over to the others. It replaces the spreadsheets that usually track people,
+teams, reporting lines and seat assignments, and becomes the source of truth for them.
 
-When complete it has four parts:
+It's designed for one organization per deployment, with 1–3 offices and up to about 250 people. It
+signs people in through the organization's own SSO, and an admin can restyle it to the brand by
+importing design tokens from Figma, Penpot or Tokens Studio, without code changes.
 
-- **Directory**: search and filter everyone, with a shared person card
-- **Floor map**: interactive SVG floor plans with desks, rooms and live meeting-room status
-- **Org chart**: the reporting tree and the team tree
-- **Presence** (optional, off by default): who is in, working from home or away, read from
-  Google Calendar and keyword messages in a Slack channel
+> **Status: 0.1.0, the first public release.** The directory, maps, org chart, admin tools and
+> branding are complete. Connections to chat, calendar and room-booking tools are designed and
+> have a provider-neutral foundation, but no tool is connected yet ([Integrations](#integrations)).
 
-It can be restyled to an organization's brand, without code changes, by importing design tokens
-exported from Figma, Penpot or Tokens Studio.
+## Features
 
-The full design is in [`plan.md`](plan.md): goals, user stories, data model, integrations and
-the phase-by-phase delivery plan with progress notes.
+**Directory and search**
 
-## Status
+- Search and filter everyone by team and office, with a person card showing their title, teams,
+  managers, desk, home region, phone and other accounts (GitHub, GitLab, LinkedIn, a website)
+- ⌘K (Ctrl+K) searches people, teams and rooms from any view, with typo tolerance
+- The selected person and team are kept in the URL, so switching views or sharing a link keeps
+  them
 
-**Phase 1 (Foundation), Phase 2 (Maps), Phase 3 (Org chart and selection sync), Phase 5.5
-(Branding) and Phase 7 (Improvement) are complete,** apart from Phase 7's two integration items,
-which wait for Phases 4 and 5. None has been released to `main` yet. The parts that work today:
+**Floor maps**
 
-- Sign-in through any SSO provider Auth.js supports (Google, Microsoft Entra ID, Okta, AWS
-  Cognito or any OpenID Connect issuer), limited to one company email domain, with `viewer` and
-  `admin` roles
-- Directory with search, team and location filters, a person card, and selection kept in the URL.
-  The directory, map and org chart use the full width of the window, with the main menu staying
-  at the top, the map's and org chart's controls in a bar just below it, and the selected
-  person's card floating at the right. On a phone the main menu fits one row (account links
-  move into a menu) and the card slides up from the bottom of the screen.
-  People have a given name and a family name, and lists sort by family name
-- Floor map: the floor drawing with an avatar at each occupied desk and each room's name, zoom
-  and pan (and a full-screen mode, for pinch-zooming on a phone), and a card for the person, desk or room you click. Switch offices and floors, open an
-  area such as the South Wing as a zoomed view, and see each floor's headcount, desks and rooms.
-  The map follows a selected person to their floor, and highlights a team's seats (with its
-  sub-teams, unless you untick them) with a count per floor. A desk code in the directory or on
-  a person card links to the map. A List toggle shows the same desks and rooms as a table for
-  keyboard and screen reader users
-- Org chart: the reporting tree (who reports to whom) and the team tree (teams, their sub-teams
-  and members), with expand and collapse, zoom, and the person card for whoever you click. The
-  chart centers on the selected person and opens their direct reports, shows their reporting
-  line up to the top, and highlights a team's members (with its sub-teams, unless you untick
-  them). A List toggle shows the same tree as an outline for keyboard and screen reader users
-- Switching between the directory, map and org chart keeps the selected person and team. ⌘K
-  (Ctrl+K) searches people, teams and rooms, with typo tolerance, from any view
-- Admin pages to create, edit and deactivate people and teams, with checks that reject
-  manager and parent-team cycles. The people list filters by text, team, status and desk (active
-  people by default), and the teams list by name. Several people can be changed at once
-  (activate or deactivate, manager, teams), after reviewing who the change applies to Desks are assigned by clicking the floor drawing; choosing a
-  taken desk swaps it, after the admin confirms
-- Links to a person's other accounts (GitHub, GitLab, LinkedIn, a website) on their card, set in
-  the admin form or the people CSV. An account can belong to only one person
-- A member of a sub-team is also a member of the teams above it (shown as "through a sub-team"),
-  so team member counts include everyone under a team
-- Everyone can change their own preferred name, phone, home time zone and account links on
-  **My profile**, without an admin
-- Admins can record a person's last working day, which only admins ever see
-- Someone without a desk of their own can still belong to an office: they count for it in the
-  directory's office filter and the map's overview, and get its time zone
-- A person can report to several managers equally; the reporting chart shows them under each
-- Someone saved or imported without a manager reports to the lead of their primary team (for a
-  lead, the lead of the team above)
-- Phone numbers are checked and stored in international form (`+14155550123`), shown on the
-  person card as a link to call. Home time zones are checked too, and default to the time zone of
-  the person's desk
-- An encrypted export of the whole organization, for backups and moving between instances (see
-  [Backup and moving instances](#backup-and-moving-instances))
-- CSV import with a dry-run diff before anything is written, where rows with errors can be
-  skipped. Files saved by Excel (Windows-1252 or UTF-16, separated by commas, semicolons or tabs)
-  are detected. CSV export, and an audit log of every admin change, filterable by entity, date and
-  admin, and exportable as CSV
-- ISO 3166 region codes (`US`, `US-CA`, `CA-ON`), picked in the admin forms by typing a country
-  or region name or the code, and per-user settings for how regions are
-  displayed (optionally with the country's flag, or the flag alone), which language country names
-  are in, and how dates are written (ISO, day/month/year or month/day/year, in the user's own
-  time zone)
-- A semantic theme layer: components are styled only through theme slots, never raw colors
-- Admin pages for offices and floors. Each office chooses what its floors are called (Floor,
-  Building, Wing, …), and the map and admin pages use that word. Rooms and areas can be renamed,
-  and meeting rooms given a seat count, without a new drawing; desks and rooms can be added or
-  removed on the drawing itself in the browser, and the result is reviewed and saved as a new
-  version, like an upload. A floor or office can be archived (hidden everywhere, history kept),
-  or deleted if it never had a drawing. A seating planner rearranges an office so each team sits
-  together, keeping anyone locked in place, and shows every move before applying it. An office can
-  have its own map colors (selection, team highlight, room status, map background), checked for
-  contrast like a theme and used only on its own floors. Uploading a floor drawing (SVG)
-  sanitizes it, shows what it
-  adds, moves and removes before anything is saved, and keeps every version for rollback. How to
-  draw one is in [`docs/map-authoring.md`](docs/map-authoring.md)
-- Meeting rooms on the map show whether they're free, busy, booked soon, or out of date, with a
-  color from the theme and a shape for each state, once Phase 4's calendar sync writes their
-  status
-- Branding: an admin imports the brand's design tokens (from Figma, Penpot or Tokens Studio),
-  maps them onto the app's theme slots, checks contrast (including for color-blind viewers),
-  previews the directory, map and org chart, and applies the theme with its logo, favicon and
-  fonts. Every applied theme is kept for rollback and can be exported. The guide is
-  [`docs/theming.md`](docs/theming.md)
+- Each floor's SVG drawing with an avatar at every occupied desk and each room's name; zoom, pan,
+  and a full-screen mode for phones
+- Open an area such as the South Wing as a zoomed view; see each floor's headcount, desks and rooms
+- The map follows a selected person to their floor, and highlights a team's seats (with or without
+  its sub-teams) with a count per floor
+- Meeting rooms can show whether they're free, busy, booked soon, or out of date, with a shape as
+  well as a color for each state, once a room provider supplies the status
+- A List view shows the same desks and rooms as a table, for keyboard and screen reader users
 
-Not built yet: Google room status and Calendar
-presence (Phase 4) and Slack (Phase 5). The worker is a skeleton
-that only logs a heartbeat. See [`plan.md` §12](plan.md#12-delivery-plan) for the roadmap.
+**Org chart**
+
+- The reporting tree and the team tree, with expand and collapse, zoom, and an outline view
+- Centers on the selected person, shows their reporting line, and highlights a team's members
+- A person can report to several managers; someone without one reports to their team's lead
+
+**Administration**
+
+- Create, edit and deactivate people and teams, with checks against manager and team cycles; change
+  several people at once; record a last working day that only admins see
+- Offices and floors: upload a drawing and review what it adds, moves and removes before saving;
+  keep every version for rollback; add, move or remove desks and rooms in the browser; archive
+- A seating planner that rearranges an office so each team sits together, keeping anyone locked in
+  place, and shows every move before applying it
+- CSV import with a dry run (rows with errors can be skipped; Excel files in any common encoding
+  work) and CSV export
+- An audit log of every admin change, filterable and exportable
+- An encrypted export of the whole organization, for backups and moving between instances
+
+**Branding and personal settings**
+
+- Import design tokens, map them onto the app's theme, check contrast (including for color-blind
+  viewers), preview, and apply with your logo, favicon and fonts; roll back any time. Offices can
+  have their own map colors
+- Each person chooses how regions are shown (ISO 3166 code, country, region, with or without the
+  flag, in 23 languages) and how dates are written, and can edit their own preferred name, phone,
+  time zone and accounts on **My profile**
+
+## Integrations
+
+OrOv is designed to connect to three kinds of tool, each chosen per deployment and off by default:
+
+| Capability    | What it adds                                                                               |
+| ------------- | ------------------------------------------------------------------------------------------ |
+| **Messaging** | Chat with a person or a team's channel, start a group chat, presence from a status channel |
+| **Calendar**  | Presence from out-of-office and working-location events                                    |
+| **Rooms**     | Live meeting-room status on the map, from a calendar or a room-booking product             |
+
+This release includes the foundation, [`packages/integrations`](packages/integrations): interfaces
+that any tool's adapter implements, settings that choose a provider, in-memory fakes, and contract
+tests. **No real provider ships yet.** Presence (who's in, working from home or away) is opt-in and
+private by default. [`docs/integrations/`](docs/integrations/README.md) explains the architecture
+and how to add a provider for your tools.
 
 ## Quickstart
 
@@ -153,8 +126,8 @@ Jane based in Ontario (`CA-ON`) with a desk in SF.
 
 `AUTH_DEV_PASSWORD` and `AUTH_DEV_BYPASS_EMAIL` only take effect under `next dev` with a
 `localhost` `AUTH_URL`. A production build ignores them. To use real SSO, set `AUTH_PROVIDERS`
-and the matching provider variables; `.env.example` documents each one, including the callback
-URL to register.
+and the matching provider variables; [`docs/configuration.md`](docs/configuration.md) documents
+every setting, including the callback URL to register.
 
 ### Commands
 
@@ -164,7 +137,7 @@ URL to register.
 | `pnpm build`          | Build every workspace package that has a build step                                                   |
 | `pnpm lint`           | ESLint across the repo                                                                                |
 | `pnpm typecheck`      | TypeScript checks for every package and the e2e suite                                                 |
-| `pnpm test`           | Unit tests (`packages/core`) and database tests (`packages/db`)                                       |
+| `pnpm test`           | Unit tests (`packages/core`, `packages/integrations`) and database tests (`packages/db`)              |
 | `pnpm test:e2e`       | Build the app and run the Playwright suite on port 3100                                               |
 | `pnpm db:up` / `down` | Start or stop the Postgres container                                                                  |
 | `pnpm db:migrate`     | Apply pending migrations                                                                              |
@@ -174,7 +147,8 @@ URL to register.
 
 ### Testing
 
-- **Unit tests** cover the pure domain logic in `packages/core`.
+- **Unit tests** cover the pure domain logic in `packages/core` and the integration registry,
+  fakes and contracts in `packages/integrations`.
 - **Database tests** run against a throwaway Postgres started by Testcontainers, so Docker must
   be running. On macOS with Colima, set
   `DOCKER_HOST=unix://$HOME/.colima/default/docker.sock TESTCONTAINERS_RYUK_DISABLED=true`.
@@ -183,43 +157,47 @@ URL to register.
   `pnpm exec playwright install chromium`.
 
 CI (`.github/workflows/ci.yml`) also fails if the schema changed without a migration, if the
-theme defaults are out of date, or if a component uses a raw Tailwind palette class such as
-`bg-white` instead of a theme slot.
+theme defaults are out of date, if a component uses a raw Tailwind palette class such as
+`bg-white` instead of a theme slot, or if a chat, calendar or booking vendor is named outside an
+integration provider's folder.
+
+## Documentation
+
+| Read                                                | For                                                                |
+| --------------------------------------------------- | ------------------------------------------------------------------ |
+| [`docs/architecture.md`](docs/architecture.md)      | How the system fits together, for anyone changing it               |
+| [`docs/configuration.md`](docs/configuration.md)    | Every setting, with defaults                                       |
+| [`docs/adapting.md`](docs/adapting.md)              | Setting up an instance for your organization, and what needs code  |
+| [`docs/map-authoring.md`](docs/map-authoring.md)    | Drawing floor plans                                                |
+| [`docs/theming.md`](docs/theming.md)                | Design tokens and the Branding page, for designers and admins      |
+| [`docs/integrations/`](docs/integrations/README.md) | Integration architecture and adding a provider                     |
+| [`CONTRIBUTING.md`](CONTRIBUTING.md)                | Workflow, conventions and checks                                   |
+| [`plan.md`](plan.md)                                | The full design, the roadmap, and progress notes for every feature |
+| [`CHANGELOG.md`](CHANGELOG.md)                      | Releases, and upgrade notes                                        |
 
 ## Project structure
 
-A pnpm workspace with two apps and two shared packages:
+A pnpm workspace with two apps and three shared packages:
 
 ```
 apps/
   web/          Next.js (App Router) app
     app/
-      (app)/      signed-in views: directory, map, org chart, settings
-      admin/      people, teams, offices and floors, branding, CSV import, audit log
-      api/        Auth.js routes, search, CSV export, brand files, health check
+      (app)/      signed-in views: directory, map, org chart, settings, profile
+      admin/      people, teams, offices and floors, seating, branding, import, backup, audit log
+      api/        Auth.js routes, search, regions, CSV export, backup, brand files, health check
       theme.css/  the active theme as a stylesheet
       login/      sign-in page
     components/   directory, map, org chart, search and admin UI
-    lib/          auth config, SSO providers, session helpers, URL state (nuqs)
+    lib/          auth config, SSO providers, session helpers, URL state (nuqs), theme
     proxy.ts      route protection (Next 16's replacement for middleware.ts)
-  worker/       long-running background process (heartbeat only for now)
+  worker/       long-running background process (checks integration settings, logs a heartbeat)
 packages/
   core/         pure domain logic with no I/O, unit tested with Vitest
-    auth/         sign-in and role policy
-    csv/          CSV parsing and validation for people and teams
-    directory/    directory model and filtering
-    import/       dry-run import planning
-    map/          floor map model and the generated state stylesheet
-    org/          the org chart's reporting and team trees
-    regions/      ISO 3166 validation, display formatting and name search
-    search/       search result types and query normalization
-    spaces/       office and floor form validation
-    svg/          floor drawing sanitize, parse and diff
-    teams/        team tree helpers
-    theme/        theme slots, design token import, value grammar, contrast checks, CSS
   db/           Drizzle schema, migrations, queries, seed, and database tests
     seed-floors/  sample floor SVGs that the demo data loads
-docs/           guides: map-authoring.md for drawing floor SVGs, theming.md for design tokens
+  integrations/ provider interfaces, registry, fakes and contract tests for chat, calendar, rooms
+docs/           guides (see Documentation above)
 theme/          the default theme as a design token file (generated)
 e2e/            Playwright specs, one or more per user story
 docker/         Postgres init script
@@ -230,7 +208,8 @@ plan.md         design and delivery plan, with progress tracking
 Domain rules (validation, cycle checks, import planning, region formatting) live in
 `packages/core` as pure functions. `packages/db` handles persistence, and the web app wires the
 two together in server actions. Every admin write runs as a server action that checks the role,
-validates with zod, writes in a transaction and records an audit entry.
+validates with zod, writes in a transaction and records an audit entry. More in
+[`docs/architecture.md`](docs/architecture.md).
 
 ## Deployment
 
@@ -243,14 +222,17 @@ docker build --target worker -t orov-worker .
 
 The web container applies migrations on start and then serves on port 3000. It needs
 `DATABASE_URL`, `AUTH_URL`, `AUTH_SECRET`, `COMPANY_DOMAIN`, `ADMIN_EMAILS` and the SSO variables
-for each provider in `AUTH_PROVIDERS`. `THEME_TOKENS_PATH` optionally names a token file to use
-as the theme until an admin applies one (see [`docs/theming.md`](docs/theming.md)). The search uses the `pg_trgm` extension, which a migration
-creates, so the database user needs permission to create it (managed Postgres such as Cloud SQL
-and RDS allow it). `GET /api/health` is a liveness check. `/theme.css` and
+for each provider in `AUTH_PROVIDERS` ([`docs/configuration.md`](docs/configuration.md)).
+`THEME_TOKENS_PATH` optionally names a token file to use as the theme until an admin applies one
+(see [`docs/theming.md`](docs/theming.md)). The search uses the `pg_trgm` extension, which a
+migration creates, so the database user needs permission to create it (managed Postgres such as
+Cloud SQL and RDS allow it). `GET /api/health` is a liveness check. `/theme.css` and
 `/api/brand-assets/*` are served without signing in, because the sign-in page uses the theme and
-logo. Run one web replica
-at a time while a schema change is being deployed, because two replicas migrating at once can
-race.
+logo. Run one web replica at a time while a schema change is being deployed, because two replicas
+migrating at once can race.
+
+The worker container needs no settings until an integration is configured. It exits at startup if
+an integration setting names an unknown provider.
 
 ### Backup and moving instances
 
@@ -270,27 +252,17 @@ importing admin always stays an admin. A file must come from an instance on the 
 schema version; files from older versions can't be read yet. This complements the database's
 own backups and point-in-time recovery; it doesn't replace them.
 
-### Renamed from OfficeOrg
+Upgrading from a checkout made before the project was renamed from OfficeOrg? See
+[`CHANGELOG.md`](CHANGELOG.md#upgrading-from-a-pre-release-checkout).
 
-The project was called OfficeOrg until 2026-10-05. Packages are now `@orov/*` and the images
-`orov-web` and `orov-worker`. A deployment needs no other change: the app reads the database
-named in `DATABASE_URL`, and no table or setting carries the old name. Backup files
-written before the rename (format `officeorg-export`) still import.
+## Contributing
 
-A local checkout from before the rename has its database in the old Compose project, which still
-holds port 5432 and uses the `officeorg` user. Stop it, start the new one and point the env files
-at it:
+Contributions are welcome. Start with [`CONTRIBUTING.md`](CONTRIBUTING.md), and report security
+issues privately as described in [`SECURITY.md`](SECURITY.md).
 
-```sh
-docker compose -p <checkout folder name> stop db   # the old project was named after the folder
-pnpm db:up                                         # new project `orov`, user and password `orov`
-# In apps/web/.env.local (and your shell): DATABASE_URL=postgres://orov:orov@localhost:5432/orov
-pnpm db:migrate && pnpm db:seed
-```
+## License
 
-Without the Compose plugin, use `docker-compose -p <folder> stop db` and `docker-compose up -d db`
-for the first two lines. The old volume (`<folder>_pgdata`) is left alone; remove it with `docker volume rm` once you no
-longer need its data.
+[MIT No Attribution](LICENSE.md). Dependencies keep their own licenses.
 
 ## Acknowledgements
 
@@ -308,6 +280,7 @@ OrOv is built on open-source work. Thank you to the people who maintain it.
 - [Zod](https://zod.dev): validation at every boundary
 - [CSV for Node.js](https://csv.js.org) (`csv-parse`, `csv-stringify`): CSV import and export
 - [`iso-3166`](https://github.com/wooorm/iso-3166) by Titus Wormer: ISO 3166-1 and 3166-2 data
+- [libphonenumber-js](https://gitlab.com/catamphetamine/libphonenumber-js): phone number checks
 - [`@paralleldrive/cuid2`](https://github.com/paralleldrive/cuid2): URL-safe ids
 - [DOMPurify](https://github.com/cure53/DOMPurify), [SVGO](https://svgo.dev) and
   [jsdom](https://github.com/jsdom/jsdom): sanitizing and reading floor drawings
@@ -319,10 +292,9 @@ OrOv is built on open-source work. Thank you to the people who maintain it.
 - [pnpm](https://pnpm.io), [TypeScript](https://www.typescriptlang.org),
   [tsx](https://tsx.is), [ESLint](https://eslint.org) and [Prettier](https://prettier.io): tooling
 
-**Planned for later phases**
+**Planned**
 
 - [pg-boss](https://github.com/timgit/pg-boss): background jobs in Postgres
-- [Slack Bolt](https://tools.slack.dev/bolt-js): Slack Socket Mode
 - [shadcn/ui](https://ui.shadcn.com): UI components, whose CSS-variable model the theme slots
   follow
 

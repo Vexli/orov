@@ -887,7 +887,17 @@ The first public release ships without any chat, calendar or room-booking connec
     - **Completed:** 2026-10-06
     - **Branch:** merged from `feature/integration-architecture-docs`
     - **Notes:** `docs/integrations/README.md` (design rules, data flow, planned jobs, identity, per-user tokens, configuration, "Adding a provider", what can be built now) and `docs/integrations/provider-notes.md` (unverified research on specific tools, moved out of §2 and §8). In `plan.md`: a "How to read this file" note; `report.md` (not in the repo) is no longer referenced; §2 is a spike template per capability; job names are neutral (`rooms:status`, `presence:calendar`, `presence:messages-backfill`, `messaging:match-users`, live listener); chat routes are `/api/chat/connect/*` and `/api/chat/group`; Phases 4 and 5 split into provider-independent and per-provider items; Phase 0 is `[!] BLOCKED` on a choice of tools (§13 Q6, new); Phase 7 #4–6 interfaces marked done. Migration history in the Phase 7 notes keeps the old column names, since it describes what `0005` did. **Departs from the plan:** the `.gitignore` fix moved here from the public-docs item, because `provider-notes.md` would otherwise have been ignored; it ignores only local notes (`note.md`, `claude.md`, `report.md`) and the two agent files `next dev` writes into `apps/web`. Links to `CONTRIBUTING.md` and `docs/configuration.md` resolve once the public-docs item lands.
-- [ ] Public docs: README, CONTRIBUTING, architecture, configuration, adapting, SECURITY, CHANGELOG
+- [x] Public docs: README, CONTRIBUTING, architecture, configuration, adapting, SECURITY, CHANGELOG
+    - **Completed:** 2026-10-06
+    - **Branch:** merged from `feature/public-docs`
+    - **Notes:** The README is rewritten for outside readers (what it is, features by area, an Integrations section, a documentation index, license); the OfficeOrg rename steps moved to `CHANGELOG.md` (0.1.0, unreleased). New: `CONTRIBUTING.md` (setup, every CI check, conventions, migrations, workflow and the `plan.md` progress format), `docs/architecture.md` (the system as built), `docs/configuration.md` (every environment variable), `docs/adapting.md` (setting up an instance; configuration vs. code), `SECURITY.md` (GitHub private vulnerability reporting). Every `package.json` has `"license": "MIT-0"`; `.env.example` points at `docs/configuration.md`. **Known gap, documented:** §10's site-wide Content-Security-Policy was never built; only `/api/brand-assets/*` sends one. `docs/architecture.md` and `SECURITY.md` say so.
+
+**Release checklist** (outward-facing, for the maintainer; not done in this phase):
+
+- [ ] Merge `dev` into `main` once this phase is accepted
+- [ ] Create the public repository and push only `main` and `dev` (the local feature and phase branches stay local)
+- [ ] Enable GitHub private vulnerability reporting, which `SECURITY.md` relies on
+- [ ] Tag `v0.1.0` and date the `CHANGELOG.md` entry
 
 ---
 
