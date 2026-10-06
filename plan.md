@@ -630,7 +630,7 @@ The five spikes from §2 and `docs/spikes.md`.
 
 Feature branches merge into `phase/6-polish`, which branched from `dev` after Phase 7 (2026-10-05).
 
-**Phase status:** closed 2026-10-05: every item that can be built without outside access is done and merged into `phase/6-polish`, then `dev`. Not yet merged into `main`. Three items stay `[!] BLOCKED`. Integration run on the phase branch: 578 unit, 151 database (Testcontainers) and 141 Playwright specs pass, plus the CI drift checks (migrations, theme defaults, raw palette classes), the production build, and a Docker build of both targets. Migrations `0016`–`0017`; take a fresh backup export after deploying, as the format refuses files from another schema version. **Pre-existing, not fixed:** the root `pnpm test` fails at once because `@orov/worker`'s `test` script runs `vitest`, which the worker doesn't depend on (`spawn ENOENT`, on `dev` too); CI is unaffected because it runs `pnpm --filter @orov/core test` and `--filter @orov/db test`.
+**Phase status:** closed 2026-10-05: every item that can be built without outside access is done and merged into `phase/6-polish`, then `dev`. Not yet merged into `main`. Three items stay `[!] BLOCKED`. Integration run on the phase branch: 578 unit, 151 database (Testcontainers) and 141 Playwright specs pass, plus the CI drift checks (migrations, theme defaults, raw palette classes), the production build, and a Docker build of both targets. Migrations `0016`–`0017`; take a fresh backup export after deploying, as the format refuses files from another schema version. **Pre-existing, fixed in Phase 8:** the root `pnpm test` failed at once because `@orov/worker`'s `test` script ran `vitest`, which the worker didn't depend on (`spawn ENOENT`); CI was unaffected because it runs `pnpm --filter @orov/core test` and `--filter @orov/db test`.
 
 - [x] Mobile layout: map as full-screen sheet, directory first
     - **Completed:** 2026-10-05
@@ -852,7 +852,10 @@ Built after #21 step 2, #22 and #29, at the project owner's direction; #30 still
 
 The first public release ships without any chat, calendar or room-booking connection. This phase makes the code and docs tool-agnostic, builds the provider-neutral start of the integrations, and brings the documentation up to a standard that outside contributors and adopters can work from. Feature branches merge into `phase/8-public-release`, branched from `dev` on 2026-10-06. The project is licensed under MIT No Attribution (`LICENSE.md`).
 
-- [ ] Root `pnpm test` passes (the worker's `test` script had no `vitest`)
+- [x] Root `pnpm test` passes (the worker's `test` script had no `vitest`)
+    - **Completed:** 2026-10-06
+    - **Branch:** merged from `fix/worker-test-script`
+    - **Notes:** `vitest` added to `@orov/worker` devDependencies; the script keeps `--passWithNoTests` until the worker has jobs. Root `pnpm test`: 578 unit, 151 database. Database tests still need Docker (Colima settings in the README).
 - [ ] Vendor-neutral code and copy, with a CI guard against vendor names
 - [ ] `packages/integrations`: provider interfaces, registry, fakes and contract tests
 - [ ] Integration architecture docs, and §2–§4, §8, §10, §11, §13 and Phases 4–5 rewritten around providers
