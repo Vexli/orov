@@ -57,6 +57,10 @@ email, so file order doesn't matter. Regions are ISO 3166 codes (`US`, `US-CA`, 
 After the import, edit people and teams in the app; export CSV at any time. Every admin change is in
 the audit log.
 
+To see a populated instance before your own data is in, load the demo organization: the
+[README's "Try the demo"](../README.md#try-the-demo) explains how. It replaces whatever is there,
+so use a new or test instance.
+
 ## 6. Decide on integrations
 
 Chat shortcuts, room status and presence need a provider for your tools, and none ships yet. If you

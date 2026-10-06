@@ -27,6 +27,9 @@ calendar or room-booking connection.
   **My profile** page.
 - **Sign-in** through Google, Microsoft Entra ID, Okta, AWS Cognito or any OpenID Connect provider,
   limited to one email domain.
+- **A clean install, and a demo to try.** A new instance starts empty, and each view shows an
+  admin how to set it up. `demo/orov-demo.json` is a fictional organization of about 115 people in
+  three offices, loaded like any backup (passphrase `orov-demo-data`) or with `pnpm db:seed`.
 - **Integration foundation:** `packages/integrations`, with provider-neutral interfaces for chat,
   calendar and room tools, settings (`MESSAGING_PROVIDER`, `CALENDAR_PROVIDER`, `ROOMS_PROVIDER`,
   `INTEGRATIONS=fake`), in-memory fakes and contract tests. No real provider yet; see
@@ -69,5 +72,8 @@ Released under [MIT No Attribution](LICENSE.md).
   carry over. Sessions now last 7 days (extended while in use) instead of 30. Microsoft Entra ID
   needs the tenant's GUID in `AUTH_MICROSOFT_ENTRA_ID_ISSUER`; a domain-style tenant name is
   refused.
+- **`pnpm db:seed` loads the demo organization**, no longer the small Bob → Max → Jane data,
+  which is now the test fixture (`packages/db/test-fixture.ts`) and isn't loaded outside tests.
+  Sign in as a demo person, or set `ADMIN_EMAILS` to your own address.
 - **Backups and schema versions.** A backup file imports only into an instance on the same schema
   version, so take a fresh export after deploying any release with a migration.

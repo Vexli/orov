@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { eq } from "drizzle-orm";
-import { seedDemoData } from "../seed";
+import { seedTestFixture } from "../test-fixture";
 import * as s from "../schema";
 import { startTestDatabase, type TestDatabase } from "../test-utils";
 import { listAudit } from "./audit";
@@ -26,7 +26,7 @@ afterAll(async () => {
 
 beforeEach(async () => {
   await t.reset();
-  await seedDemoData(t.db);
+  await seedTestFixture(t.db);
 });
 
 const HEADER = "email,name,preferred_name,title,home_region,home_timezone,phone,start_date,active,manager_email,desk,teams,primary_team";

@@ -99,35 +99,49 @@ cp .env.example apps/web/.env.local
 ```
 
 Edit `apps/web/.env.local`. For local development without a real SSO provider, sign in with a
-shared dev password using the seeded demo accounts:
+shared dev password:
 
 ```sh
 AUTH_SECRET=<a long random string, e.g. from `openssl rand -base64 32`>
 COMPANY_DOMAIN=example.com
-ADMIN_EMAILS=jane@example.com
+ADMIN_EMAILS=you@example.com
 AUTH_DEV_PASSWORD=dev
 ```
 
-Then create the schema, load the demo data and start the app:
+Then create the schema and start the app:
 
 ```sh
 # The database scripts read DATABASE_URL from the shell, not from .env.local.
 export DATABASE_URL=postgres://orov:orov@localhost:5432/orov
 
 pnpm db:migrate
-pnpm db:seed     # resets the database and loads the demo data
 pnpm dev
 ```
 
-Open <http://localhost:3000> and sign in as `jane@example.com` (admin) or `bob@example.com`
-(viewer) with the dev password. The demo data includes Bob → Max → Jane, an HR team with two
-sub-teams, a San Francisco office with two floors (Floor 2 has a North and a South Wing), and
-Jane based in Ontario (`CA-ON`) with a desk in SF.
+Open <http://localhost:3000> and sign in as `you@example.com` with the dev password. A new
+install is empty: each view shows an admin how to set it up (add offices and upload floor
+drawings, import people and teams), or you can load the demo organization below.
 
 `AUTH_DEV_PASSWORD` and `AUTH_DEV_BYPASS_EMAIL` only take effect under `next dev` with a
 `localhost` `AUTH_URL`. A production build ignores them. To use real SSO, set `AUTH_PROVIDERS`
 and the matching provider variables; [`docs/configuration.md`](docs/configuration.md) documents
 every setting, including the callback URL to register.
+
+### Try the demo
+
+[`demo/orov-demo.json`](demo/orov-demo.json) is a fictional organization to explore: about 115
+people in San Francisco, London and Berlin, six floors (called Floors, Levels and Buildings), a
+team tree four levels deep, people with two managers, people without a desk or working remotely,
+people who have left, profile links, one office with its own map colors, and a theme.
+
+- **Into any instance:** sign in as an admin, open **Admin → Backup**, choose **Replace**, and
+  upload the file with the passphrase `orov-demo-data`. This removes the instance's current
+  organization, so use it on a new or test instance.
+- **Locally:** `pnpm db:seed` resets the database in `DATABASE_URL` and loads the demo.
+
+Everyone in it has an `example.com` address, so with `COMPANY_DOMAIN=example.com` and the dev
+password you can sign in as anyone, for example `santiago.bergstrom@example.com` (an admin in the
+demo) or `aiko.nakamura@example.com` (a viewer). Roll the demo's theme back on the Branding page.
 
 ### Commands
 
@@ -141,7 +155,8 @@ every setting, including the callback URL to register.
 | `pnpm test:e2e`       | Build the app and run the Playwright suite on port 3100                                               |
 | `pnpm db:up` / `down` | Start or stop the Postgres container                                                                  |
 | `pnpm db:migrate`     | Apply pending migrations                                                                              |
-| `pnpm db:seed`        | Reset the database and load the demo data (refuses to run in production)                              |
+| `pnpm db:seed`        | Reset the database and load the demo organization (refuses to run in production)                      |
+| `pnpm demo:build`     | Rebuild `demo/orov-demo.json` in a throwaway Postgres (Docker); needed after every migration          |
 | `pnpm db:generate`    | Generate a migration after changing `packages/db/schema.ts`                                           |
 | `pnpm theme:defaults` | Regenerate `apps/web/app/theme-defaults.css` and `theme/default.tokens.json` from the theme slot list |
 
@@ -153,7 +168,7 @@ every setting, including the callback URL to register.
   be running. On macOS with Colima, set
   `DOCKER_HOST=unix://$HOME/.colima/default/docker.sock TESTCONTAINERS_RYUK_DISABLED=true`.
 - **End-to-end tests** run a production build against the `orov_e2e` database (created by
-  `pnpm db:up`) and reseed it before each spec. Install the browser once with
+  `pnpm db:up`) and reload the test fixture before each spec. Install the browser once with
   `pnpm exec playwright install chromium`.
 
 CI (`.github/workflows/ci.yml`) also fails if the schema changed without a migration, if the
@@ -194,9 +209,11 @@ apps/
   worker/       long-running background process (checks integration settings, logs a heartbeat)
 packages/
   core/         pure domain logic with no I/O, unit tested with Vitest
-  db/           Drizzle schema, migrations, queries, seed, and database tests
-    seed-floors/  sample floor SVGs that the demo data loads
+  db/           Drizzle schema, migrations, queries, and database tests
+    demo/         the demo organization's generator (pnpm demo:build) and loader (pnpm db:seed)
+    test-fixture.ts, test-floors/  the small fixed organization the tests run against
   integrations/ provider interfaces, registry, fakes and contract tests for chat, calendar, rooms
+demo/           orov-demo.json, the demo organization as a backup file
 docs/           guides (see Documentation above)
 theme/          the default theme as a design token file (generated)
 e2e/            Playwright specs, one or more per user story

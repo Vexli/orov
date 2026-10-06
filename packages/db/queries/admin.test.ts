@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { eq } from "drizzle-orm";
 import { selfProfileSchema, type PersonForm, type TeamForm } from "@orov/core";
-import { seedDemoData } from "../seed";
+import { seedTestFixture } from "../test-fixture";
 import * as s from "../schema";
 import { startTestDatabase, type TestDatabase } from "../test-utils";
 import { listAudit } from "./audit";
@@ -30,7 +30,7 @@ afterAll(async () => {
 
 beforeEach(async () => {
   await t.reset();
-  await seedDemoData(t.db);
+  await seedTestFixture(t.db);
 });
 
 const ACTOR = "jane@example.com";
