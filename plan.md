@@ -856,7 +856,10 @@ The first public release ships without any chat, calendar or room-booking connec
     - **Completed:** 2026-10-06
     - **Branch:** merged from `fix/worker-test-script`
     - **Notes:** `vitest` added to `@orov/worker` devDependencies; the script keeps `--passWithNoTests` until the worker has jobs. Root `pnpm test`: 578 unit, 151 database. Database tests still need Docker (Colima settings in the README).
-- [ ] Vendor-neutral code and copy, with a CI guard against vendor names
+- [x] Vendor-neutral code and copy, with a CI guard against vendor names
+    - **Completed:** 2026-10-06
+    - **Branch:** merged from `feature/neutral-integration-copy`
+    - **Notes:** The `slack` entry is gone from `core/people/identities.ts`. Messaging user ids live in `person_identity` under the configured messaging provider's id, and that provider's adapter validates them (`MessagingProvider.normalizeUserId`). `profileIdentities`/`writeProfileIdentities` already ignore non-profile rows, so stored ids survive. Tests use the neutral provider id `chat`. The team form, import page, login copy and schema comments name capabilities, not vendors. The `slack_channel_id` CSV alias stays as a legacy header. A new CI step, "No chat, calendar or booking vendor names", greps `apps`, `packages` and `e2e`, exempting `packages/db/migrations` (immutable), `packages/integrations/providers/` (where a vendor adapter lives) and the alias. **Departs from the plan:** migration `0000` keeps no added comment, because editing an applied migration changes its stored hash; `0005`'s header already explains the renames. Tests: 578 unit, 151 DB, 37 affected Playwright specs.
 - [ ] `packages/integrations`: provider interfaces, registry, fakes and contract tests
 - [ ] Integration architecture docs, and §2–§4, §8, §10, §11, §13 and Phases 4–5 rewritten around providers
 - [ ] Public docs: README, CONTRIBUTING, architecture, configuration, adapting, SECURITY, CHANGELOG
