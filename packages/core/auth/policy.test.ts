@@ -5,6 +5,7 @@ import {
   devAuthAllowed,
   isBootstrapAdmin,
   parseSsoProviders,
+  signInIdentity,
 } from "./policy";
 
 const DOMAIN = "example.com";
@@ -202,5 +203,47 @@ describe("isBootstrapAdmin", () => {
   it("matches case-insensitively and ignores whitespace in the env list", () => {
     expect(isBootstrapAdmin("Jane@Example.com", [" jane@example.com "])).toBe(true);
     expect(isBootstrapAdmin("bob@example.com", ["jane@example.com"])).toBe(false);
+  });
+});
+
+describe("signInIdentity", () => {
+  it("reads an OAuth sign-in's provider and claims from the raw profile", () => {
+    const identity = signInIdentity("bob@example.com", {
+      method: "oauth",
+      oauth: { providerId: "google", profile: { email_verified: true, hd: "example.com" } },
+    });
+    expect(identity).toEqual({
+      provider: "google",
+      email: "bob@example.com",
+      emailVerified: true,
+      hd: "example.com",
+    });
+    expect(canSignIn(identity, DOMAIN, PROD)).toEqual({ ok: true });
+  });
+
+  it("refuses a Google consumer account, whose profile has no hd claim", () => {
+    const identity = signInIdentity("bob@example.com", {
+      method: "oauth",
+      oauth: { providerId: "google", profile: { email_verified: true } },
+    });
+    expect(canSignIn(identity, DOMAIN, PROD)).toMatchObject({ ok: false });
+  });
+
+  it("falls back to the profile's email, and names a development method as its provider", () => {
+    expect(
+      signInIdentity(undefined, {
+        method: "oauth",
+        oauth: { providerId: "okta", profile: { email: "a@example.com" } },
+      }).email,
+    ).toBe("a@example.com");
+    const dev = signInIdentity("bob@example.com", { method: "dev-password" });
+    expect(dev.provider).toBe("dev-password");
+    expect(canSignIn(dev, DOMAIN, PROD)).toMatchObject({ ok: false });
+    expect(canSignIn(dev, DOMAIN, DEV)).toEqual({ ok: true });
+  });
+
+  it("gives an unknown method no provider canSignIn accepts", () => {
+    const identity = signInIdentity("bob@example.com", { method: "email-password" });
+    expect(canSignIn(identity, DOMAIN, DEV)).toEqual({ ok: false, reason: "unknown provider" });
   });
 });

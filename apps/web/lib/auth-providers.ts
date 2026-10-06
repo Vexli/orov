@@ -1,9 +1,4 @@
-import type { Provider } from "next-auth/providers";
-import Cognito from "next-auth/providers/cognito";
-import Credentials from "next-auth/providers/credentials";
-import Google from "next-auth/providers/google";
-import MicrosoftEntraID from "next-auth/providers/microsoft-entra-id";
-import Okta from "next-auth/providers/okta";
+import { microsoftEntraId, okta, type GenericOAuthConfig } from "better-auth/plugins/generic-oauth";
 import {
   assertTenantScopedEntraIssuer,
   devAuthAllowed,
@@ -11,7 +6,8 @@ import {
   type SsoProviderId,
 } from "@orov/core/auth/policy";
 
-// Edge-safe: the proxy imports this, so nothing here may touch the database driver.
+// Which sign-in methods this deployment offers, from the environment (docs/configuration.md).
+// The proxy and the login page import this, so nothing here may touch the database driver.
 
 export interface LoginOption {
   id: string;
@@ -19,51 +15,103 @@ export interface LoginOption {
 }
 
 export interface AuthSetup {
-  providers: Provider[];
+  // Better Auth's built-in Google provider, when google is in AUTH_PROVIDERS.
+  google: { clientId: string; clientSecret: string } | null;
+  // Every other SSO provider, through Better Auth's generic OAuth plugin.
+  genericOAuth: GenericOAuthConfig[];
   sso: LoginOption[];
   devAuth: boolean;
-  devPassword: boolean;
+  // The shared development password, or null. Never sent to the browser.
+  devPassword: string | null;
   devBypassEmail: string | null;
 }
 
-function requireEnv(...names: string[]) {
+// The named settings' values, one per name, or an error naming the missing ones.
+function requireEnv<const N extends readonly string[]>(...names: N): { [K in keyof N]: string } {
   const missing = names.filter((n) => !process.env[n]);
   if (missing.length > 0) throw new Error(`Sign-in is misconfigured: set ${missing.join(", ")}`);
+  return names.map((n) => process.env[n]!) as { [K in keyof N]: string };
 }
 
-// Client ids, secrets and issuers are read by Auth.js from AUTH_<ID>_ID/_SECRET/_ISSUER.
-const SSO_PROVIDERS: Record<SsoProviderId, () => Provider> = {
+// An issuer's OpenID Connect discovery document.
+const discovery = (issuer: string) =>
+  `${issuer.replace(/\/+$/, "")}/.well-known/openid-configuration`;
+
+const OIDC_SCOPES = ["openid", "email", "profile"];
+
+type SsoProvider =
+  | { kind: "google"; name: string; config: { clientId: string; clientSecret: string } }
+  | { kind: "generic"; name: string; config: GenericOAuthConfig };
+
+// Ids are the AUTH_PROVIDERS values. Each provider's callback URL is $AUTH_URL/api/auth/callback/<id>,
+// the same as under Auth.js, so deployments keep the redirect URIs they registered.
+const SSO_PROVIDERS: Record<SsoProviderId, () => SsoProvider> = {
   google: () => {
-    requireEnv("AUTH_GOOGLE_ID", "AUTH_GOOGLE_SECRET");
-    return Google({
-      // Hint only. The real check is the hd claim in canSignIn, because a hint can be ignored.
-      authorization: { params: { hd: process.env.COMPANY_DOMAIN, prompt: "select_account" } },
-    });
+    const [clientId, clientSecret] = requireEnv("AUTH_GOOGLE_ID", "AUTH_GOOGLE_SECRET");
+    return { kind: "google", name: "Google", config: { clientId, clientSecret } };
   },
   "microsoft-entra-id": () => {
-    requireEnv("AUTH_MICROSOFT_ENTRA_ID_ID", "AUTH_MICROSOFT_ENTRA_ID_SECRET");
-    // The provider silently falls back to the multi-tenant /common/ issuer when this is unset.
+    const [clientId, clientSecret] = requireEnv(
+      "AUTH_MICROSOFT_ENTRA_ID_ID",
+      "AUTH_MICROSOFT_ENTRA_ID_SECRET",
+    );
+    // A multi-tenant issuer would let any tenant's users through, so it is refused.
     const issuer = assertTenantScopedEntraIssuer(process.env.AUTH_MICROSOFT_ENTRA_ID_ISSUER);
-    return MicrosoftEntraID({ issuer });
+    const tenantId = new URL(issuer).pathname.split("/").filter(Boolean)[0]!;
+    return {
+      kind: "generic",
+      name: "Microsoft Entra ID",
+      config: microsoftEntraId({ clientId, clientSecret, tenantId }),
+    };
   },
   okta: () => {
-    requireEnv("AUTH_OKTA_ID", "AUTH_OKTA_SECRET", "AUTH_OKTA_ISSUER");
-    return Okta({});
+    const [clientId, clientSecret, issuer] = requireEnv(
+      "AUTH_OKTA_ID",
+      "AUTH_OKTA_SECRET",
+      "AUTH_OKTA_ISSUER",
+    );
+    return { kind: "generic", name: "Okta", config: okta({ clientId, clientSecret, issuer }) };
   },
   cognito: () => {
-    requireEnv("AUTH_COGNITO_ID", "AUTH_COGNITO_SECRET", "AUTH_COGNITO_ISSUER");
-    return Cognito({});
+    const [clientId, clientSecret, issuer] = requireEnv(
+      "AUTH_COGNITO_ID",
+      "AUTH_COGNITO_SECRET",
+      "AUTH_COGNITO_ISSUER",
+    );
+    return {
+      kind: "generic",
+      name: "Cognito",
+      config: {
+        providerId: "cognito",
+        name: "Cognito",
+        clientId,
+        clientSecret,
+        discoveryUrl: discovery(issuer),
+        requireIdTokenVerification: true,
+        scopes: OIDC_SCOPES,
+      },
+    };
   },
   // Any other OpenID Connect provider: Auth0, Keycloak, OneLogin, JumpCloud, PingOne, ...
   oidc: () => {
-    requireEnv("AUTH_OIDC_ID", "AUTH_OIDC_SECRET", "AUTH_OIDC_ISSUER");
+    const [clientId, clientSecret, issuer] = requireEnv(
+      "AUTH_OIDC_ID",
+      "AUTH_OIDC_SECRET",
+      "AUTH_OIDC_ISSUER",
+    );
+    const name = process.env.AUTH_OIDC_NAME || "Single sign-on";
     return {
-      id: "oidc",
-      name: process.env.AUTH_OIDC_NAME || "Single sign-on",
-      type: "oidc",
-      issuer: process.env.AUTH_OIDC_ISSUER,
-      clientId: process.env.AUTH_OIDC_ID,
-      clientSecret: process.env.AUTH_OIDC_SECRET,
+      kind: "generic",
+      name,
+      config: {
+        providerId: "oidc",
+        name,
+        clientId,
+        clientSecret,
+        discoveryUrl: discovery(issuer),
+        requireIdTokenVerification: true,
+        scopes: OIDC_SCOPES,
+      },
     };
   },
 };
@@ -73,7 +121,8 @@ function normalizeEmail(value: unknown): string | null {
 }
 
 function buildAuthSetup(): AuthSetup {
-  const sso = parseSsoProviders(process.env.AUTH_PROVIDERS).map((id) => SSO_PROVIDERS[id]());
+  const ids = parseSsoProviders(process.env.AUTH_PROVIDERS);
+  const sso = ids.map((id) => ({ id, ...SSO_PROVIDERS[id]() }));
 
   const devAuth = devAuthAllowed(process.env);
   const devPasswordValue = process.env.AUTH_DEV_PASSWORD || null;
@@ -86,47 +135,19 @@ function buildAuthSetup(): AuthSetup {
   const devPassword = devAuth ? devPasswordValue : null;
   const devBypassEmail = devAuth ? devBypassValue : null;
 
-  const dev: Provider[] = [];
-  if (devPassword) {
-    dev.push(
-      Credentials({
-        id: "dev-password",
-        name: "Development password",
-        credentials: { email: { type: "email" }, password: { type: "password" } },
-        authorize(credentials) {
-          const email = normalizeEmail(credentials?.email);
-          if (!email || credentials?.password !== devPassword) return null;
-          return { id: email, email };
-        },
-      }),
-    );
-  }
-  if (devBypassEmail) {
-    dev.push(
-      Credentials({
-        id: "dev-bypass",
-        name: "Development bypass",
-        credentials: {},
-        authorize: () => ({ id: devBypassEmail, email: devBypassEmail }),
-      }),
-    );
-  }
-
-  const providers = [...sso, ...dev];
-  if (providers.length === 0) {
+  if (sso.length === 0 && !devPassword && !devBypassEmail) {
     throw new Error(
       "No sign-in method is configured. Set AUTH_PROVIDERS, or for local development AUTH_DEV_PASSWORD or AUTH_DEV_BYPASS_EMAIL.",
     );
   }
 
+  const google = sso.find((p) => p.kind === "google");
   return {
-    providers,
-    sso: sso.map((p) => {
-      const { id, name } = typeof p === "function" ? p() : p;
-      return { id, name };
-    }),
+    google: google?.kind === "google" ? google.config : null,
+    genericOAuth: sso.flatMap((p) => (p.kind === "generic" ? [p.config] : [])),
+    sso: sso.map(({ id, name }) => ({ id, name })),
     devAuth,
-    devPassword: devPassword !== null,
+    devPassword,
     devBypassEmail,
   };
 }

@@ -35,16 +35,22 @@ server code only, so client bundles never pull them in.
 
 ## A request
 
-1. **`apps/web/proxy.ts`** (Next 16's name for middleware) redirects signed-out requests to
-   `/login`. The only public paths are `/login`, `/dev/sign-in` (404 outside local development),
-   `/api/health`, `/theme.css` and `/api/brand-assets/*`, because the sign-in page is drawn with
-   the theme and logo. Auth.js routes are excluded by the matcher.
-2. **Sign-in** goes through Auth.js with the providers in `AUTH_PROVIDERS`
-   (`apps/web/lib/auth-providers.ts`). The `signIn` callback runs `canSignIn`
-   (`core/auth/policy.ts`): the email must be on `COMPANY_DOMAIN`, with provider-specific checks
-   (Google's `hd` claim, a tenant-scoped Entra issuer).
+1. **`apps/web/proxy.ts`** (Next 16's name for middleware) redirects a request without a session
+   cookie to `/login`. The only public paths are `/login`, `/dev/sign-in` (404 outside local
+   development), `/api/health`, `/theme.css` and `/api/brand-assets/*`, because the sign-in page
+   is drawn with the theme and logo. Better Auth's own routes (`/api/auth/*`) are excluded by the
+   matcher.
+2. **Sign-in** goes through [Better Auth](https://www.better-auth.com) (`apps/web/lib/auth.ts`)
+   with the providers in `AUTH_PROVIDERS` (`lib/auth-providers.ts`). Two checks guard it:
+   `user.validateUserInfo` runs `canSignIn` (`core/auth/policy.ts`) on the provider's own claims
+   (the email must be on `COMPANY_DOMAIN`, plus Google's `hd` claim or a tenant-scoped Entra
+   issuer), on every provider sign-in; and a hook before each session is created, `admitSession`
+   (`db/queries/app-users.ts`), re-checks the domain and records the sign-in in `app_user`,
+   promoting `ADMIN_EMAILS`. Sessions are rows in `auth_session`, so signing out ends a session
+   everywhere.
 3. **Roles** (`viewer`, `admin`) are read from `app_user` on every request (`lib/session.ts`:
-   `requireUser`, `requireAdmin`), not from the session token, so a demotion takes effect at once.
+   `requireUser`, `requireAdmin`), which also validates the session against the database, so a
+   demotion or a sign-out takes effect at once.
 4. **Pages** are server components that call a query (`loadDirectory`, `loadMap`, …) and pass plain
    data to client components. Region labels and dates are formatted on the server in the viewer's
    own settings, so the ISO 3166-2 list never reaches the browser.
@@ -66,7 +72,8 @@ The schema is [`packages/db/schema.ts`](../packages/db/schema.ts); `plan.md` §5
   `inherited` from a sub-team, derived), and `person_identity` (other accounts: profile links
   today, messaging ids once a provider exists).
 - **Users:** `app_user` holds each signed-in user's role and personal settings (region display,
-  flag, date format, language).
+  flag, date format, language), keyed by email. Better Auth's `auth_user`, `auth_account`,
+  `auth_session` and `auth_verification` hold sign-in state only, and never go into a backup.
 - **Theme:** `theme` (every applied version; one active) and `brand_asset` (logos, favicon,
   fonts, immutable).
 - **Integrations, created ahead of use:** `room_status` (read by the map today), `presence_signal`,

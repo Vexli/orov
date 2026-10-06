@@ -32,6 +32,9 @@ calendar or room-booking connection.
   `INTEGRATIONS=fake`), in-memory fakes and contract tests. No real provider yet; see
   [`docs/integrations/`](docs/integrations/README.md).
 
+- **Sign-in on [Better Auth](https://www.better-auth.com)**, replacing Auth.js, which is now in
+  maintenance mode. Sessions are stored in the database, so signing out ends a session at once.
+
 ### Licensing
 
 Released under [MIT No Attribution](LICENSE.md).
@@ -60,5 +63,11 @@ Released under [MIT No Attribution](LICENSE.md).
 - **Vendor-neutral names.** The team CSV column is `chat_channel_id`; files with the older
   `slack_channel_id` header still import. Messaging user ids stored before migration `0005` keep
   their rows in `person_identity`.
+- **Sign-in moved from Auth.js to Better Auth.** Settings are unchanged, and so is each
+  provider's redirect URI (`$AUTH_URL/api/auth/callback/<provider>`). Migration `0018` adds the
+  sign-in tables. Everyone signs in again once after upgrading, because Auth.js sessions don't
+  carry over. Sessions now last 7 days (extended while in use) instead of 30. Microsoft Entra ID
+  needs the tenant's GUID in `AUTH_MICROSOFT_ENTRA_ID_ISSUER`; a domain-style tenant name is
+  refused.
 - **Backups and schema versions.** A backup file imports only into an instance on the same schema
   version, so take a fresh export after deploying any release with a migration.

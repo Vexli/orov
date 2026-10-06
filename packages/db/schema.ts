@@ -48,16 +48,9 @@ export const presenceSource = pgEnum("presence_source", [
   "manual",
 ]);
 
-export const presenceMatchType = pgEnum("presence_match_type", [
-  "keyword",
-  "regex",
-]);
+export const presenceMatchType = pgEnum("presence_match_type", ["keyword", "regex"]);
 
-export const presenceDateScope = pgEnum("presence_date_scope", [
-  "today",
-  "tomorrow",
-  "parse",
-]);
+export const presenceDateScope = pgEnum("presence_date_scope", ["today", "tomorrow", "parse"]);
 
 // Whether a membership was chosen, or follows from one in a sub-team (#23).
 export const membershipSource = pgEnum("membership_source", ["explicit", "inherited"]);
@@ -90,8 +83,7 @@ export const dateFormat = pgEnum("date_format", ["iso", "dmy", "mdy"]);
 // A region column holds an ISO 3166-1 alpha-2 country ("US") or an ISO 3166-2 subdivision
 // ("US-CA"). The database checks the shape; the app checks the code exists, because the
 // subdivision list changes and a migration shouldn't be needed to follow it.
-const regionShape = (column: AnyPgColumn) =>
-  sql`${column} ~ '^[A-Z]{2}(-[A-Z0-9]{1,3})?$'`;
+const regionShape = (column: AnyPgColumn) => sql`${column} ~ '^[A-Z]{2}(-[A-Z0-9]{1,3})?$'`;
 
 // Drizzle has no built-in bytea column. node-postgres reads bytea as a Buffer and writes one as is.
 const bytea = customType<{ data: Buffer; driverData: Buffer }>({
@@ -104,12 +96,8 @@ const id = (prefix: string) =>
     .$defaultFn(() => `${prefix}_${createId()}`);
 
 const timestamps = {
-  createdAt: timestamp("created_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-  updatedAt: timestamp("updated_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 };
 
 export const location = pgTable(
@@ -149,9 +137,7 @@ export const svgAsset = pgTable(
     sanitizedSvg: text("sanitized_svg").notNull(),
     sha256: text("sha256").notNull(),
     uploadedBy: text("uploaded_by").notNull(),
-    uploadedAt: timestamp("uploaded_at", { withTimezone: true })
-      .notNull()
-      .defaultNow(),
+    uploadedAt: timestamp("uploaded_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [uniqueIndex("svg_asset_floor_version").on(t.floorId, t.version)],
 );
@@ -270,7 +256,10 @@ export const personManager = pgTable(
       .references((): AnyPgColumn => person.id, { onDelete: "cascade" }),
     position: integer("position").notNull().default(0),
   },
-  (t) => [primaryKey({ columns: [t.personId, t.managerId] }), index("person_manager_manager").on(t.managerId)],
+  (t) => [
+    primaryKey({ columns: [t.personId, t.managerId] }),
+    index("person_manager_manager").on(t.managerId),
+  ],
 );
 
 // Other accounts a person has, by provider id from packages/core/people/identities.ts: profile
@@ -347,9 +336,7 @@ export const presenceSignal = pgTable(
     retractedAt: timestamp("retracted_at", { withTimezone: true }),
   },
   // Idempotent upserts: the same chat message or calendar event never produces two rows.
-  (t) => [
-    uniqueIndex("presence_signal_source").on(t.provider, t.source, t.sourceRef, t.date),
-  ],
+  (t) => [uniqueIndex("presence_signal_source").on(t.provider, t.source, t.sourceRef, t.date)],
 );
 
 export const presenceDay = pgTable(
@@ -360,9 +347,7 @@ export const presenceDay = pgTable(
       .references(() => person.id, { onDelete: "cascade" }),
     date: date("date").notNull(),
     status: presenceStatus("status").notNull(),
-    winningSignalId: text("winning_signal_id").references(
-      () => presenceSignal.id,
-    ),
+    winningSignalId: text("winning_signal_id").references(() => presenceSignal.id),
   },
   (t) => [primaryKey({ columns: [t.personId, t.date] })],
 );
@@ -397,9 +382,7 @@ export const messagingUserToken = pgTable(
     provider: text("provider").notNull(),
     encryptedToken: text("encrypted_token").notNull(),
     scopes: text("scopes").notNull(),
-    createdAt: timestamp("created_at", { withTimezone: true })
-      .notNull()
-      .defaultNow(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [primaryKey({ columns: [t.personId, t.provider] })],
 );
@@ -408,9 +391,7 @@ export const appUser = pgTable("app_user", {
   email: text("email").primaryKey(),
   role: appRole("role").notNull().default("viewer"),
   // How this user sees region codes everywhere in the app. Their own setting, not an admin's.
-  regionDisplay: regionDisplay("region_display")
-    .notNull()
-    .default("country_region"),
+  regionDisplay: regionDisplay("region_display").notNull().default("country_region"),
   // Whether region labels get the country's flag in front (#28).
   regionFlag: boolean("region_flag").notNull().default(false),
   // How this user sees dates and times (#27).
@@ -421,12 +402,77 @@ export const appUser = pgTable("app_user", {
   lastSeenAt: timestamp("last_seen_at", { withTimezone: true }),
 });
 
+// Sign-in, owned by Better Auth (apps/web/lib/auth.ts): who signed in through which provider,
+// and their sessions. Property names are the ones Better Auth uses; columns are snake_case. Roles
+// and settings stay on app_user, keyed by email. Never exported in a backup.
+export const authUser = pgTable("auth_user", {
+  id: text("id").primaryKey(),
+  name: text("name").notNull(),
+  email: text("email").notNull().unique(),
+  emailVerified: boolean("email_verified").notNull().default(false),
+  image: text("image"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const authSession = pgTable(
+  "auth_session",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => authUser.id, { onDelete: "cascade" }),
+    token: text("token").notNull().unique(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    ipAddress: text("ip_address"),
+    userAgent: text("user_agent"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("auth_session_user").on(t.userId)],
+);
+
+// The provider's tokens are stored encrypted (account.encryptOAuthTokens); OrOv never uses them.
+export const authAccount = pgTable(
+  "auth_account",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => authUser.id, { onDelete: "cascade" }),
+    accountId: text("account_id").notNull(),
+    providerId: text("provider_id").notNull(),
+    accessToken: text("access_token"),
+    refreshToken: text("refresh_token"),
+    idToken: text("id_token"),
+    accessTokenExpiresAt: timestamp("access_token_expires_at", { withTimezone: true }),
+    refreshTokenExpiresAt: timestamp("refresh_token_expires_at", { withTimezone: true }),
+    scope: text("scope"),
+    password: text("password"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("auth_account_user").on(t.userId)],
+);
+
+// OAuth state between the redirect to the provider and its callback.
+export const authVerification = pgTable(
+  "auth_verification",
+  {
+    id: text("id").primaryKey(),
+    identifier: text("identifier").notNull(),
+    value: text("value").notNull(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("auth_verification_identifier").on(t.identifier)],
+);
+
 export const auditLog = pgTable(
   "audit_log",
   {
-    id: bigint("id", { mode: "bigint" })
-      .primaryKey()
-      .generatedAlwaysAsIdentity(),
+    id: bigint("id", { mode: "bigint" }).primaryKey().generatedAlwaysAsIdentity(),
     actorEmail: text("actor_email").notNull(),
     entity: text("entity").notNull(),
     entityId: text("entity_id").notNull(),
@@ -435,18 +481,13 @@ export const auditLog = pgTable(
     after: jsonb("after"),
     at: timestamp("at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [
-    index("audit_log_entity").on(t.entity, t.entityId),
-    index("audit_log_at").on(t.at),
-  ],
+  (t) => [index("audit_log_entity").on(t.entity, t.entityId), index("audit_log_at").on(t.at)],
 );
 
 export const integrationRun = pgTable("integration_run", {
   id: bigint("id", { mode: "bigint" }).primaryKey().generatedAlwaysAsIdentity(),
   job: text("job").notNull(),
-  startedAt: timestamp("started_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
+  startedAt: timestamp("started_at", { withTimezone: true }).notNull().defaultNow(),
   finishedAt: timestamp("finished_at", { withTimezone: true }),
   ok: boolean("ok").notNull(),
   stats: jsonb("stats"),
@@ -472,11 +513,13 @@ export const theme = pgTable(
     sha256: text("sha256").notNull(),
     active: boolean("active").notNull().default(false),
     createdBy: text("created_by").notNull(),
-    createdAt: timestamp("created_at", { withTimezone: true })
-      .notNull()
-      .defaultNow(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [uniqueIndex("theme_one_active").on(t.active).where(sql`${t.active}`)],
+  (t) => [
+    uniqueIndex("theme_one_active")
+      .on(t.active)
+      .where(sql`${t.active}`),
+  ],
 );
 
 // Logos, the favicon and fonts. Rows are never changed once written, so they can be cached
@@ -490,9 +533,7 @@ export const brandAsset = pgTable("brand_asset", {
   // Fonts: { family, weight, style }. Every kind: { fileName }.
   meta: jsonb("meta").notNull().default({}),
   createdBy: text("created_by").notNull(),
-  createdAt: timestamp("created_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
 export const locationRelations = relations(location, ({ many }) => ({
@@ -518,8 +559,16 @@ export const personRelations = relations(person, ({ one, many }) => ({
 }));
 
 export const personManagerRelations = relations(personManager, ({ one }) => ({
-  person: one(person, { fields: [personManager.personId], references: [person.id], relationName: "managers" }),
-  manager: one(person, { fields: [personManager.managerId], references: [person.id], relationName: "reports" }),
+  person: one(person, {
+    fields: [personManager.personId],
+    references: [person.id],
+    relationName: "managers",
+  }),
+  manager: one(person, {
+    fields: [personManager.managerId],
+    references: [person.id],
+    relationName: "reports",
+  }),
 }));
 
 export const personIdentityRelations = relations(personIdentity, ({ one }) => ({

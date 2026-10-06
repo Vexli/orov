@@ -2,7 +2,7 @@
 
 // Identity providers an organization can sign in with. Each is configured through
 // AUTH_<ID>_ID / AUTH_<ID>_SECRET / AUTH_<ID>_ISSUER, where <ID> is the id upper-cased with
-// dashes turned into underscores (Auth.js reads them by that convention).
+// dashes turned into underscores (apps/web/lib/auth-providers.ts reads them).
 export const SSO_PROVIDER_IDS = [
   "google",
   "microsoft-entra-id",
@@ -67,6 +67,27 @@ export function canSignIn(
 
   if (!email.endsWith(`@${domain}`)) return { ok: false, reason: "email domain does not match" };
   return { ok: true };
+}
+
+// Where a sign-in came from, in the shape Better Auth hands to user.validateUserInfo: the method
+// ("oauth" for every SSO provider, or a development method), and for OAuth the provider id and
+// its raw claims.
+export interface SignInSource {
+  method: string;
+  oauth?: { providerId: string; profile?: Record<string, unknown> } | undefined;
+}
+
+// The identity canSignIn judges, read from the provider's own claims where there are any.
+export function signInIdentity(email: unknown, source: SignInSource): SignInIdentity {
+  const profile = source.oauth?.profile ?? {};
+  const claimed =
+    typeof email === "string" ? email : typeof profile.email === "string" ? profile.email : "";
+  return {
+    provider: source.method === "oauth" ? (source.oauth?.providerId ?? "") : source.method,
+    email: claimed,
+    emailVerified: profile.email_verified as SignInIdentity["emailVerified"],
+    hd: typeof profile.hd === "string" ? profile.hd : null,
+  };
 }
 
 // Parses AUTH_PROVIDERS, a comma-separated list of SSO provider ids. Empty means none.
