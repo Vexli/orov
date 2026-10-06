@@ -1,9 +1,29 @@
-import NextAuth from "next-auth";
-import { authConfig } from "./auth.config";
-import { getAuthSetup } from "./auth-providers";
-import { canSignIn, isBootstrapAdmin } from "@orov/core";
+import { betterAuth } from "better-auth";
+import { drizzleAdapter } from "better-auth/adapters/drizzle";
+import { nextCookies } from "better-auth/next-js";
+import { genericOAuth } from "better-auth/plugins/generic-oauth";
+import { canSignIn, signInIdentity } from "@orov/core/auth/policy";
 import { getDb } from "@orov/db/client";
-import { recordSignIn } from "@orov/db/queries/app-users";
+import { admitSession } from "@orov/db/queries/app-users";
+import { authAccount, authSession, authUser, authVerification } from "@orov/db/schema";
+import { getAuthSetup } from "./auth-providers";
+import { devSignIn } from "./dev-sign-in";
+
+// Sign-in on Better Auth. Sessions live in the database (auth_session), so signing out ends a
+// session everywhere at once. Roles and settings are not Better Auth's: they stay on app_user,
+// read on every request by lib/session.ts.
+//
+// Two checks guard every sign-in:
+//  - user.validateUserInfo runs canSignIn (packages/core/auth/policy.ts) with the provider's own
+//    claims, on every provider sign-in, new or returning, and when a development user is created;
+//  - the session.create.before hook, admitSession, re-checks the email domain for every method
+//    and records the sign-in (creating the app_user row, bootstrapping ADMIN_EMAILS).
+
+function companyDomain(): string {
+  const domain = process.env.COMPANY_DOMAIN;
+  if (!domain) throw new Error("COMPANY_DOMAIN is not set");
+  return domain.toLowerCase();
+}
 
 function adminEmails(): string[] {
   return (process.env.ADMIN_EMAILS ?? "")
@@ -12,46 +32,83 @@ function adminEmails(): string[] {
     .filter(Boolean);
 }
 
-// Lazy, so a misconfigured provider fails the first request instead of `next build`.
-export const { handlers, auth, signIn, signOut } = NextAuth(() => {
-  const config = authConfig();
-  return {
-    ...config,
-    callbacks: {
-      ...config.callbacks,
-      async signIn({ user, account, profile }) {
-        const companyDomain = process.env.COMPANY_DOMAIN;
-        if (!companyDomain) throw new Error("COMPANY_DOMAIN is not set");
+// The login page shows a message for each of these (app/login/page.tsx).
+export const SIGN_IN_ERROR = {
+  accessDenied: "AccessDenied",
+  credentials: "CredentialsSignin",
+  configuration: "Configuration",
+} as const;
 
-        // user.email is the provider's own mapping of its claims, so it is the right field for
-        // every provider. The verification claims only exist on OAuth/OIDC profiles.
-        const email = typeof user?.email === "string" ? user.email.toLowerCase() : null;
-        if (!email || !account) return false;
-        const decision = canSignIn(
-          {
-            provider: account.provider,
-            email,
-            emailVerified: profile?.email_verified as boolean | string | undefined,
-            hd: typeof profile?.hd === "string" ? profile.hd : null,
-          },
-          companyDomain,
-          { devAuth: getAuthSetup().devAuth },
-        );
-        if (!decision.ok) return false;
-
-        // The sign-in record is written here, not in the JWT callback, so the app_user row exists
-        // from the first request onward.
-        await recordSignIn(getDb(), email, isBootstrapAdmin(email, adminEmails()));
-        return true;
+function buildAuth() {
+  const setup = getAuthSetup();
+  const domain = companyDomain();
+  return betterAuth({
+    appName: "OrOv",
+    baseURL: process.env.AUTH_URL,
+    secret: process.env.AUTH_SECRET,
+    database: drizzleAdapter(getDb(), {
+      provider: "pg",
+      schema: {
+        auth_user: authUser,
+        auth_session: authSession,
+        auth_account: authAccount,
+        auth_verification: authVerification,
       },
-      async jwt({ token, user }) {
-        if (typeof user?.email === "string") token.email = user.email.toLowerCase();
-        return token;
-      },
-      async session({ session, token }) {
-        if (typeof token.email === "string") session.user.email = token.email;
-        return session;
+    }),
+    user: {
+      modelName: "auth_user",
+      validateUserInfo: ({ user, source }) => {
+        const decision = canSignIn(signInIdentity(user.email, source), domain, {
+          devAuth: setup.devAuth,
+        });
+        return decision.ok ? undefined : { error: SIGN_IN_ERROR.accessDenied };
       },
     },
-  };
-});
+    session: { modelName: "auth_session" },
+    account: {
+      modelName: "auth_account",
+      // OrOv never calls a provider's API, but Better Auth keeps the tokens it was given.
+      encryptOAuthTokens: true,
+      // The same person through two configured providers is one user. Every provider here is
+      // pinned to the company's own tenant or domain.
+      accountLinking: { enabled: true, trustedProviders: setup.sso.map((p) => p.id) },
+    },
+    verification: { modelName: "auth_verification" },
+    emailAndPassword: { enabled: false },
+    socialProviders: setup.google
+      ? {
+          // hd is both the account-picker hint and a check of the id token's hd claim.
+          google: { ...setup.google, hd: domain, prompt: "select_account" },
+        }
+      : {},
+    databaseHooks: {
+      session: {
+        create: {
+          before: async (session) =>
+            admitSession(getDb(), session.userId, {
+              companyDomain: domain,
+              adminEmails: adminEmails(),
+            }),
+        },
+      },
+    },
+    plugins: [
+      ...(setup.genericOAuth.length > 0 ? [genericOAuth({ config: setup.genericOAuth })] : []),
+      ...(setup.devAuth
+        ? [devSignIn({ password: setup.devPassword, bypassEmail: setup.devBypassEmail })]
+        : []),
+      // Last, so cookies set by server actions reach the browser.
+      nextCookies(),
+    ],
+    telemetry: { enabled: false },
+  });
+}
+
+let instance: ReturnType<typeof buildAuth> | undefined;
+
+// Built on first use rather than at import, because `next build` runs without the runtime
+// environment, and a misconfigured provider should fail the first request, not the build.
+export function getAuth() {
+  instance ??= buildAuth();
+  return instance;
+}

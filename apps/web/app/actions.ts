@@ -1,7 +1,11 @@
 "use server";
 
-import { signOut } from "@/lib/auth";
+import { headers } from "next/headers";
+import { redirect } from "next/navigation";
+import { getAuth } from "@/lib/auth";
 
+// Ends the session in the database, so it can't be used again, and clears the cookie.
 export async function signOutAction() {
-  await signOut({ redirectTo: "/login" });
+  await getAuth().api.signOut({ headers: await headers() });
+  redirect("/login");
 }

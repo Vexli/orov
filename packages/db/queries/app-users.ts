@@ -1,7 +1,14 @@
 import { eq, sql } from "drizzle-orm";
-import { DEFAULT_UI_LOCALE, isUiLocale, type DateFormat, type RegionDisplay, type UiLocale } from "@orov/core";
+import {
+  DEFAULT_UI_LOCALE,
+  isBootstrapAdmin,
+  isUiLocale,
+  type DateFormat,
+  type RegionDisplay,
+  type UiLocale,
+} from "@orov/core";
 import type { Executor } from "../client";
-import { appUser, person } from "../schema";
+import { appUser, authUser, person } from "../schema";
 
 export type AppRole = "viewer" | "admin";
 
@@ -30,6 +37,24 @@ export async function recordSignIn(
     .returning({ role: appUser.role });
   if (!row) throw new Error(`failed to record sign-in for ${email}`);
   return row.role;
+}
+
+// The last check before Better Auth creates a session, whatever the sign-in method: the account's
+// email must be on the company domain. Passing it records the sign-in, so the app_user row exists
+// from the first request on. False refuses the session.
+export async function admitSession(
+  db: Executor,
+  authUserId: string,
+  policy: { companyDomain: string; adminEmails: readonly string[] },
+): Promise<boolean> {
+  const [row] = await db
+    .select({ email: authUser.email })
+    .from(authUser)
+    .where(eq(authUser.id, authUserId));
+  const email = row?.email.toLowerCase();
+  if (!email || !email.endsWith(`@${policy.companyDomain.toLowerCase()}`)) return false;
+  await recordSignIn(db, email, isBootstrapAdmin(email, policy.adminEmails));
+  return true;
 }
 
 export interface AppUser {

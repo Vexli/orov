@@ -127,6 +127,13 @@
       "when": 1791225536536,
       "tag": "0017_location_map_theme",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1791277106865,
+      "tag": "0018_better_auth_tables",
+      "breakpoints": true
     }
   ]
 }

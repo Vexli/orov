@@ -185,7 +185,7 @@ apps/
     app/
       (app)/      signed-in views: directory, map, org chart, settings, profile
       admin/      people, teams, offices and floors, seating, branding, import, backup, audit log
-      api/        Auth.js routes, search, regions, CSV export, backup, brand files, health check
+      api/        Better Auth routes, search, regions, CSV export, backup, brand files, health check
       theme.css/  the active theme as a stylesheet
       login/      sign-in page
     components/   directory, map, org chart, search and admin UI
@@ -241,7 +241,7 @@ floors with every drawing version, areas, rooms and desks, teams, people with th
 and accounts, users and their settings, themes and brand files. Ids are kept, so links survive a
 move. The file is encrypted with a passphrase the admin chooses (scrypt, then AES-256-GCM), so it
 can travel by email or sit on a shared drive; without the passphrase it can't be opened. It
-never contains messaging tokens, presence data or the audit log (export that from the audit log
+never contains sign-in sessions, messaging tokens, presence data or the audit log (export that from the audit log
 page). Exports and imports are both recorded in the audit log.
 
 To load a file, choose **Merge** (add and update by id; a reused email, slug, desk code or account
@@ -271,7 +271,7 @@ OrOv is built on open-source work. Thank you to the people who maintain it.
 **In use today**
 
 - [Next.js](https://nextjs.org) and [React](https://react.dev): the web app
-- [Auth.js](https://authjs.dev): single sign-on with any OIDC provider
+- [Better Auth](https://www.better-auth.com): single sign-on with any OIDC provider, and sessions
 - [PostgreSQL](https://www.postgresql.org), [Drizzle ORM](https://orm.drizzle.team) and
   [node-postgres](https://node-postgres.com): the database, schema and migrations
 - [Tailwind CSS](https://tailwindcss.com): styling, through semantic theme variables
