@@ -21,7 +21,7 @@ jobs:
       - name: Typecheck
         run: pnpm typecheck
       - name: Unit tests
-        run: pnpm --filter @orov/core test
+        run: pnpm --filter @orov/core test && pnpm --filter @orov/integrations test
       - name: Database tests (Testcontainers)
         run: pnpm --filter @orov/db test
       - name: Migrations match the schema
