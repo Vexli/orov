@@ -1,6 +1,8 @@
-// Other accounts a person has: profile links (GitHub, LinkedIn, …) that admins edit, and later
-// messaging-tool ids (#4) that a match job writes. Every URL shown for an identity is built here
-// from the normalized value, never from what someone typed.
+// Other accounts a person has. The providers listed here are profile links (GitHub, LinkedIn, …)
+// that admins and the person edit. Messaging-tool user ids are stored in the same table under the
+// configured messaging provider's id; they are written by that provider's match job and validated
+// by its adapter (packages/integrations), so no messaging tool is listed here. Every URL shown for
+// an identity is built here from the normalized value, never from what someone typed.
 
 export type IdentityKind = "profile" | "messaging";
 
@@ -89,16 +91,6 @@ export const IDENTITY_PROVIDERS: readonly IdentityProvider[] = [
     inputHint: "https://…",
     normalize: websiteUrl,
     url: (value) => websiteUrl(value),
-  },
-  // Messaging ids are written by the provider's match job, not typed in, and shown read-only.
-  // A deep link needs the workspace id as well, so it is built by the messaging adapter.
-  {
-    id: "slack",
-    label: "Slack",
-    kind: "messaging",
-    inputHint: "Slack member id (U…)",
-    normalize: (raw) => (/^[UW][A-Z0-9]{2,}$/.test(raw.trim()) ? raw.trim() : null),
-    url: () => null,
   },
 ];
 

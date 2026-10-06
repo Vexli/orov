@@ -12,7 +12,7 @@ const WHITE = "rgb(255, 255, 255)";
 
 const minutesAgo = (n: number) => new Date(Date.now() - n * 60_000);
 
-// Rows as the Phase 4 rooms:freebusy worker will write them.
+// Rows as the Phase 4 rooms:status job will write them.
 async function seedRoomStatus() {
   await withE2eDb((db) =>
     db.insert(roomStatus).values([

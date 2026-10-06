@@ -290,12 +290,12 @@ describe("savePerson", () => {
   });
 
   it("keeps identities it doesn't manage, such as messaging ids", async () => {
-    await t.db.insert(s.personIdentity).values({ personId: "p_bob", provider: "slack", value: "U123" });
+    await t.db.insert(s.personIdentity).values({ personId: "p_bob", provider: "chat", value: "U123" });
     const form = (await getPersonForEdit(t.db, "p_bob"))!;
     expect(form.identities).toEqual({ github: "bob-lindqvist", linkedin: "bob-lindqvist" });
     await savePerson(t.db, ACTOR, { ...form, identities: {} }, "p_bob");
     const rows = await t.db.select().from(s.personIdentity).where(eq(s.personIdentity.personId, "p_bob"));
-    expect(rows.map((r) => r.provider)).toEqual(["slack"]);
+    expect(rows.map((r) => r.provider)).toEqual(["chat"]);
   });
 
   it("deactivates a person and keeps the row", async () => {

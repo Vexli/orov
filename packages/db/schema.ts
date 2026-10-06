@@ -120,7 +120,7 @@ export const location = pgTable(
     name: text("name").notNull(),
     timezone: text("timezone").notNull(),
     region: text("region").notNull(),
-    // The building's id in the room or calendar provider (Google buildingId, Microsoft Graph place).
+    // The building's id in the configured room provider, used to match imported rooms to offices.
     externalBuildingId: text("external_building_id"),
     sortOrder: integer("sort_order").notNull().default(0),
     // What this office calls its floors, e.g. Building/Buildings on a campus (#16).
@@ -204,8 +204,8 @@ export const space = pgTable(
     // Human-readable code, for example "SF-2-014". Shown on cards and in CSV imports.
     name: text("name").notNull(),
     capacity: integer("capacity"),
-    // The room's id in the calendar provider: a Google resource email, a Microsoft Graph room
-    // address, or a booking tool's room id.
+    // The room's id in the configured room provider (a calendar resource or a booking tool's
+    // room), which the room status job looks up.
     calendarResourceId: text("calendar_resource_id").unique(),
     archivedAt: timestamp("archived_at", { withTimezone: true }),
   },
@@ -274,7 +274,8 @@ export const personManager = pgTable(
 );
 
 // Other accounts a person has, by provider id from packages/core/people/identities.ts: profile
-// links (github, linkedin, …) and, later, messaging-tool ids. One account belongs to one person.
+// links (github, linkedin, …) and messaging-tool user ids under the messaging provider's id.
+// One account belongs to one person.
 export const personIdentity = pgTable(
   "person_identity",
   {
@@ -338,7 +339,7 @@ export const presenceSignal = pgTable(
     date: date("date").notNull(),
     status: presenceStatus("status").notNull(),
     source: presenceSource("source").notNull(),
-    // The tool the signal came from: "slack", "google", "microsoft", "manual", …
+    // Where the signal came from: the configured messaging or calendar provider's id, or "manual".
     provider: text("provider").notNull(),
     sourceRef: text("source_ref").notNull(),
     note: text("note"),
