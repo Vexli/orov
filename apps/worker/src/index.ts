@@ -1,6 +1,6 @@
-// Skeleton for the long-running worker (plan.md §3). Jobs are added in Phase 4 on pg-boss,
-// and Slack Socket Mode in Phase 5. For now the worker only logs a heartbeat, so the
-// container can be deployed and watched from the start.
+// Skeleton for the long-running worker (plan.md §3, docs/integrations/). Scheduled integration
+// jobs are added on pg-boss, and a live listener for messaging providers that offer one. For now
+// the worker only logs a heartbeat, so the container can be deployed and watched from the start.
 
 const HEARTBEAT_MS = 60_000;
 

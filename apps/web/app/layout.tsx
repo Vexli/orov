@@ -9,7 +9,7 @@ export async function generateMetadata(): Promise<Metadata> {
   const brand = await getBrand();
   return {
     title: brand.appName,
-    description: "People, seats, teams and presence for our offices",
+    description: "People, seats and teams across your offices",
     icons: brand.favicon ? { icon: brandAssetUrl(brand.favicon) } : undefined,
   };
 }

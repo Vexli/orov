@@ -32,7 +32,7 @@ export default async function LoginPage({
           <BrandMark brand={brand} className="h-10 w-auto" />
         </h1>
         <p className="mt-2 text-sm text-muted-fg">
-          People, seats, teams and presence for our offices.
+          People, seats and teams across your offices.
         </p>
       </div>
       {message ? (

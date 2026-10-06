@@ -12,7 +12,7 @@ interface Props {
 }
 
 // Shared card for every view (plan.md §7). The desk links to the map, focused on this person.
-// Presence and chat buttons arrive in Phases 4 and 5.
+// Presence and chat buttons arrive with the integrations (Phases 4 and 5, docs/integrations/).
 export function PersonCard({ person, onSelectPerson, onClose }: Props) {
   const name = displayName(person);
   const links = identityLinks(person.identities);

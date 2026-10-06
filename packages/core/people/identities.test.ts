@@ -51,7 +51,7 @@ describe("identityLinks", () => {
   });
 
   it("leaves out messaging ids, which have no public link", () => {
-    expect(identityLinks({ slack: "U123ABC" })).toEqual([]);
+    expect(identityLinks({ chat: "U123ABC" })).toEqual([]);
   });
 
   it("ignores providers it doesn't know", () => {
@@ -65,9 +65,9 @@ describe("identitiesInputSchema", () => {
   });
 
   it("refuses messaging ids, which only a match job writes", () => {
-    const result = identitiesInputSchema.safeParse({ slack: "U123ABC" });
+    const result = identitiesInputSchema.safeParse({ chat: "U123ABC" });
     expect(result.success).toBe(false);
-    expect(result.error?.issues[0]?.path).toEqual(["slack"]);
+    expect(result.error?.issues[0]?.path).toEqual(["chat"]);
   });
 });
 

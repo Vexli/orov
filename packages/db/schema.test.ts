@@ -125,8 +125,8 @@ describe("invariants enforced by the database", () => {
       date: "2026-10-05",
       status: "wfh" as const,
       source: "message" as const,
-      provider: "slack",
-      sourceRef: "1728000000.000100",
+      provider: "chat",
+      sourceRef: "message-1",
       observedAt: new Date("2026-10-05T08:00:00Z"),
     };
     await t.db.insert(s.presenceSignal).values(signal);

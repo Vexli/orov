@@ -48,6 +48,17 @@ jobs:
             echo "Use a theme slot class (bg-bg, text-muted-fg, bg-primary, ...) instead."
             exit 1
           fi
+      - name: No chat, calendar or booking vendor names
+        run: |
+          # Integrations are provider-neutral (docs/integrations/): vendor code lives only in a
+          # provider's own folder, packages/integrations/providers/<id>/. Migrations are immutable
+          # history, and slack_channel_id is a legacy CSV header that still imports.
+          if git grep -n -i -I -E "slack|gcal|google calendar|outlook|microsoft teams|ms teams|\brobin\b|skedda|envoy" \
+              -- apps packages e2e ':!packages/db/migrations' ':!packages/integrations/providers' \
+              | grep -v "slack_channel_id"; then
+            echo "Name the capability (messaging, calendar, rooms), not a vendor. See docs/integrations/."
+            exit 1
+          fi
       - name: Build
         run: pnpm --filter @orov/web build
 
