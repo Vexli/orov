@@ -3,11 +3,14 @@ import { getAuthSetup } from "@/lib/auth-providers";
 import { getBrand } from "@/lib/theme";
 import { signInWithDevBypass, signInWithDevPassword, signInWithProvider } from "./actions";
 
-// Codes from lib/auth.ts (SIGN_IN_ERROR), plus the one Better Auth uses when the session hook
-// refuses an account. Anything else, such as a cancelled sign-in, gets the general message.
+// Codes from lib/auth.ts (SIGN_IN_ERROR), plus the ones Better Auth uses when the session hook
+// refuses an account and when it won't join a sign-in to an existing user (lib/auth.ts,
+// accountLinking). Anything else, such as a cancelled sign-in, gets the general message.
 const MESSAGES: Record<string, string> = {
   AccessDenied: "Sign in with your company account to continue.",
   unable_to_create_session: "Sign in with your company account to continue.",
+  account_not_linked:
+    "This account's email already belongs to another sign-in, and your identity provider didn't confirm it. Ask an admin for help.",
   CredentialsSignin: "That email and password don't match.",
   Configuration: "Sign-in is not configured correctly. Ask an admin to check the server settings.",
 };
@@ -34,9 +37,7 @@ export default async function LoginPage({
         <h1 className="text-2xl font-heading">
           <BrandMark brand={brand} className="h-10 w-auto" />
         </h1>
-        <p className="mt-2 text-sm text-muted-fg">
-          People, seats and teams across your offices.
-        </p>
+        <p className="mt-2 text-sm text-muted-fg">People, seats and teams across your offices.</p>
       </div>
       {message ? (
         <p role="alert" className="rounded-md bg-accent p-3 text-sm text-accent-fg">

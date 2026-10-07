@@ -50,6 +50,8 @@ importing design tokens from Figma, Penpot or Tokens Studio, without code change
   place, and shows every move before applying it
 - CSV import with a dry run (rows with errors can be skipped; Excel files in any common encoding
   work) and CSV export
+- Users: change roles, disable someone, end their sessions or reset how they sign in; anyone
+  deactivated or past their last working day loses access at once
 - An audit log of every admin change, filterable and exportable
 - An encrypted export of the whole organization, for backups and moving between instances
 
@@ -118,7 +120,9 @@ pnpm db:migrate
 pnpm dev
 ```
 
-Open <http://localhost:3000> and sign in as `you@example.com` with the dev password. A new
+Open <http://localhost:3000> and sign in as `you@example.com` with the dev password. The dev
+server and the database listen on this machine only (`127.0.0.1`): anyone who could reach them
+could use the dev password, or the bypass, and the database's published credentials. A new
 install is empty: each view shows an admin how to set it up (add offices and upload floor
 drawings, import people and teams), or you can load the demo organization below.
 
@@ -171,7 +175,8 @@ demo) or `aiko.nakamura@example.com` (a viewer). Roll the demo's theme back on t
   `pnpm db:up`) and reload the test fixture before each spec. Install the browser once with
   `pnpm exec playwright install chromium`.
 
-CI (`.github/workflows/ci.yml`) also fails if the schema changed without a migration, if the
+CI (`.github/workflows/ci.yml`) also fails if a production dependency has a known high or critical
+vulnerability, if the schema changed without a migration, if the
 theme defaults are out of date, if a component uses a raw Tailwind palette class such as
 `bg-white` instead of a theme slot, or if a chat, calendar or booking vendor is named outside an
 integration provider's folder.
@@ -237,7 +242,10 @@ docker build --target web -t orov-web .
 docker build --target worker -t orov-worker .
 ```
 
-The web container applies migrations on start and then serves on port 3000. It needs
+Both run as the unprivileged `node` user, with the app's files read-only to it (only Next's cache
+is writable). `.env` files are never copied into the image, so build from any checkout without
+shipping local secrets, and pass every setting to the container. The web container applies
+migrations on start and then serves on port 3000. It needs
 `DATABASE_URL`, `AUTH_URL`, `AUTH_SECRET`, `COMPANY_DOMAIN`, `ADMIN_EMAILS` and the SSO variables
 for each provider in `AUTH_PROVIDERS` ([`docs/configuration.md`](docs/configuration.md)).
 `THEME_TOKENS_PATH` optionally names a token file to use as the theme until an admin applies one
@@ -247,6 +255,10 @@ Cloud SQL and RDS allow it). `GET /api/health` is a liveness check. `/theme.css`
 `/api/brand-assets/*` are served without signing in, because the sign-in page uses the theme and
 logo. Run one web replica at a time while a schema change is being deployed, because two replicas
 migrating at once can race.
+
+Put the web container behind a reverse proxy that terminates TLS and sets `X-Forwarded-For`.
+Better Auth rate-limits its sign-in routes per client address, read from that header, and per
+process; exposed directly, a client could set the header itself.
 
 The worker container needs no settings until an integration is configured. It exits at startup if
 an integration setting names an unknown provider.
@@ -264,8 +276,8 @@ page). Exports and imports are both recorded in the audit log.
 To load a file, choose **Merge** (add and update by id; a reused email, slug, desk code or account
 is a conflict and blocks the import) or **Replace** (empty this instance's organization data and
 load the file: for restoring a backup or setting up a new instance). Each shows what would
-change before anything is written. Roles come from the file only if the admin asks, and the
-importing admin always stays an admin. A file must come from an instance on the same database
+change before anything is written. Roles and disabled users come from the file only if the
+admin asks, and the importing admin always stays an enabled admin. A file must come from an instance on the same database
 schema version; files from older versions can't be read yet. This complements the database's
 own backups and point-in-time recovery; it doesn't replace them.
 

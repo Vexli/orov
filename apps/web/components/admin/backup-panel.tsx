@@ -178,7 +178,7 @@ function ImportSection() {
         </fieldset>
         <label className="flex items-start gap-2 text-sm sm:col-span-2">
           <input type="checkbox" className="mt-1" checked={applyRoles} onChange={(e) => setApplyRoles(e.target.checked)} />
-          <span>Take admin and viewer roles from the file. Otherwise new users are viewers and existing ones keep their role. You stay an admin either way.</span>
+          <span>Take admin and viewer roles, and disabled users, from the file. Otherwise new users are enabled viewers and existing ones keep their role and access. You stay an enabled admin either way.</span>
         </label>
       </div>
       <div className="mt-4">

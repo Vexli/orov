@@ -2,7 +2,26 @@
 **/.next
 **/dist
 .git
-.env
-.env.*
-!.env.example
 .venv
+
+# Env files at any depth: apps/web/.env.local holds a developer's secrets, and `next start` would
+# load it in production, filling in any variable a deployment forgot to set.
+**/.env
+**/.env.*
+!.env.example
+
+# Tests, CI and editor files: not needed to build or run the image.
+.github
+e2e
+playwright-report
+test-results
+**/.DS_Store
+**/*.log
+
+# Local working notes and agent files (see .gitignore), which must never ship in an image.
+/note.md
+/claude.md
+/CLAUDE.md
+/report.md
+/apps/web/AGENTS.md
+/apps/web/CLAUDE.md

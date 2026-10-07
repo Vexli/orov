@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  assertStrongAuthSecret,
   assertTenantScopedEntraIssuer,
   canSignIn,
   devAuthAllowed,
@@ -67,7 +68,7 @@ describe("canSignIn with Google", () => {
 });
 
 describe("canSignIn with tenant-scoped providers", () => {
-  it.each(["microsoft-entra-id", "okta", "cognito", "oidc"])(
+  it.each(["microsoft-entra-id", "okta", "cognito"])(
     "%s accepts a company email without email_verified",
     (provider) => {
       expect(canSignIn({ provider, email: "jane@example.com" }, DOMAIN, PROD)).toEqual({
@@ -105,6 +106,46 @@ describe("canSignIn with tenant-scoped providers", () => {
       ok: false,
       reason: "unknown provider",
     });
+  });
+});
+
+describe("canSignIn with a generic OIDC issuer", () => {
+  it("accepts a verified company email", () => {
+    expect(
+      canSignIn({ provider: "oidc", email: "jane@example.com", emailVerified: true }, DOMAIN, PROD),
+    ).toEqual({ ok: true });
+  });
+
+  it("rejects a missing email_verified claim", () => {
+    // An issuer with self-service sign-up would otherwise let anyone claim an admin's email.
+    expect(canSignIn({ provider: "oidc", email: "admin@example.com" }, DOMAIN, PROD)).toEqual({
+      ok: false,
+      reason: "email is not verified",
+    });
+  });
+
+  it("accepts a missing claim when the operator trusts the issuer", () => {
+    expect(
+      canSignIn({ provider: "oidc", email: "jane@example.com" }, DOMAIN, {
+        ...PROD,
+        trustOidcEmail: true,
+      }),
+    ).toEqual({ ok: true });
+  });
+
+  it("rejects an explicitly unverified email even from a trusted issuer", () => {
+    expect(
+      canSignIn({ provider: "oidc", email: "jane@example.com", emailVerified: false }, DOMAIN, {
+        ...PROD,
+        trustOidcEmail: true,
+      }),
+    ).toEqual({ ok: false, reason: "email is not verified" });
+  });
+
+  it("still enforces the company domain", () => {
+    expect(
+      canSignIn({ provider: "oidc", email: "jane@other.com", emailVerified: true }, DOMAIN, PROD),
+    ).toEqual({ ok: false, reason: "email domain does not match" });
   });
 });
 
@@ -245,5 +286,27 @@ describe("signInIdentity", () => {
   it("gives an unknown method no provider canSignIn accepts", () => {
     const identity = signInIdentity("bob@example.com", { method: "email-password" });
     expect(canSignIn(identity, DOMAIN, DEV)).toEqual({ ok: false, reason: "unknown provider" });
+  });
+});
+
+describe("assertStrongAuthSecret", () => {
+  it("accepts a generated secret", () => {
+    const secret = "q3Jt8h1kz0Vx2mP9sL4wB7cN6dF5gH0jK1lZ2xC3vB4=";
+    expect(assertStrongAuthSecret(secret)).toBe(secret);
+  });
+
+  it("refuses a missing or short secret", () => {
+    expect(() => assertStrongAuthSecret(undefined)).toThrow(/not set/);
+    expect(() => assertStrongAuthSecret("")).toThrow(/not set/);
+    expect(() => assertStrongAuthSecret("tooshort")).toThrow(/at least 32/);
+  });
+
+  it("refuses .env.example's placeholder, though it's long enough", () => {
+    expect(() => assertStrongAuthSecret("change-me-to-a-long-random-string")).toThrow(
+      /placeholder/,
+    );
+    expect(() => assertStrongAuthSecret("CHANGEME_please_0123456789012345678901")).toThrow(
+      /placeholder/,
+    );
   });
 });

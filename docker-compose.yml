@@ -9,8 +9,10 @@ services:
       POSTGRES_USER: orov
       POSTGRES_PASSWORD: orov
       POSTGRES_DB: orov
+    # Loopback only: the credentials above are public, so the database must not be reachable from
+    # the rest of the network.
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
       - ./docker/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro

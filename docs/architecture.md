@@ -44,13 +44,18 @@ server code only, so client bundles never pull them in.
    with the providers in `AUTH_PROVIDERS` (`lib/auth-providers.ts`). Two checks guard it:
    `user.validateUserInfo` runs `canSignIn` (`core/auth/policy.ts`) on the provider's own claims
    (the email must be on `COMPANY_DOMAIN`, plus Google's `hd` claim or a tenant-scoped Entra
-   issuer), on every provider sign-in; and a hook before each session is created, `admitSession`
-   (`db/queries/app-users.ts`), re-checks the domain and records the sign-in in `app_user`,
-   promoting `ADMIN_EMAILS`. Sessions are rows in `auth_session`, so signing out ends a session
-   everywhere.
+   issuer, and a verified email from Google and the generic `oidc` issuer), on every provider
+   sign-in, including one that would join an existing user (which also needs the provider's
+   `email_verified`, since no provider is trusted to link without it); and a hook before each
+   session is created, `admitSession` (`db/queries/app-users.ts`), re-checks the domain and
+   records the sign-in in `app_user`, promoting `ADMIN_EMAILS`. Sessions are rows in
+   `auth_session`, so signing out ends a session everywhere.
 3. **Roles** (`viewer`, `admin`) are read from `app_user` on every request (`lib/session.ts`:
    `requireUser`, `requireAdmin`), which also validates the session against the database, so a
-   demotion or a sign-out takes effect at once.
+   demotion or a sign-out takes effect at once. The same read refuses a user an admin disabled
+   (`app_user.disabled_at`) and anyone whose directory entry is inactive or past its end date
+   (`getAppUser`, `hasAccess`); `admitSession` applies the same rule at sign-in. Admins manage
+   this on **Admin → Users** (`changeUserAccess`, audited as `app_user`).
 4. **Pages** are server components that call a query (`loadDirectory`, `loadMap`, …) and pass plain
    data to client components. Region labels and dates are formatted on the server in the viewer's
    own settings, so the ISO 3166-2 list never reaches the browser.
@@ -71,9 +76,10 @@ The schema is [`packages/db/schema.ts`](../packages/db/schema.ts); `plan.md` §5
   equal managers), `team` (a tree through `parent_team_id`), `team_member` (`explicit`, or
   `inherited` from a sub-team, derived), and `person_identity` (other accounts: profile links
   today, messaging ids once a provider exists).
-- **Users:** `app_user` holds each signed-in user's role and personal settings (region display,
-  flag, date format, language), keyed by email. Better Auth's `auth_user`, `auth_account`,
-  `auth_session` and `auth_verification` hold sign-in state only, and never go into a backup.
+- **Users:** `app_user` holds each signed-in user's role, whether an admin disabled them, and
+  their personal settings (region display, flag, date format, language), keyed by email. Better
+  Auth's `auth_user`, `auth_account`, `auth_session` and `auth_verification` hold sign-in state
+  only, and never go into a backup.
 - **Theme:** `theme` (every applied version; one active) and `brand_asset` (logos, favicon,
   fonts, immutable).
 - **Integrations, created ahead of use:** `room_status` (read by the map today), `presence_signal`,
@@ -121,15 +127,23 @@ provider are in [`integrations/README.md`](integrations/README.md).
 
 ## Security model
 
-- Sign-in is limited to one email domain, through the organization's own SSO. Development
-  sign-in methods are ignored outside `next dev` on localhost.
+- Sign-in is limited to one email domain, through the organization's own SSO. Emails from an
+  open-ended OIDC issuer must be verified, and a sign-in joins an existing user only with a
+  verified email. Development sign-in methods are ignored outside `next dev` on localhost.
 - Viewers can read the directory, map and org chart; admins can change them. Anyone can change
   their own settings and a few fields of their own directory entry on **My profile**.
 - Uploaded SVGs are sanitized before they're stored or shown. Theme values pass a strict grammar,
   so a token file can't inject CSS. Uploads are checked by magic bytes and capped in size, and
   brand files are served with `nosniff` and a sandboxing Content-Security-Policy.
-- Backups are encrypted with a passphrase (scrypt, then AES-256-GCM).
-- **Not yet:** a site-wide Content-Security-Policy (designed in `plan.md` §10, not sent today).
+- Backups are encrypted with a passphrase (scrypt, then AES-256-GCM). The backup routes, the only
+  route handlers that change data, accept only `application/json` from the app's own origin and
+  cap the body (`lib/json-request.ts`), since route handlers don't get the origin check and body
+  limit Next gives server actions.
+- Every response refuses framing by another origin (`frame-ancestors 'self'`,
+  `X-Frame-Options: SAMEORIGIN`; the Branding preview frames the app itself) and sends
+  HSTS, a referrer policy, `nosniff` and a permissions policy (`apps/web/next.config.ts`).
+- **Not yet:** a Content-Security-Policy that restricts scripts and styles (`script-src`, designed
+  in `plan.md` §10); today's site-wide policy covers framing, `<base>` and plugins only.
 
 To report a vulnerability, see [`SECURITY.md`](../SECURITY.md).
 

@@ -38,6 +38,8 @@ pnpm test:e2e    # builds the app and runs Playwright on port 3100
 
 CI (`.github/workflows/ci.yml`) also fails when:
 
+- **a production dependency has a known high or critical vulnerability** (`pnpm audit --prod
+--audit-level=high`). Upgrade it, or override the transitive version in `package.json`.
 - **the schema changed without a migration.** Run `pnpm db:generate` and commit the result.
 - **the theme defaults are stale.** Run `pnpm theme:defaults` after editing
   `packages/core/theme/slots.ts`, and commit both generated files.
@@ -46,6 +48,9 @@ CI (`.github/workflows/ci.yml`) also fails when:
 - **a chat, calendar or booking vendor is named** outside
   `packages/integrations/providers/<id>/`. Name the capability instead
   ([`docs/integrations/README.md`](docs/integrations/README.md)).
+
+Workflow actions are pinned to commit SHAs with the version in a comment, and the workflow's token
+is read-only. Dependabot proposes dependency and action updates weekly.
 
 On macOS with Colima, the database tests need
 `DOCKER_HOST=unix://$HOME/.colima/default/docker.sock TESTCONTAINERS_RYUK_DISABLED=true`. Install

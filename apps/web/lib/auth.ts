@@ -2,7 +2,7 @@ import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { nextCookies } from "better-auth/next-js";
 import { genericOAuth } from "better-auth/plugins/generic-oauth";
-import { canSignIn, signInIdentity } from "@orov/core/auth/policy";
+import { assertStrongAuthSecret, canSignIn, signInIdentity } from "@orov/core/auth/policy";
 import { getDb } from "@orov/db/client";
 import { admitSession } from "@orov/db/queries/app-users";
 import { authAccount, authSession, authUser, authVerification } from "@orov/db/schema";
@@ -45,7 +45,11 @@ function buildAuth() {
   return betterAuth({
     appName: "OrOv",
     baseURL: process.env.AUTH_URL,
-    secret: process.env.AUTH_SECRET,
+    // Checked in production only, so a local checkout runs with whatever .env.local has.
+    secret:
+      process.env.NODE_ENV === "production"
+        ? assertStrongAuthSecret(process.env.AUTH_SECRET)
+        : process.env.AUTH_SECRET,
     database: drizzleAdapter(getDb(), {
       provider: "pg",
       schema: {
@@ -60,18 +64,29 @@ function buildAuth() {
       validateUserInfo: ({ user, source }) => {
         const decision = canSignIn(signInIdentity(user.email, source), domain, {
           devAuth: setup.devAuth,
+          trustOidcEmail: setup.trustOidcEmail,
         });
         return decision.ok ? undefined : { error: SIGN_IN_ERROR.accessDenied };
       },
     },
-    session: { modelName: "auth_session" },
+    session: {
+      modelName: "auth_session",
+      // A day without use ends a session, and use extends it at most hourly. Access itself is
+      // re-checked on every request (lib/session.ts), so disabling a user or marking them
+      // inactive takes effect at once; this bounds how long a forgotten browser stays signed in.
+      expiresIn: 60 * 60 * 24,
+      updateAge: 60 * 60,
+    },
     account: {
       modelName: "auth_account",
       // OrOv never calls a provider's API, but Better Auth keeps the tokens it was given.
       encryptOAuthTokens: true,
-      // The same person through two configured providers is one user. Every provider here is
-      // pinned to the company's own tenant or domain.
-      accountLinking: { enabled: true, trustedProviders: setup.sso.map((p) => p.id) },
+      // A sign-in whose email already has a user (another provider, or the same provider after
+      // the account was recreated) joins that user only when the provider says the email is
+      // verified. No provider is trusted to skip that: the email decides who someone is here,
+      // and a tenant-pinned provider can still issue an email its user typed in (Entra's
+      // `email` claim). Otherwise Better Auth refuses with account_not_linked.
+      accountLinking: { enabled: true },
     },
     verification: { modelName: "auth_verification" },
     emailAndPassword: { enabled: false },

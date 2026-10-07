@@ -20,6 +20,8 @@ export interface AuthSetup {
   // Every other SSO provider, through Better Auth's generic OAuth plugin.
   genericOAuth: GenericOAuthConfig[];
   sso: LoginOption[];
+  // AUTH_OIDC_TRUST_EMAIL=true: accept the generic OIDC issuer's emails without email_verified.
+  trustOidcEmail: boolean;
   devAuth: boolean;
   // The shared development password, or null. Never sent to the browser.
   devPassword: string | null;
@@ -146,6 +148,7 @@ function buildAuthSetup(): AuthSetup {
     google: google?.kind === "google" ? google.config : null,
     genericOAuth: sso.flatMap((p) => (p.kind === "generic" ? [p.config] : [])),
     sso: sso.map(({ id, name }) => ({ id, name })),
+    trustOidcEmail: process.env.AUTH_OIDC_TRUST_EMAIL === "true",
     devAuth,
     devPassword,
     devBypassEmail,

@@ -17,6 +17,8 @@ export const AUDIT_ENTITIES = [
   "audit_log",
   // The whole organization exported or imported as an encrypted file (#29).
   "organization",
+  // A user's role or access changed on Admin → Users.
+  "app_user",
 ] as const;
 
 export interface AuditEntry {
@@ -29,7 +31,11 @@ export interface AuditEntry {
 
 // Every admin write calls this inside its own transaction, so an audit row exists if and only if
 // the change it describes was committed.
-export async function recordAudit(db: Executor, actorEmail: string, entry: AuditEntry): Promise<void> {
+export async function recordAudit(
+  db: Executor,
+  actorEmail: string,
+  entry: AuditEntry,
+): Promise<void> {
   await db.insert(auditLog).values({
     actorEmail,
     entity: entry.entity,

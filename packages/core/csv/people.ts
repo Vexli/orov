@@ -6,6 +6,7 @@ import { normalizePhone } from "../people/phone";
 import type { PersonRecord } from "../records";
 import { regionCodeSchema } from "../regions/iso3166";
 import { optionalTimeZoneSchema } from "../time/zones";
+import { SAFE_CSV_CAST } from "./formula";
 import { parseCsv, type CsvIssue, type CsvRecord } from "./parse";
 
 export const PEOPLE_CSV_HEADERS = [
@@ -57,7 +58,10 @@ const boolish = z
 
 // One row in the spreadsheet is the full state of one person. A blank cell clears the field.
 export const personCsvRowSchema = z.object({
-  email: z.string().transform((v) => v.toLowerCase()).pipe(z.email("email is not a valid address")),
+  email: z
+    .string()
+    .transform((v) => v.toLowerCase())
+    .pipe(z.email("email is not a valid address")),
   given_name: z.string(),
   family_name: z.string().transform(blankToNull),
   preferred_name: z.string().transform(blankToNull),
@@ -79,15 +83,25 @@ export const personCsvRowSchema = z.object({
   // One or more managers, separated by semicolons (N1).
   manager_email: z
     .string()
-    .transform((v) => [...new Set(v.split(";").map((s) => s.trim().toLowerCase()).filter(Boolean))])
+    .transform((v) => [
+      ...new Set(
+        v
+          .split(";")
+          .map((s) => s.trim().toLowerCase())
+          .filter(Boolean),
+      ),
+    ])
     .pipe(z.array(z.email("manager_email is not a valid address"))),
   desk: z.string().transform(blankToNull),
   office: z.string().transform((v) => (v === "" ? null : v.toLowerCase())),
-  teams: z
-    .string()
-    .transform((v) =>
-      [...new Set(v.split(";").map((s) => s.trim().toLowerCase()).filter(Boolean))],
+  teams: z.string().transform((v) => [
+    ...new Set(
+      v
+        .split(";")
+        .map((s) => s.trim().toLowerCase())
+        .filter(Boolean),
     ),
+  ]),
   primary_team: z.string().transform((v) => (v === "" ? null : v.toLowerCase())),
 });
 
@@ -150,7 +164,8 @@ export function validatePersonRow(
   const name = legacyName
     ? splitFullName(row.values[LEGACY_NAME] ?? "")
     : { givenName: v.given_name, familyName: v.family_name };
-  if (name.givenName === "") return { ok: false, message: legacyName ? "name is required" : "given_name is required" };
+  if (name.givenName === "")
+    return { ok: false, message: legacyName ? "name is required" : "given_name is required" };
   const teamSlugs = v.teams;
   const primary = v.primary_team;
   if (v.start_date !== null && v.end_date !== null && v.end_date < v.start_date) {
@@ -211,5 +226,5 @@ export function peopleToCsv(people: PersonRecord[]): string {
     p.primaryTeamSlug ?? "",
     ...PROFILE_PROVIDER_IDS.map((provider) => p.identities[provider] ?? ""),
   ]);
-  return stringify(data, { header: true, columns: [...PEOPLE_CSV_HEADERS] });
+  return stringify(data, { header: true, columns: [...PEOPLE_CSV_HEADERS], cast: SAFE_CSV_CAST });
 }
