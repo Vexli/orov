@@ -256,6 +256,10 @@ Cloud SQL and RDS allow it). `GET /api/health` is a liveness check. `/theme.css`
 logo. Run one web replica at a time while a schema change is being deployed, because two replicas
 migrating at once can race.
 
+Put the web container behind a reverse proxy that terminates TLS and sets `X-Forwarded-For`.
+Better Auth rate-limits its sign-in routes per client address, read from that header, and per
+process; exposed directly, a client could set the header itself.
+
 The worker container needs no settings until an integration is configured. It exits at startup if
 an integration setting names an unknown provider.
 
