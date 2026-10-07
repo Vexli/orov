@@ -60,6 +60,7 @@ function buildAuth() {
       validateUserInfo: ({ user, source }) => {
         const decision = canSignIn(signInIdentity(user.email, source), domain, {
           devAuth: setup.devAuth,
+          trustOidcEmail: setup.trustOidcEmail,
         });
         return decision.ok ? undefined : { error: SIGN_IN_ERROR.accessDenied };
       },
@@ -69,9 +70,12 @@ function buildAuth() {
       modelName: "auth_account",
       // OrOv never calls a provider's API, but Better Auth keeps the tokens it was given.
       encryptOAuthTokens: true,
-      // The same person through two configured providers is one user. Every provider here is
-      // pinned to the company's own tenant or domain.
-      accountLinking: { enabled: true, trustedProviders: setup.sso.map((p) => p.id) },
+      // A sign-in whose email already has a user (another provider, or the same provider after
+      // the account was recreated) joins that user only when the provider says the email is
+      // verified. No provider is trusted to skip that: the email decides who someone is here,
+      // and a tenant-pinned provider can still issue an email its user typed in (Entra's
+      // `email` claim). Otherwise Better Auth refuses with account_not_linked.
+      accountLinking: { enabled: true },
     },
     verification: { modelName: "auth_verification" },
     emailAndPassword: { enabled: false },

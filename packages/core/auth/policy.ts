@@ -42,10 +42,17 @@ function parseVerified(value: SignInIdentity["emailVerified"]): boolean | null {
   return null;
 }
 
+export interface SignInOptions {
+  devAuth: boolean;
+  // AUTH_OIDC_TRUST_EMAIL: the operator vouches that the generic OIDC issuer only hands out
+  // emails it manages, so a missing email_verified claim is accepted from it.
+  trustOidcEmail?: boolean;
+}
+
 export function canSignIn(
   identity: SignInIdentity,
   companyDomain: string,
-  options: { devAuth: boolean },
+  options: SignInOptions,
 ): SignInDecision {
   const domain = companyDomain.toLowerCase();
   const email = identity.email.toLowerCase();
@@ -57,6 +64,13 @@ export function canSignIn(
     if (verified !== true) return { ok: false, reason: "email is not verified" };
     if (identity.hd?.toLowerCase() !== domain)
       return { ok: false, reason: "not a company account" };
+  } else if (identity.provider === "oidc") {
+    // Any OpenID Connect issuer. Many let people sign themselves up or change their own email,
+    // and the email is who they are here (and whether they're an admin), so the issuer must say
+    // it's verified. An explicit false is refused even when the operator trusts the issuer.
+    if (verified === false) return { ok: false, reason: "email is not verified" };
+    if (verified !== true && !options.trustOidcEmail)
+      return { ok: false, reason: "email is not verified" };
   } else if (isSsoProvider(identity.provider)) {
     // These providers are pinned to the organization's own tenant, pool or issuer, so the
     // claim is often omitted rather than true. An explicit false still means unverified.
