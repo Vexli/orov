@@ -49,6 +49,8 @@ calendar or room-booking connection.
 - Admins can take access away: **Admin → Users** changes roles, disables a user (ending their
   sessions), ends sessions, and resets a sign-in. Anyone inactive or past their last working day
   in People is refused at sign-in and on every request. Sessions end after a day without use.
+- A production build refuses an `AUTH_SECRET` that is unset, shorter than 32 characters, or still
+  a placeholder such as `.env.example`'s.
 - Every response sends security headers: no framing (`frame-ancestors 'none'`,
   `X-Frame-Options`), HSTS, a referrer policy, `nosniff` and a permissions policy. `X-Powered-By`
   is no longer sent.

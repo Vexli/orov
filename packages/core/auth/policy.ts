@@ -134,6 +134,27 @@ export function devAuthAllowed(env: { NODE_ENV?: string; AUTH_URL?: string }): b
   return LOOPBACK_HOSTS.has(host) || host.endsWith(".localhost");
 }
 
+// AUTH_SECRET signs session cookies and encrypts the provider tokens Better Auth stores. Better
+// Auth refuses only its own built-in default, so a deployment copied from .env.example would run
+// on a secret anyone can read. `openssl rand -base64 32` gives 44 characters; a placeholder is
+// refused whatever its length (.env.example's is 33).
+export const MIN_AUTH_SECRET_LENGTH = 32;
+const PLACEHOLDER_SECRET = /^(change[-_ ]?me|changeme|secret|password|example)/i;
+
+export function assertStrongAuthSecret(secret: string | undefined): string {
+  if (!secret)
+    throw new Error("AUTH_SECRET is not set. Generate one with: openssl rand -base64 32");
+  if (PLACEHOLDER_SECRET.test(secret))
+    throw new Error(
+      "AUTH_SECRET is still a placeholder. Generate one with: openssl rand -base64 32",
+    );
+  if (secret.length < MIN_AUTH_SECRET_LENGTH)
+    throw new Error(
+      `AUTH_SECRET must be at least ${MIN_AUTH_SECRET_LENGTH} characters. Generate one with: openssl rand -base64 32`,
+    );
+  return secret;
+}
+
 const MULTI_TENANT_ENTRA_SEGMENTS = new Set(["common", "organizations", "consumers"]);
 
 // A multi-tenant Entra issuer accepts accounts from any tenant, whose `email` claim that

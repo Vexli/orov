@@ -2,7 +2,7 @@ import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { nextCookies } from "better-auth/next-js";
 import { genericOAuth } from "better-auth/plugins/generic-oauth";
-import { canSignIn, signInIdentity } from "@orov/core/auth/policy";
+import { assertStrongAuthSecret, canSignIn, signInIdentity } from "@orov/core/auth/policy";
 import { getDb } from "@orov/db/client";
 import { admitSession } from "@orov/db/queries/app-users";
 import { authAccount, authSession, authUser, authVerification } from "@orov/db/schema";
@@ -45,7 +45,11 @@ function buildAuth() {
   return betterAuth({
     appName: "OrOv",
     baseURL: process.env.AUTH_URL,
-    secret: process.env.AUTH_SECRET,
+    // Checked in production only, so a local checkout runs with whatever .env.local has.
+    secret:
+      process.env.NODE_ENV === "production"
+        ? assertStrongAuthSecret(process.env.AUTH_SECRET)
+        : process.env.AUTH_SECRET,
     database: drizzleAdapter(getDb(), {
       provider: "pg",
       schema: {
