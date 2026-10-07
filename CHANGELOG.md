@@ -46,6 +46,9 @@ calendar or room-booking connection.
 - CSV exports (people, teams, audit log) write a cell that a spreadsheet would run as a formula
   with a leading apostrophe, so a viewer's self-edited profile can't run code in an admin's
   spreadsheet. Imports drop the apostrophe, so an export still re-imports unchanged.
+- Every response sends security headers: no framing (`frame-ancestors 'none'`,
+  `X-Frame-Options`), HSTS, a referrer policy, `nosniff` and a permissions policy. `X-Powered-By`
+  is no longer sent.
 
 ### Licensing
 
