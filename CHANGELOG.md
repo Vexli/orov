@@ -51,6 +51,9 @@ calendar or room-booking connection.
   in People is refused at sign-in and on every request. Sessions end after a day without use.
 - A production build refuses an `AUTH_SECRET` that is unset, shorter than 32 characters, or still
   a placeholder such as `.env.example`'s.
+- The Docker image runs as the unprivileged `node` user with read-only app files, and no longer
+  copies `apps/web/.env.local` (which `next start` would have loaded, filling in any setting the
+  deployment left out). Local development binds the dev server and Postgres to `127.0.0.1`.
 - Every response sends security headers: no framing (`frame-ancestors 'none'`,
   `X-Frame-Options`), HSTS, a referrer policy, `nosniff` and a permissions policy. `X-Powered-By`
   is no longer sent.
@@ -97,6 +100,10 @@ Released under [MIT No Attribution](LICENSE.md).
 - **Access follows the directory.** Migration `0019` adds `app_user.disabled_at`. After upgrading,
   anyone marked inactive in People, or whose last working day has passed, can no longer sign in
   or use an open session. Check People before upgrading if you've used `active` for anything else.
+- **Rebuild your images.** Images built before this release from a checkout with
+  `apps/web/.env.local` contain that file, and `next start` reads it. Rebuild, and if such an
+  image was pushed to a registry, rotate the secrets that file held. The local database now
+  listens on `127.0.0.1` only: run `pnpm db:down && pnpm db:up` to apply it.
 - **`pnpm db:seed` loads the demo organization**, no longer the small Bob → Max → Jane data,
   which is now the test fixture (`packages/db/test-fixture.ts`) and isn't loaded outside tests.
   Sign in as a demo person, or set `ADMIN_EMAILS` to your own address.
