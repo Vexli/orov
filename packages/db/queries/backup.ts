@@ -281,8 +281,9 @@ export async function planImport(
 
 export interface ApplyImportOptions {
   mode: ImportMode;
-  // Take roles from the file. Without it, new users are viewers and existing users keep theirs.
-  // The importing admin stays an admin either way, so they can't lock themselves out.
+  // Take roles and disabled users from the file. Without it, new users are enabled viewers and
+  // existing users keep their role and access. The importing admin stays an enabled admin either
+  // way, so they can't lock themselves out.
   applyRoles: boolean;
 }
 
@@ -299,10 +300,16 @@ export async function applyImport(
         "The file conflicts with this instance's data; nothing was imported.",
       );
     const file = parseExport(json);
-    const roles = new Map(
+    const access = new Map(
       (
-        (await tx.select({ email: s.appUser.email, role: s.appUser.role }).from(s.appUser)) as Row[]
-      ).map((r) => [String(r.email), r.role]),
+        (await tx
+          .select({
+            email: s.appUser.email,
+            role: s.appUser.role,
+            disabledAt: s.appUser.disabledAt,
+          })
+          .from(s.appUser)) as Row[]
+      ).map((r) => [String(r.email), r]),
     );
 
     if (options.mode === "replace") await emptyOrganization(tx);
@@ -318,8 +325,11 @@ export async function applyImport(
       for (const raw of file.data[name]) {
         const row = fromJson(table, raw);
         for (const column of deferred) row[column] = null;
-        if (name === "appUsers" && !options.applyRoles)
-          row.role = roles.get(String(row.email)) ?? "viewer";
+        if (name === "appUsers" && !options.applyRoles) {
+          const current = access.get(String(row.email));
+          row.role = current?.role ?? "viewer";
+          row.disabledAt = current?.disabledAt ?? null;
+        }
         const columns = getTableColumns(table) as Record<string, Column>;
         const target = KEY[name].map((k) => columns[k]! as IndexColumn);
         const set = Object.fromEntries(Object.entries(row).filter(([k]) => !KEY[name].includes(k)));
@@ -363,7 +373,7 @@ export async function applyImport(
     await tx
       .insert(s.appUser)
       .values({ email: actorEmail, role: "admin" })
-      .onConflictDoUpdate({ target: s.appUser.email, set: { role: "admin" } });
+      .onConflictDoUpdate({ target: s.appUser.email, set: { role: "admin", disabledAt: null } });
 
     await recordAudit(tx, actorEmail, {
       entity: "organization",

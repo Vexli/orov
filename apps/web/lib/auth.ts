@@ -65,7 +65,14 @@ function buildAuth() {
         return decision.ok ? undefined : { error: SIGN_IN_ERROR.accessDenied };
       },
     },
-    session: { modelName: "auth_session" },
+    session: {
+      modelName: "auth_session",
+      // A day without use ends a session, and use extends it at most hourly. Access itself is
+      // re-checked on every request (lib/session.ts), so disabling a user or marking them
+      // inactive takes effect at once; this bounds how long a forgotten browser stays signed in.
+      expiresIn: 60 * 60 * 24,
+      updateAge: 60 * 60,
+    },
     account: {
       modelName: "auth_account",
       // OrOv never calls a provider's API, but Better Auth keeps the tokens it was given.

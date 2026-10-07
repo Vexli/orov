@@ -46,6 +46,9 @@ calendar or room-booking connection.
 - CSV exports (people, teams, audit log) write a cell that a spreadsheet would run as a formula
   with a leading apostrophe, so a viewer's self-edited profile can't run code in an admin's
   spreadsheet. Imports drop the apostrophe, so an export still re-imports unchanged.
+- Admins can take access away: **Admin → Users** changes roles, disables a user (ending their
+  sessions), ends sessions, and resets a sign-in. Anyone inactive or past their last working day
+  in People is refused at sign-in and on every request. Sessions end after a day without use.
 - Every response sends security headers: no framing (`frame-ancestors 'none'`,
   `X-Frame-Options`), HSTS, a referrer policy, `nosniff` and a permissions policy. `X-Powered-By`
   is no longer sent.
@@ -81,13 +84,17 @@ Released under [MIT No Attribution](LICENSE.md).
 - **Sign-in moved from Auth.js to Better Auth.** Settings are unchanged, and so is each
   provider's redirect URI (`$AUTH_URL/api/auth/callback/<provider>`). Migration `0018` adds the
   sign-in tables. Everyone signs in again once after upgrading, because Auth.js sessions don't
-  carry over. Sessions now last 7 days (extended while in use) instead of 30. Microsoft Entra ID
+  carry over. Sessions now end after a day without use (extended at most hourly) instead of
+  lasting 30 days. Microsoft Entra ID
   needs the tenant's GUID in `AUTH_MICROSOFT_ENTRA_ID_ISSUER`; a domain-style tenant name is
   refused.
 - **Generic OIDC needs `email_verified`.** An `oidc` issuer that doesn't send the claim now refuses
   every sign-in until it does, or until `AUTH_OIDC_TRUST_EMAIL=true` is set (see
   `docs/configuration.md` for when that's safe). A person whose email already has a user from
   another provider joins it only if the new provider reports the email verified.
+- **Access follows the directory.** Migration `0019` adds `app_user.disabled_at`. After upgrading,
+  anyone marked inactive in People, or whose last working day has passed, can no longer sign in
+  or use an open session. Check People before upgrading if you've used `active` for anything else.
 - **`pnpm db:seed` loads the demo organization**, no longer the small Bob → Max → Jane data,
   which is now the test fixture (`packages/db/test-fixture.ts`) and isn't loaded outside tests.
   Sign in as a demo person, or set `ADMIN_EMAILS` to your own address.

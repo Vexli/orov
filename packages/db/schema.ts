@@ -400,6 +400,8 @@ export const appUser = pgTable("app_user", {
   // UI_LOCALES in the app, so a new language needs no migration.
   locale: text("locale").notNull().default("en"),
   lastSeenAt: timestamp("last_seen_at", { withTimezone: true }),
+  // Set when an admin disables the user (Admin → Users): no sign-in, no access. Null is enabled.
+  disabledAt: timestamp("disabled_at", { withTimezone: true }),
 });
 
 // Sign-in, owned by Better Auth (apps/web/lib/auth.ts): who signed in through which provider,
