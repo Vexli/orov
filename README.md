@@ -120,7 +120,9 @@ pnpm db:migrate
 pnpm dev
 ```
 
-Open <http://localhost:3000> and sign in as `you@example.com` with the dev password. A new
+Open <http://localhost:3000> and sign in as `you@example.com` with the dev password. The dev
+server and the database listen on this machine only (`127.0.0.1`): anyone who could reach them
+could use the dev password, or the bypass, and the database's published credentials. A new
 install is empty: each view shows an admin how to set it up (add offices and upload floor
 drawings, import people and teams), or you can load the demo organization below.
 
@@ -239,7 +241,10 @@ docker build --target web -t orov-web .
 docker build --target worker -t orov-worker .
 ```
 
-The web container applies migrations on start and then serves on port 3000. It needs
+Both run as the unprivileged `node` user, with the app's files read-only to it (only Next's cache
+is writable). `.env` files are never copied into the image, so build from any checkout without
+shipping local secrets, and pass every setting to the container. The web container applies
+migrations on start and then serves on port 3000. It needs
 `DATABASE_URL`, `AUTH_URL`, `AUTH_SECRET`, `COMPANY_DOMAIN`, `ADMIN_EMAILS` and the SSO variables
 for each provider in `AUTH_PROVIDERS` ([`docs/configuration.md`](docs/configuration.md)).
 `THEME_TOKENS_PATH` optionally names a token file to use as the theme until an admin applies one
