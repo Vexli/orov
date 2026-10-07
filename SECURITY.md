@@ -29,7 +29,7 @@ Only the latest release receives security fixes while the project is in `0.x`.
 
 [`docs/architecture.md`](docs/architecture.md#security-model) describes the security model: SSO
 limited to one domain, roles checked on every request, sanitized uploads, a strict grammar for theme
-values, audited admin writes, encrypted backups, and security headers that forbid framing. One gap
+values, audited admin writes, encrypted backups, and security headers that forbid framing by other sites. One gap
 is known and planned: the site-wide Content-Security-Policy doesn't restrict scripts yet
 (`script-src`).
 

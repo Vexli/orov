@@ -1,15 +1,16 @@
 import type { NextConfig } from "next";
 
 // Sent with every response. The CSP covers what can be locked down without per-request nonces:
-// no framing (admin actions can't be clickjacked), no <base> or plugin injection. A script-src
+// no framing by another origin (admin actions can't be clickjacked), no <base> or plugin injection.
+// Same-origin frames stay allowed: the Branding page previews a draft theme in one. A script-src
 // policy (plan.md §10) is still to come; /api/brand-assets/* adds its own sandboxing CSP.
 // HSTS is ignored by browsers over plain HTTP, so local development is unaffected.
 const SECURITY_HEADERS = [
   {
     key: "Content-Security-Policy",
-    value: "frame-ancestors 'none'; base-uri 'self'; object-src 'none'",
+    value: "frame-ancestors 'self'; base-uri 'self'; object-src 'none'",
   },
-  { key: "X-Frame-Options", value: "DENY" },
+  { key: "X-Frame-Options", value: "SAMEORIGIN" },
   { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains" },
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
   { key: "X-Content-Type-Options", value: "nosniff" },

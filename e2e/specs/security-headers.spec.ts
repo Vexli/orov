@@ -4,11 +4,13 @@ import { expect, test } from "@playwright/test";
 // which the proxy's matcher skips.
 test.describe("security headers", () => {
   for (const path of ["/login", "/api/health", "/theme.css", "/api/auth/get-session"]) {
-    test(`${path} can't be framed and sends the hardening headers`, async ({ request }) => {
+    test(`${path} can't be framed by another site and sends the hardening headers`, async ({
+      request,
+    }) => {
       const response = await request.get(path);
       const headers = response.headers();
-      expect(headers["content-security-policy"]).toContain("frame-ancestors 'none'");
-      expect(headers["x-frame-options"]).toBe("DENY");
+      expect(headers["content-security-policy"]).toContain("frame-ancestors 'self'");
+      expect(headers["x-frame-options"]).toBe("SAMEORIGIN");
       expect(headers["strict-transport-security"]).toContain("max-age=");
       expect(headers["referrer-policy"]).toBe("strict-origin-when-cross-origin");
       expect(headers["x-content-type-options"]).toBe("nosniff");

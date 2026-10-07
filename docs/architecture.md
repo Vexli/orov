@@ -139,7 +139,8 @@ provider are in [`integrations/README.md`](integrations/README.md).
   route handlers that change data, accept only `application/json` from the app's own origin and
   cap the body (`lib/json-request.ts`), since route handlers don't get the origin check and body
   limit Next gives server actions.
-- Every response refuses framing (`frame-ancestors 'none'`, `X-Frame-Options: DENY`) and sends
+- Every response refuses framing by another origin (`frame-ancestors 'self'`,
+  `X-Frame-Options: SAMEORIGIN`; the Branding preview frames the app itself) and sends
   HSTS, a referrer policy, `nosniff` and a permissions policy (`apps/web/next.config.ts`).
 - **Not yet:** a Content-Security-Policy that restricts scripts and styles (`script-src`, designed
   in `plan.md` §10); today's site-wide policy covers framing, `<base>` and plugins only.
