@@ -134,6 +134,13 @@
       "when": 1791277106865,
       "tag": "0018_better_auth_tables",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1791365554267,
+      "tag": "0019_app_user_disabled",
+      "breakpoints": true
     }
   ]
 }

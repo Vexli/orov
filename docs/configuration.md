@@ -10,14 +10,14 @@ integration settings. The database scripts (`pnpm db:migrate`, `pnpm db:seed`) r
 
 ## Required
 
-| Variable         | Example                                    | What it does                                                                                                                                               |
-| ---------------- | ------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `DATABASE_URL`   | `postgres://orov:orov@localhost:5432/orov` | Postgres 16 or later. The user must be allowed to `CREATE EXTENSION pg_trgm` (a migration does it; managed Postgres such as Cloud SQL and RDS allows it).  |
-| `AUTH_URL`       | `https://orov.example.com`                 | The app's public URL. Sign-in callbacks are `$AUTH_URL/api/auth/callback/<provider>`.                                                                      |
-| `AUTH_SECRET`    | output of `openssl rand -base64 32`        | Signs session cookies and encrypts the provider tokens stored with each account. Changing it signs everyone out.                                           |
-| `COMPANY_DOMAIN` | `example.com`                              | Only accounts with an email on this domain can sign in. One domain per deployment.                                                                         |
-| `ADMIN_EMAILS`   | `you@example.com,it@example.com`           | Comma-separated. These accounts are made admins on their next sign-in. Everyone else is a viewer until an admin promotes them; roles live in the database. |
-| `AUTH_PROVIDERS` | `google`                                   | Comma-separated sign-in providers: `google`, `microsoft-entra-id`, `okta`, `cognito`, `oidc`. Each needs its own variables below.                          |
+| Variable         | Example                                    | What it does                                                                                                                                                                    |
+| ---------------- | ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `DATABASE_URL`   | `postgres://orov:orov@localhost:5432/orov` | Postgres 16 or later. The user must be allowed to `CREATE EXTENSION pg_trgm` (a migration does it; managed Postgres such as Cloud SQL and RDS allows it).                       |
+| `AUTH_URL`       | `https://orov.example.com`                 | The app's public URL. Sign-in callbacks are `$AUTH_URL/api/auth/callback/<provider>`.                                                                                           |
+| `AUTH_SECRET`    | output of `openssl rand -base64 32`        | Signs session cookies and encrypts the provider tokens stored with each account. Changing it signs everyone out.                                                                |
+| `COMPANY_DOMAIN` | `example.com`                              | Only accounts with an email on this domain can sign in. One domain per deployment.                                                                                              |
+| `ADMIN_EMAILS`   | `you@example.com,it@example.com`           | Comma-separated. These accounts are made admins on their next sign-in. Everyone else is a viewer until an admin promotes them on **Admin → Users**; roles live in the database. |
+| `AUTH_PROVIDERS` | `google`                                   | Comma-separated sign-in providers: `google`, `microsoft-entra-id`, `okta`, `cognito`, `oidc`. Each needs its own variables below.                                               |
 
 ## Sign-in providers
 
@@ -26,8 +26,14 @@ missing, sign-in fails with an error naming them.
 
 Register `$AUTH_URL/api/auth/callback/<provider>` as the redirect URI with each provider, where
 `<provider>` is the id above (for example `/api/auth/callback/okta`). Sign-in is handled by
-[Better Auth](https://www.better-auth.com); sessions are stored in the database, last 7 days and
-are extended once a day while in use. Signing out ends the session immediately.
+[Better Auth](https://www.better-auth.com); sessions are stored in the database, end after a day
+without use and are extended at most once an hour while in use. Signing out ends the session
+immediately.
+
+Your identity provider decides who can sign in, but OrOv can't see an account being disabled
+there, and a session already open stays open. To take access away at once, mark the person
+inactive (or give them a past last working day) under **Admin → People**, or disable them under
+**Admin → Users**; both apply from their next request.
 
 The email is who someone is in OrOv, and whether they're an admin. When a sign-in brings an email
 that already has a user (through a second provider, or the same provider after the account was

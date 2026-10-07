@@ -46,13 +46,16 @@ server code only, so client bundles never pull them in.
    (the email must be on `COMPANY_DOMAIN`, plus Google's `hd` claim or a tenant-scoped Entra
    issuer, and a verified email from Google and the generic `oidc` issuer), on every provider
    sign-in, including one that would join an existing user (which also needs the provider's
-   `email_verified`, since no provider is trusted to link without it); and a hook before each session is created, `admitSession`
-   (`db/queries/app-users.ts`), re-checks the domain and records the sign-in in `app_user`,
-   promoting `ADMIN_EMAILS`. Sessions are rows in `auth_session`, so signing out ends a session
-   everywhere.
+   `email_verified`, since no provider is trusted to link without it); and a hook before each
+   session is created, `admitSession` (`db/queries/app-users.ts`), re-checks the domain and
+   records the sign-in in `app_user`, promoting `ADMIN_EMAILS`. Sessions are rows in
+   `auth_session`, so signing out ends a session everywhere.
 3. **Roles** (`viewer`, `admin`) are read from `app_user` on every request (`lib/session.ts`:
    `requireUser`, `requireAdmin`), which also validates the session against the database, so a
-   demotion or a sign-out takes effect at once.
+   demotion or a sign-out takes effect at once. The same read refuses a user an admin disabled
+   (`app_user.disabled_at`) and anyone whose directory entry is inactive or past its end date
+   (`getAppUser`, `hasAccess`); `admitSession` applies the same rule at sign-in. Admins manage
+   this on **Admin → Users** (`changeUserAccess`, audited as `app_user`).
 4. **Pages** are server components that call a query (`loadDirectory`, `loadMap`, …) and pass plain
    data to client components. Region labels and dates are formatted on the server in the viewer's
    own settings, so the ISO 3166-2 list never reaches the browser.
@@ -73,9 +76,10 @@ The schema is [`packages/db/schema.ts`](../packages/db/schema.ts); `plan.md` §5
   equal managers), `team` (a tree through `parent_team_id`), `team_member` (`explicit`, or
   `inherited` from a sub-team, derived), and `person_identity` (other accounts: profile links
   today, messaging ids once a provider exists).
-- **Users:** `app_user` holds each signed-in user's role and personal settings (region display,
-  flag, date format, language), keyed by email. Better Auth's `auth_user`, `auth_account`,
-  `auth_session` and `auth_verification` hold sign-in state only, and never go into a backup.
+- **Users:** `app_user` holds each signed-in user's role, whether an admin disabled them, and
+  their personal settings (region display, flag, date format, language), keyed by email. Better
+  Auth's `auth_user`, `auth_account`, `auth_session` and `auth_verification` hold sign-in state
+  only, and never go into a backup.
 - **Theme:** `theme` (every applied version; one active) and `brand_asset` (logos, favicon,
   fonts, immutable).
 - **Integrations, created ahead of use:** `room_status` (read by the map today), `presence_signal`,

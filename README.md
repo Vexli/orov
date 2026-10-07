@@ -50,6 +50,8 @@ importing design tokens from Figma, Penpot or Tokens Studio, without code change
   place, and shows every move before applying it
 - CSV import with a dry run (rows with errors can be skipped; Excel files in any common encoding
   work) and CSV export
+- Users: change roles, disable someone, end their sessions or reset how they sign in; anyone
+  deactivated or past their last working day loses access at once
 - An audit log of every admin change, filterable and exportable
 - An encrypted export of the whole organization, for backups and moving between instances
 
@@ -264,8 +266,8 @@ page). Exports and imports are both recorded in the audit log.
 To load a file, choose **Merge** (add and update by id; a reused email, slug, desk code or account
 is a conflict and blocks the import) or **Replace** (empty this instance's organization data and
 load the file: for restoring a backup or setting up a new instance). Each shows what would
-change before anything is written. Roles come from the file only if the admin asks, and the
-importing admin always stays an admin. A file must come from an instance on the same database
+change before anything is written. Roles and disabled users come from the file only if the
+admin asks, and the importing admin always stays an enabled admin. A file must come from an instance on the same database
 schema version; files from older versions can't be read yet. This complements the database's
 own backups and point-in-time recovery; it doesn't replace them.
 
