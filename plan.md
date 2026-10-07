@@ -913,6 +913,18 @@ The first public release ships without any chat, calendar or room-booking connec
 - [ ] Enable GitHub private vulnerability reporting, which `SECURITY.md` relies on
 - [ ] Tag `v0.1.0` and date the `CHANGELOG.md` entry
 
+### Phase 9: Security hardening
+
+Findings from a pre-release security review (2026-10-06), fixed before the first public release. Feature branches merge into `phase/9-security-hardening`, branched from `dev` on 2026-10-07.
+
+- [ ] Generic OIDC requires a verified email; implicit account linking only where it is safe
+- [ ] Exported CSV cells can't run as spreadsheet formulas
+- [ ] Site-wide security headers: no framing, HSTS, referrer and permissions policies
+- [ ] Revoking access: inactive people can't sign in, admins can change roles, disable users and end their sessions, shorter sessions
+- [ ] Production refuses a missing, short or example `AUTH_SECRET`
+- [ ] Container runs as a non-root user from a slim image; local dev services listen on loopback only
+- [ ] CI hardening: read-only token, pinned actions, dependency audit, Dependabot; backup import size cap; rate limits behind a proxy
+
 ---
 
 ## 13. Risks and open questions
