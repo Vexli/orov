@@ -55,7 +55,10 @@ Files saved by Excel in any common encoding and separator are detected. Managers
 email, so file order doesn't matter. Regions are ISO 3166 codes (`US`, `US-CA`, `CA-ON`).
 
 After the import, edit people and teams in the app; export CSV at any time. Every admin change is in
-the audit log.
+the audit log. In an export, a cell that a spreadsheet would run as a formula (one starting with
+`=`, `+`, `-` or `@`, other than a plain number such as a phone number) starts with an apostrophe,
+so opening the file can't run anything someone typed into their profile. Importing the file drops
+the apostrophe again.
 
 To see a populated instance before your own data is in, load the demo organization: the
 [README's "Try the demo"](../README.md#try-the-demo) explains how. It replaces whatever is there,

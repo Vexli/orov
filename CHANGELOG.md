@@ -43,6 +43,9 @@ calendar or room-booking connection.
 - A generic OIDC issuer (`oidc`) must send `email_verified=true`; `AUTH_OIDC_TRUST_EMAIL=true`
   accepts a missing claim. A sign-in joins an existing user only when its provider verifies the
   email, so a provider where people choose their own email can't take over another account.
+- CSV exports (people, teams, audit log) write a cell that a spreadsheet would run as a formula
+  with a leading apostrophe, so a viewer's self-edited profile can't run code in an admin's
+  spreadsheet. Imports drop the apostrophe, so an export still re-imports unchanged.
 
 ### Licensing
 

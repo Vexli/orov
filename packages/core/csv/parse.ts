@@ -1,4 +1,5 @@
 import { parse } from "csv-parse/sync";
+import { restoreFormula } from "./formula";
 
 export interface CsvRecord {
   line: number;
@@ -32,7 +33,8 @@ interface CsvShape {
 // add a private column to the spreadsheet without breaking the import. The separator is read from
 // the header row: Excel writes tabs in "Unicode Text" files and semicolons in "CSV" files on
 // systems that use a decimal comma. Every cell is NFC-normalized, so a name typed on a Mac
-// (decomposed accents) matches the same name stored from elsewhere.
+// (decomposed accents) matches the same name stored from elsewhere, and loses the apostrophe an
+// export put in front of a formula-like value (./formula.ts).
 export function parseCsv(text: string, shape: CsvShape): ParsedCsv {
   let headers: string[] = [];
   try {
@@ -61,7 +63,10 @@ export function parseCsv(text: string, shape: CsvShape): ParsedCsv {
     const records = rows.map(({ record, info }) => ({
       line: info.lines,
       values: Object.fromEntries(
-        shape.columns.map((key) => [key, (record[key] ?? "").trim().normalize("NFC")]),
+        shape.columns.map((key) => [
+          key,
+          restoreFormula((record[key] ?? "").trim().normalize("NFC")),
+        ]),
       ),
     }));
     return { records, headers };

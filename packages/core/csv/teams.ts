@@ -1,6 +1,7 @@
 import { stringify } from "csv-stringify/sync";
 import { z } from "zod";
 import type { TeamRecord } from "../records";
+import { SAFE_CSV_CAST } from "./formula";
 import { parseCsv, type CsvIssue, type CsvRecord } from "./parse";
 
 export const TEAMS_CSV_HEADERS = ["slug", "name", "parent_slug", "chat_channel_id", "color"];
@@ -33,7 +34,11 @@ export interface TeamsCsvResult {
 }
 
 export function parseTeamsCsv(text: string): TeamsCsvResult {
-  const parsed = parseCsv(text, { columns: TEAMS_CSV_HEADERS, required: ["slug", "name"], aliases: ALIASES });
+  const parsed = parseCsv(text, {
+    columns: TEAMS_CSV_HEADERS,
+    required: ["slug", "name"],
+    aliases: ALIASES,
+  });
   if (parsed.fatal) return { rows: [], issues: [], fatal: parsed.fatal };
 
   const rows: ValidTeamRow[] = [];
@@ -74,5 +79,5 @@ export function teamsToCsv(teams: TeamRecord[]): string {
     t.chatChannelId ?? "",
     t.color ?? "",
   ]);
-  return stringify(data, { header: true, columns: TEAMS_CSV_HEADERS });
+  return stringify(data, { header: true, columns: TEAMS_CSV_HEADERS, cast: SAFE_CSV_CAST });
 }
