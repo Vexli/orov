@@ -44,7 +44,9 @@ server code only, so client bundles never pull them in.
    with the providers in `AUTH_PROVIDERS` (`lib/auth-providers.ts`). Two checks guard it:
    `user.validateUserInfo` runs `canSignIn` (`core/auth/policy.ts`) on the provider's own claims
    (the email must be on `COMPANY_DOMAIN`, plus Google's `hd` claim or a tenant-scoped Entra
-   issuer), on every provider sign-in; and a hook before each session is created, `admitSession`
+   issuer, and a verified email from Google and the generic `oidc` issuer), on every provider
+   sign-in, including one that would join an existing user (which also needs the provider's
+   `email_verified`, since no provider is trusted to link without it); and a hook before each session is created, `admitSession`
    (`db/queries/app-users.ts`), re-checks the domain and records the sign-in in `app_user`,
    promoting `ADMIN_EMAILS`. Sessions are rows in `auth_session`, so signing out ends a session
    everywhere.
@@ -121,8 +123,9 @@ provider are in [`integrations/README.md`](integrations/README.md).
 
 ## Security model
 
-- Sign-in is limited to one email domain, through the organization's own SSO. Development
-  sign-in methods are ignored outside `next dev` on localhost.
+- Sign-in is limited to one email domain, through the organization's own SSO. Emails from an
+  open-ended OIDC issuer must be verified, and a sign-in joins an existing user only with a
+  verified email. Development sign-in methods are ignored outside `next dev` on localhost.
 - Viewers can read the directory, map and org chart; admins can change them. Anyone can change
   their own settings and a few fields of their own directory entry on **My profile**.
 - Uploaded SVGs are sanitized before they're stored or shown. Theme values pass a strict grammar,

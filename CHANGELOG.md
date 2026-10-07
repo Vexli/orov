@@ -38,6 +38,12 @@ calendar or room-booking connection.
 - **Sign-in on [Better Auth](https://www.better-auth.com)**, replacing Auth.js, which is now in
   maintenance mode. Sessions are stored in the database, so signing out ends a session at once.
 
+### Security hardening
+
+- A generic OIDC issuer (`oidc`) must send `email_verified=true`; `AUTH_OIDC_TRUST_EMAIL=true`
+  accepts a missing claim. A sign-in joins an existing user only when its provider verifies the
+  email, so a provider where people choose their own email can't take over another account.
+
 ### Licensing
 
 Released under [MIT No Attribution](LICENSE.md).
@@ -72,6 +78,10 @@ Released under [MIT No Attribution](LICENSE.md).
   carry over. Sessions now last 7 days (extended while in use) instead of 30. Microsoft Entra ID
   needs the tenant's GUID in `AUTH_MICROSOFT_ENTRA_ID_ISSUER`; a domain-style tenant name is
   refused.
+- **Generic OIDC needs `email_verified`.** An `oidc` issuer that doesn't send the claim now refuses
+  every sign-in until it does, or until `AUTH_OIDC_TRUST_EMAIL=true` is set (see
+  `docs/configuration.md` for when that's safe). A person whose email already has a user from
+  another provider joins it only if the new provider reports the email verified.
 - **`pnpm db:seed` loads the demo organization**, no longer the small Bob → Max → Jane data,
   which is now the test fixture (`packages/db/test-fixture.ts`) and isn't loaded outside tests.
   Sign in as a demo person, or set `ADMIN_EMAILS` to your own address.
