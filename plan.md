@@ -917,7 +917,10 @@ The first public release ships without any chat, calendar or room-booking connec
 
 Findings from a pre-release security review (2026-10-06), fixed before the first public release. Feature branches merge into `phase/9-security-hardening`, branched from `dev` on 2026-10-07.
 
-- [ ] Generic OIDC requires a verified email; implicit account linking only where it is safe
+- [x] Generic OIDC requires a verified email; implicit account linking only where it is safe
+    - **Completed:** 2026-10-07
+    - **Branch:** merged from `feature/oidc-email-verification`
+    - **Notes:** The `oidc` provider needs `email_verified=true`; `AUTH_OIDC_TRUST_EMAIL=true` accepts a missing claim, never an explicit `false` (`SignInOptions.trustOidcEmail` in `core/auth/policy.ts`, read in `lib/auth-providers.ts`). Entra, Okta and Cognito keep accepting a missing claim (tenant-pinned). `accountLinking.trustedProviders` is gone, so Better Auth joins a sign-in to an existing user (second provider, or a recreated IdP account with a new `sub`) only when that provider reports the email verified; Better Auth runs `validateUserInfo` before linking too. A refused link redirects with `account_not_linked`, which the login page now explains. **Known limitation:** an Entra user who also signs in through another provider, or whose Entra account is recreated, is refused (Entra sends no `email_verified`) until the old `auth_user`/`auth_account` row is removed; the access-revocation item adds a way to do that. Docs: `.env.example`, `docs/configuration.md`, `docs/architecture.md`, CHANGELOG (Security hardening, Upgrading). Tests: 5 unit added, 1 case removed from the tenant-scoped `it.each` (586 core); `auth.spec.ts` 7/7.
 - [ ] Exported CSV cells can't run as spreadsheet formulas
 - [ ] Site-wide security headers: no framing, HSTS, referrer and permissions policies
 - [ ] Revoking access: inactive people can't sign in, admins can change roles, disable users and end their sessions, shorter sessions
