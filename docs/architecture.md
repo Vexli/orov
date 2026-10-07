@@ -132,7 +132,10 @@ provider are in [`integrations/README.md`](integrations/README.md).
   so a token file can't inject CSS. Uploads are checked by magic bytes and capped in size, and
   brand files are served with `nosniff` and a sandboxing Content-Security-Policy.
 - Backups are encrypted with a passphrase (scrypt, then AES-256-GCM).
-- **Not yet:** a site-wide Content-Security-Policy (designed in `plan.md` §10, not sent today).
+- Every response refuses framing (`frame-ancestors 'none'`, `X-Frame-Options: DENY`) and sends
+  HSTS, a referrer policy, `nosniff` and a permissions policy (`apps/web/next.config.ts`).
+- **Not yet:** a Content-Security-Policy that restricts scripts and styles (`script-src`, designed
+  in `plan.md` §10); today's site-wide policy covers framing, `<base>` and plugins only.
 
 To report a vulnerability, see [`SECURITY.md`](../SECURITY.md).
 
