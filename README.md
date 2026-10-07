@@ -175,7 +175,8 @@ demo) or `aiko.nakamura@example.com` (a viewer). Roll the demo's theme back on t
   `pnpm db:up`) and reload the test fixture before each spec. Install the browser once with
   `pnpm exec playwright install chromium`.
 
-CI (`.github/workflows/ci.yml`) also fails if the schema changed without a migration, if the
+CI (`.github/workflows/ci.yml`) also fails if a production dependency has a known high or critical
+vulnerability, if the schema changed without a migration, if the
 theme defaults are out of date, if a component uses a raw Tailwind palette class such as
 `bg-white` instead of a theme slot, or if a chat, calendar or booking vendor is named outside an
 integration provider's folder.
@@ -254,6 +255,10 @@ Cloud SQL and RDS allow it). `GET /api/health` is a liveness check. `/theme.css`
 `/api/brand-assets/*` are served without signing in, because the sign-in page uses the theme and
 logo. Run one web replica at a time while a schema change is being deployed, because two replicas
 migrating at once can race.
+
+Put the web container behind a reverse proxy that terminates TLS and sets `X-Forwarded-For`.
+Better Auth rate-limits its sign-in routes per client address, read from that header, and per
+process; exposed directly, a client could set the header itself.
 
 The worker container needs no settings until an integration is configured. It exits at startup if
 an integration setting names an unknown provider.

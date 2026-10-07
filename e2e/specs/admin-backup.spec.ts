@@ -24,7 +24,11 @@ test.describe("backup", () => {
     ]);
     expect(download.suggestedFilename()).toMatch(/^orov-export-\d{4}-\d\d-\d\d\.json$/);
     const file = await readFile((await download.path())!, "utf8");
-    expect(JSON.parse(file)).toMatchObject({ format: "orov-export", version: 1, cipher: { name: "AES-256-GCM" } });
+    expect(JSON.parse(file)).toMatchObject({
+      format: "orov-export",
+      version: 1,
+      cipher: { name: "AES-256-GCM" },
+    });
     expect(file).not.toContain("Lindqvist");
 
     // Change Bob's title, then load the backup to put it back.
@@ -42,25 +46,76 @@ test.describe("backup", () => {
     });
     await importSection.getByLabel("Its passphrase").fill("not the passphrase");
     await importSection.getByRole("button", { name: "Preview" }).click();
-    await expect(importSection.getByRole("alert")).toHaveText("The passphrase is wrong, or the file has been changed.");
+    await expect(importSection.getByRole("alert")).toHaveText(
+      "The passphrase is wrong, or the file has been changed.",
+    );
 
     await importSection.getByLabel("Its passphrase").fill(PASSPHRASE);
     await importSection.getByRole("button", { name: "Preview" }).click();
-    const people = importSection.getByRole("table", { name: "What the import would change" }).getByRole("row", { name: /^people/ });
+    const people = importSection
+      .getByRole("table", { name: "What the import would change" })
+      .getByRole("row", { name: /^people/ });
     await expect(people).toHaveText(/people\s*0\s*1\s*4/);
     await importSection.getByRole("button", { name: "Merge and import" }).click();
     await expect(importSection.getByRole("status")).toContainText("Imported.");
 
     await page.goto("/admin/people");
-    await expect(page.getByRole("row", { name: /bob@example\.com/ })).toContainText("Payroll Analyst");
+    await expect(page.getByRole("row", { name: /bob@example\.com/ })).toContainText(
+      "Payroll Analyst",
+    );
   });
 
   test("viewers can't export or import", async ({ page, context }) => {
     await signInAs(context, "bob@example.com");
     await page.goto("/directory");
-    const exported = await page.request.post("/api/admin/backup/export", { data: { passphrase: PASSPHRASE } });
+    const exported = await page.request.post("/api/admin/backup/export", {
+      data: { passphrase: PASSPHRASE },
+    });
     expect(exported.status()).toBe(403);
-    const imported = await page.request.post("/api/admin/backup/import", { data: { file: "{}", passphrase: PASSPHRASE } });
+    const imported = await page.request.post("/api/admin/backup/import", {
+      data: { file: "{}", passphrase: PASSPHRASE },
+    });
     expect(imported.status()).toBe(403);
+  });
+
+  test("an admin's session can't be used from another origin or by a form post", async ({
+    page,
+    context,
+  }) => {
+    await signInAs(context, "jane@example.com");
+    await page.goto("/admin/backup");
+    const body = JSON.stringify({
+      file: "{}",
+      passphrase: PASSPHRASE,
+      mode: "replace",
+      apply: true,
+    });
+    // A sibling subdomain is same-site, so the session cookie would go along.
+    const crossOrigin = await page.request.post("/api/admin/backup/import", {
+      headers: { "Content-Type": "application/json", Origin: "https://blog.example.com" },
+      data: body,
+    });
+    expect(crossOrigin.status()).toBe(403);
+    // What an HTML form or a no-preflight fetch can send.
+    const formPost = await page.request.post("/api/admin/backup/import", {
+      headers: { "Content-Type": "text/plain" },
+      data: body,
+    });
+    expect(formPost.status()).toBe(415);
+    const exported = await page.request.post("/api/admin/backup/export", {
+      headers: { "Content-Type": "text/plain" },
+      data: JSON.stringify({ passphrase: PASSPHRASE }),
+    });
+    expect(exported.status()).toBe(415);
+  });
+
+  test("an oversized request is refused before it's read", async ({ page, context }) => {
+    await signInAs(context, "jane@example.com");
+    await page.goto("/admin/backup");
+    const response = await page.request.post("/api/admin/backup/export", {
+      headers: { "Content-Type": "application/json" },
+      data: JSON.stringify({ passphrase: "x".repeat(70 * 1024) }),
+    });
+    expect(response.status()).toBe(413);
   });
 });

@@ -135,7 +135,10 @@ provider are in [`integrations/README.md`](integrations/README.md).
 - Uploaded SVGs are sanitized before they're stored or shown. Theme values pass a strict grammar,
   so a token file can't inject CSS. Uploads are checked by magic bytes and capped in size, and
   brand files are served with `nosniff` and a sandboxing Content-Security-Policy.
-- Backups are encrypted with a passphrase (scrypt, then AES-256-GCM).
+- Backups are encrypted with a passphrase (scrypt, then AES-256-GCM). The backup routes, the only
+  route handlers that change data, accept only `application/json` from the app's own origin and
+  cap the body (`lib/json-request.ts`), since route handlers don't get the origin check and body
+  limit Next gives server actions.
 - Every response refuses framing (`frame-ancestors 'none'`, `X-Frame-Options: DENY`) and sends
   HSTS, a referrer policy, `nosniff` and a permissions policy (`apps/web/next.config.ts`).
 - **Not yet:** a Content-Security-Policy that restricts scripts and styles (`script-src`, designed

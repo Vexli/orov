@@ -54,6 +54,11 @@ calendar or room-booking connection.
 - The Docker image runs as the unprivileged `node` user with read-only app files, and no longer
   copies `apps/web/.env.local` (which `next start` would have loaded, filling in any setting the
   deployment left out). Local development binds the dev server and Postgres to `127.0.0.1`.
+- The backup export and import routes refuse a request from another origin or that isn't
+  `application/json`, so a page on a sibling subdomain (same-site, so the session cookie goes
+  along) can't trigger a Replace import, and cap the body size (128 MB for an import).
+- CI runs with a read-only token and actions pinned to commits, fails on a high or critical
+  advisory in a production dependency, and Dependabot proposes updates weekly.
 - Every response sends security headers: no framing (`frame-ancestors 'none'`,
   `X-Frame-Options`), HSTS, a referrer policy, `nosniff` and a permissions policy. `X-Powered-By`
   is no longer sent.
