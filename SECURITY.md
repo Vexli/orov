@@ -29,9 +29,9 @@ Only the latest release receives security fixes while the project is in `0.x`.
 
 [`docs/architecture.md`](docs/architecture.md#security-model) describes the security model: SSO
 limited to one domain, roles checked on every request, sanitized uploads, a strict grammar for theme
-values, audited admin writes, encrypted backups, and security headers that forbid framing by other sites. One gap
-is known and planned: the site-wide Content-Security-Policy doesn't restrict scripts yet
-(`script-src`).
+values, audited admin writes, encrypted backups, security headers that forbid framing by other sites, and a
+nonce-based Content-Security-Policy that runs only the scripts the server rendered. One gap is known: the policy
+doesn't restrict styles (`style-src`), because the org chart and floor drawings rely on inline CSS.
 
 If you run OrOv, keep `AUTH_SECRET` and the database credentials in your host's secret store, use
 your database's own backups and point-in-time recovery, and take a fresh encrypted export after each

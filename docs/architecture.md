@@ -142,8 +142,12 @@ provider are in [`integrations/README.md`](integrations/README.md).
 - Every response refuses framing by another origin (`frame-ancestors 'self'`,
   `X-Frame-Options: SAMEORIGIN`; the Branding preview frames the app itself) and sends
   HSTS, a referrer policy, `nosniff` and a permissions policy (`apps/web/next.config.ts`).
-- **Not yet:** a Content-Security-Policy that restricts scripts and styles (`script-src`, designed
-  in `plan.md` §10); today's site-wide policy covers framing, `<base>` and plugins only.
+- Pages run only the scripts the server rendered for that request: the proxy adds
+  `script-src 'self' 'nonce-…' 'strict-dynamic'` with a fresh nonce per request, which Next
+  stamps on its own scripts (`packages/core/security/csp.ts`). An injected inline script, event
+  handler or `javascript:` URL doesn't run. API routes keep the base policy.
+- **Not yet:** a `style-src`. React style attributes, the org chart and the floor drawings'
+  `<style>` blocks need inline styles, so styles aren't restricted.
 
 To report a vulnerability, see [`SECURITY.md`](../SECURITY.md).
 

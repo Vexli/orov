@@ -1,3 +1,4 @@
+import { createNonce, pageCsp } from "@orov/core/security/csp";
 import { getSessionCookie } from "better-auth/cookies";
 import { NextResponse, type NextRequest } from "next/server";
 import { getAuthSetup } from "./lib/auth-providers";
@@ -16,9 +17,22 @@ const isPublic = (path: string) =>
 // renders. It doesn't prove the session is valid: every page and route does that against the
 // database through lib/session.ts, which also redirects an expired or revoked session.
 export default function proxy(req: NextRequest) {
-  if (isPublic(req.nextUrl.pathname) || getSessionCookie(req)) return NextResponse.next();
+  if (isPublic(req.nextUrl.pathname) || getSessionCookie(req)) return withScriptPolicy(req);
   const target = getAuthSetup().devBypassEmail ? "/dev/sign-in" : "/login";
   return NextResponse.redirect(new URL(target, req.nextUrl));
+}
+
+// Next reads the nonce from the request's CSP header and adds it to the scripts it renders.
+// API routes return no HTML and keep next.config.ts's base policy; /api/brand-assets/* sets a
+// stricter one of its own that this must not replace.
+function withScriptPolicy(req: NextRequest) {
+  if (req.nextUrl.pathname.startsWith("/api/")) return NextResponse.next();
+  const csp = pageCsp(createNonce(), { dev: process.env.NODE_ENV === "development" });
+  const headers = new Headers(req.headers);
+  headers.set("Content-Security-Policy", csp);
+  const res = NextResponse.next({ request: { headers } });
+  res.headers.set("Content-Security-Policy", csp);
+  return res;
 }
 
 export const config = {
