@@ -1,0 +1,494 @@
+import { and, asc, eq, inArray, ne, sql, type SQL } from "drizzle-orm";
+import {
+  applyBulkPatch,
+  type BulkPatch,
+  compareByFamilyName,
+  defaultTimeZone,
+  identityProvider,
+  inheritedManager,
+  normalizePhone,
+  type SelfProfileForm,
+  PROFILE_PROVIDER_IDS,
+  type Identities,
+  type PersonForm,
+  type PersonRecord,
+} from "@orov/core";
+import type { Database, Executor } from "../client";
+import * as s from "../schema";
+import { recordAudit } from "./audit";
+import { syncInheritedMemberships } from "./memberships";
+import { ValidationError } from "./errors";
+
+// True if walking up from `personId` through any of their managers (N1) returns to them.
+// UNION rather than UNION ALL stops the walk even if the existing data already contains a cycle.
+export async function hasManagerCycle(db: Executor, personId: string): Promise<boolean> {
+  const result = await db.execute(sql`
+    WITH RECURSIVE chain(id) AS (
+      SELECT manager_id FROM person_manager WHERE person_id = ${personId}
+      UNION
+      SELECT pm.manager_id FROM person_manager pm JOIN chain c ON pm.person_id = c.id
+    )
+    SELECT 1 AS found FROM chain WHERE id = ${personId}
+  `);
+  return result.rows.length > 0;
+}
+
+// Checks before a write: would making `newManagerId` a manager of `personId` close a loop?
+// Walks up from the proposed manager, through all of everyone's managers, looking for the person.
+export async function managerWouldLoop(
+  db: Executor,
+  personId: string,
+  newManagerId: string,
+): Promise<boolean> {
+  if (newManagerId === personId) return true;
+  const result = await db.execute(sql`
+    WITH RECURSIVE chain(id) AS (
+      SELECT ${newManagerId}::text
+      UNION
+      SELECT pm.manager_id FROM person_manager pm JOIN chain c ON pm.person_id = c.id
+    )
+    SELECT 1 AS found FROM chain WHERE id = ${personId}
+  `);
+  return result.rows.length > 0;
+}
+
+// Replaces someone's managers, in the given order.
+export async function writeManagers(tx: Executor, personId: string, managerIds: readonly string[]) {
+  await tx.delete(s.personManager).where(eq(s.personManager.personId, personId));
+  if (managerIds.length > 0) {
+    await tx
+      .insert(s.personManager)
+      .values(managerIds.map((managerId, position) => ({ personId, managerId, position })));
+  }
+}
+
+const personWith = {
+  managers: {
+    orderBy: [asc(s.personManager.position)] as SQL[],
+    with: { manager: { columns: { email: true } } },
+  },
+  assignedDesk: { columns: { name: true } },
+  office: { columns: { slug: true } },
+  teamMembers: { with: { team: { columns: { slug: true } } } },
+  identities: { columns: { provider: true, value: true } },
+} as const;
+
+type PersonRow = NonNullable<Awaited<ReturnType<typeof findPersonRow>>>;
+
+async function findPersonRow(db: Executor, id: string) {
+  return db.query.person.findFirst({ where: eq(s.person.id, id), with: personWith });
+}
+
+function toPersonRecord(row: PersonRow): PersonRecord {
+  return {
+    email: row.email,
+    givenName: row.givenName,
+    familyName: row.familyName,
+    preferredName: row.preferredName,
+    title: row.title,
+    phone: row.phone,
+    homeRegion: row.homeRegion,
+    homeTimezone: row.homeTimezone,
+    startDate: row.startDate,
+    endDate: row.endDate,
+    active: row.active,
+    managerEmails: row.managers.map((m) => m.manager.email),
+    deskCode: row.assignedDesk?.name ?? null,
+    officeSlug: row.office?.slug ?? null,
+    // Explicit memberships only: inherited ones follow from these, so the spreadsheet holds what
+    // was chosen and a re-import is stable.
+    teamSlugs: row.teamMembers.filter((m) => m.source === "explicit").map((m) => m.team.slug).sort(),
+    primaryTeamSlug: row.teamMembers.find((m) => m.isPrimary)?.team.slug ?? null,
+    identities: profileIdentities(row.identities),
+  };
+}
+
+// The profile accounts among a person's identity rows. Messaging ids aren't spreadsheet data.
+export function profileIdentities(rows: { provider: string; value: string }[]): Identities {
+  const identities: Identities = {};
+  for (const { provider, value } of rows) {
+    if (PROFILE_PROVIDER_IDS.includes(provider)) identities[provider] = value;
+  }
+  return identities;
+}
+
+// Replaces a person's profile accounts. Callers check for accounts held by someone else first;
+// the unique index is the backstop.
+export async function writeProfileIdentities(tx: Executor, personId: string, identities: Identities) {
+  await tx
+    .delete(s.personIdentity)
+    .where(and(eq(s.personIdentity.personId, personId), inArray(s.personIdentity.provider, PROFILE_PROVIDER_IDS)));
+  const rows = Object.entries(identities).map(([provider, value]) => ({ personId, provider, value }));
+  if (rows.length > 0) await tx.insert(s.personIdentity).values(rows);
+}
+
+// Loads everyone in the spreadsheet vocabulary: references by email, slug and desk code.
+export async function loadPersonRecords(db: Executor): Promise<PersonRecord[]> {
+  const rows = await db.query.person.findMany({
+    with: personWith,
+    orderBy: (p, { asc }) => [asc(p.email)],
+  });
+  return rows.map(toPersonRecord);
+}
+
+export async function loadPersonRecord(db: Executor, id: string): Promise<PersonRecord | null> {
+  const row = await findPersonRow(db, id);
+  return row ? toPersonRecord(row) : null;
+}
+
+// Rows for the admin list and the manager picker, by family name. Team membership is included.
+export async function listPeopleForAdmin(db: Executor) {
+  const rows = await db.query.person.findMany({
+    with: {
+      managers: {
+        orderBy: (pm, { asc }) => [asc(pm.position)],
+        with: { manager: { columns: { id: true, name: true } } },
+      },
+      assignedDesk: { columns: { id: true, name: true } },
+      office: { columns: { name: true } },
+      teamMembers: { with: { team: { columns: { slug: true, name: true } } } },
+    },
+  });
+  return rows.sort(compareByFamilyName).map((row) => ({
+    id: row.id,
+    name: row.name,
+    email: row.email,
+    title: row.title,
+    phone: row.phone,
+    active: row.active,
+    endDate: row.endDate,
+    managerIds: row.managers.map((m) => m.manager.id),
+    managerNames: row.managers.map((m) => m.manager.name),
+    deskId: row.assignedDesk?.id ?? null,
+    deskName: row.assignedDesk?.name ?? null,
+    officeName: row.office?.name ?? null,
+    teams: row.teamMembers
+      .map((m) => ({
+        id: m.teamId,
+        slug: m.team.slug,
+        name: m.team.name,
+        isPrimary: m.isPrimary,
+        inherited: m.source === "inherited",
+      }))
+      .sort((a, b) => Number(b.isPrimary) - Number(a.isPrimary) || a.name.localeCompare(b.name)),
+  }));
+}
+
+// Values for the edit form, with ids where the form uses selects.
+export async function getPersonForEdit(db: Executor, id: string): Promise<PersonForm | null> {
+  const row = await db.query.person.findFirst({
+    where: eq(s.person.id, id),
+    with: { teamMembers: true, identities: true, managers: { orderBy: (pm, { asc }) => [asc(pm.position)] } },
+  });
+  if (!row) return null;
+  return {
+    email: row.email,
+    givenName: row.givenName,
+    familyName: row.familyName,
+    preferredName: row.preferredName,
+    title: row.title,
+    phone: row.phone,
+    homeRegion: row.homeRegion,
+    homeTimezone: row.homeTimezone,
+    startDate: row.startDate,
+    endDate: row.endDate,
+    active: row.active,
+    managerIds: row.managers.map((m) => m.managerId),
+    assignedDeskId: row.assignedDeskId,
+    officeId: row.officeId,
+    teamIds: row.teamMembers.filter((m) => m.source === "explicit").map((m) => m.teamId),
+    primaryTeamId: row.teamMembers.find((m) => m.isPrimary)?.teamId ?? null,
+    identities: profileIdentities(row.identities),
+  };
+}
+
+// Creates or updates a person. Every check runs inside the same transaction as the write.
+export async function savePerson(
+  db: Database,
+  actorEmail: string,
+  input: PersonForm,
+  id?: string,
+): Promise<{ id: string }> {
+  return db.transaction((tx) => savePersonIn(tx, actorEmail, input, id));
+}
+
+// savePerson's checks and writes, inside a transaction the caller holds (bulkUpdatePeople runs
+// several in one).
+async function savePersonIn(
+  tx: Executor,
+  actorEmail: string,
+  input: PersonForm,
+  id?: string,
+): Promise<{ id: string }> {
+  const before = id ? await loadPersonRecord(tx, id) : null;
+  if (id && !before) throw new ValidationError("This person no longer exists.");
+
+  const emailTaken = await tx.query.person.findFirst({
+    where: and(eq(s.person.email, input.email), id ? ne(s.person.id, id) : undefined),
+    columns: { id: true },
+  });
+  if (emailTaken) throw new ValidationError("Another person already uses this email.", "email");
+
+  // No manager chosen: the primary team's lead (#11), unless that would close a loop.
+  let managerIds = input.managerIds;
+  if (managerIds.length === 0 && input.primaryTeamId !== null) {
+    const teams = await tx.select({ id: s.team.id, parentTeamId: s.team.parentTeamId, leadId: s.team.leadId }).from(s.team);
+    const lead = inheritedManager(id ?? "", input.primaryTeamId, new Map(teams.map((t) => [t.id, t])));
+    if (lead && !(id && (await managerWouldLoop(tx, id, lead)))) managerIds = [lead];
+  }
+
+  for (const managerId of managerIds) {
+    const manager = await tx.query.person.findFirst({ where: eq(s.person.id, managerId), columns: { id: true, name: true } });
+    if (!manager) throw new ValidationError("Choose an existing manager.", "managerIds");
+    if (id && (await managerWouldLoop(tx, id, managerId))) {
+      throw new ValidationError(
+        `${manager.name} reports (directly or not) to this person, which would create a loop.`,
+        "managerIds",
+      );
+    }
+  }
+
+  const holder = input.assignedDeskId
+    ? await checkDesk(tx, input.assignedDeskId, id ?? null, input.swapDesk === true)
+    : null;
+
+  if (input.teamIds.length > 0) {
+    const found = await tx.query.team.findMany({ where: inArray(s.team.id, input.teamIds), columns: { id: true } });
+    if (found.length !== new Set(input.teamIds).size) {
+      throw new ValidationError("One of the selected teams no longer exists.", "teamIds");
+    }
+  }
+
+  await checkIdentitiesFree(tx, input.identities, id);
+
+  // A desk sets the office (N9), so an office is only stored for someone without one.
+  const officeId = input.assignedDeskId ? null : input.officeId;
+  let officeZone: string | null = null;
+  if (officeId) {
+    const office = await tx.query.location.findFirst({ where: eq(s.location.id, officeId), columns: { timezone: true } });
+    if (!office) throw new ValidationError("Choose an existing office.", "officeId");
+    officeZone = office.timezone;
+  }
+
+  const values = {
+    email: input.email,
+    givenName: input.givenName,
+    familyName: input.familyName,
+    preferredName: input.preferredName,
+    title: input.title,
+    phone: input.phone,
+    homeRegion: input.homeRegion,
+    homeTimezone: defaultTimeZone(
+      input.homeTimezone,
+      input.assignedDeskId ? await deskTimeZone(tx, input.assignedDeskId) : officeZone,
+    ),
+    startDate: input.startDate,
+    endDate: input.endDate,
+    active: input.active,
+    assignedDeskId: input.assignedDeskId,
+    officeId,
+    updatedAt: new Date(),
+  };
+
+  // A swap: the holder takes this person's old desk, or becomes deskless if there wasn't one.
+  // One desk, one person is a unique index, so the holder lets go first and moves last.
+  const previousDeskId = id
+    ? ((await tx.query.person.findFirst({ where: eq(s.person.id, id), columns: { assignedDeskId: true } }))
+        ?.assignedDeskId ?? null)
+    : null;
+  const holderBefore = holder ? await loadPersonRecord(tx, holder.id) : null;
+  if (holder) await tx.update(s.person).set({ assignedDeskId: null }).where(eq(s.person.id, holder.id));
+
+  const personId = id
+    ? (await tx.update(s.person).set(values).where(eq(s.person.id, id)).returning({ id: s.person.id }))[0]!.id
+    : (await tx.insert(s.person).values(values).returning({ id: s.person.id }))[0]!.id;
+
+  if (holder) {
+    await tx
+      .update(s.person)
+      .set({ assignedDeskId: previousDeskId, updatedAt: new Date() })
+      .where(eq(s.person.id, holder.id));
+    const holderAfter = await loadPersonRecord(tx, holder.id);
+    await recordAudit(tx, actorEmail, { entity: "person", entityId: holder.id, action: "update", before: holderBefore, after: holderAfter });
+  }
+
+  await tx.delete(s.teamMember).where(eq(s.teamMember.personId, personId));
+  if (input.teamIds.length > 0) {
+    await tx.insert(s.teamMember).values(
+      input.teamIds.map((teamId) => ({
+        personId,
+        teamId,
+        isPrimary: teamId === input.primaryTeamId,
+      })),
+    );
+  }
+
+  await writeProfileIdentities(tx, personId, input.identities);
+  await writeManagers(tx, personId, managerIds);
+  await syncInheritedMemberships(tx);
+
+  const after = await loadPersonRecord(tx, personId);
+  await recordAudit(tx, actorEmail, {
+    entity: "person",
+    entityId: personId,
+    action: id ? "update" : "create",
+    before,
+    after,
+  });
+  return { id: personId };
+}
+
+async function deskTimeZone(tx: Executor, deskId: string): Promise<string | null> {
+  const [row] = await tx
+    .select({ timezone: s.location.timezone })
+    .from(s.space)
+    .innerJoin(s.floor, eq(s.floor.id, s.space.floorId))
+    .innerJoin(s.location, eq(s.location.id, s.floor.locationId))
+    .where(eq(s.space.id, deskId));
+  return row?.timezone ?? null;
+}
+
+// Refuses an account someone else already has, naming them, before the unique index would.
+async function checkIdentitiesFree(tx: Executor, identities: Identities, personId?: string) {
+  for (const [provider, value] of Object.entries(identities)) {
+    const holder = await tx
+      .select({ name: s.person.name })
+      .from(s.personIdentity)
+      .innerJoin(s.person, eq(s.person.id, s.personIdentity.personId))
+      .where(
+        and(
+          eq(s.personIdentity.provider, provider),
+          eq(s.personIdentity.value, value),
+          personId ? ne(s.personIdentity.personId, personId) : undefined,
+        ),
+      );
+    if (holder[0]) {
+      const label = identityProvider(provider)?.label ?? provider;
+      throw new ValidationError(`${holder[0].name} already has this ${label} account.`, `identities.${provider}`);
+    }
+  }
+}
+
+// The person record of a signed-in user, matched by email (#20). Null if they aren't in the
+// directory.
+export async function findOwnProfile(db: Executor, email: string) {
+  const row = await db.query.person.findFirst({
+    where: eq(s.person.email, email),
+    with: { identities: true },
+  });
+  if (!row) return null;
+  return {
+    id: row.id,
+    name: row.name,
+    homeRegion: row.homeRegion,
+    form: {
+      preferredName: row.preferredName,
+      phone: row.phone,
+      homeTimezone: row.homeTimezone,
+      identities: profileIdentities(row.identities),
+    } satisfies SelfProfileForm,
+  };
+}
+
+// A person's change to their own record (#20). Only the self-editable fields are written,
+// whatever else is sent; the person is found by the signed-in email, never by an id from the
+// form; and the audit entry names them as the actor.
+// Returns what was stored (the phone normalized, a blank time zone defaulted), for the form.
+export async function saveOwnProfile(db: Database, email: string, input: SelfProfileForm): Promise<SelfProfileForm> {
+  return db.transaction(async (tx) => {
+    const row = await tx.query.person.findFirst({
+      where: eq(s.person.email, email),
+      columns: { id: true, homeRegion: true, assignedDeskId: true },
+    });
+    if (!row) throw new ValidationError("Your account isn't linked to a person in the directory yet.");
+    const phone = normalizePhone(input.phone, row.homeRegion);
+    if (!phone.ok) throw new ValidationError(phone.message, "phone");
+    await checkIdentitiesFree(tx, input.identities, row.id);
+
+    const before = await loadPersonRecord(tx, row.id);
+    await tx
+      .update(s.person)
+      .set({
+        preferredName: input.preferredName,
+        phone: phone.value,
+        homeTimezone: defaultTimeZone(
+          input.homeTimezone,
+          row.assignedDeskId ? await deskTimeZone(tx, row.assignedDeskId) : null,
+        ),
+        updatedAt: new Date(),
+      })
+      .where(eq(s.person.id, row.id));
+    await writeProfileIdentities(tx, row.id, input.identities);
+    const after = await loadPersonRecord(tx, row.id);
+    await recordAudit(tx, email, { entity: "person", entityId: row.id, action: "update", before, after });
+    return {
+      preferredName: after!.preferredName,
+      phone: after!.phone,
+      homeTimezone: after!.homeTimezone,
+      identities: after!.identities,
+    };
+  });
+}
+
+// Applies one change to several people (#7) in a single transaction: each person goes through
+// the same checks and writes as a single edit (savePersonIn), with an audit entry each. If any
+// of them fails, nothing is saved, and the error names the person. People are saved one after
+// another, so a manager who reports to someone earlier in the batch is caught as a loop too.
+export async function bulkUpdatePeople(
+  db: Database,
+  actorEmail: string,
+  ids: readonly string[],
+  patch: BulkPatch,
+): Promise<{ updated: number }> {
+  return db.transaction(async (tx) => {
+    for (const id of new Set(ids)) {
+      const form = await getPersonForEdit(tx, id);
+      if (!form) throw new ValidationError("One of the selected people no longer exists.");
+      try {
+        await savePersonIn(tx, actorEmail, applyBulkPatch(form, patch), id);
+      } catch (error) {
+        if (!(error instanceof ValidationError)) throw error;
+        const name = (await tx.query.person.findFirst({ where: eq(s.person.id, id), columns: { name: true } }))?.name;
+        throw new ValidationError(`${name ?? id}: ${error.message} Nothing was changed.`);
+      }
+    }
+    return { updated: new Set(ids).size };
+  });
+}
+
+// Checks the desk can be assigned. If someone else holds it, returns them when the admin asked
+// to swap, and rejects the save otherwise.
+async function checkDesk(tx: Executor, deskId: string, personId: string | null, swap: boolean) {
+  const desk = await tx.query.space.findFirst({
+    where: eq(s.space.id, deskId),
+    with: { floor: { columns: { archivedAt: true } } },
+  });
+  if (!desk) throw new ValidationError("Choose an existing seat.", "assignedDeskId");
+  if (desk.kind !== "desk") throw new ValidationError(`${desk.name} is not a desk.`, "assignedDeskId");
+  if (desk.archivedAt || desk.floor.archivedAt) {
+    throw new ValidationError(`${desk.name} is archived.`, "assignedDeskId");
+  }
+  const holder = await tx.query.person.findFirst({
+    where: and(eq(s.person.assignedDeskId, deskId), personId ? ne(s.person.id, personId) : undefined),
+    columns: { id: true, name: true },
+  });
+  if (holder && !swap) {
+    throw new ValidationError(
+      `${desk.name} is already assigned to ${holder.name}. Swap desks with them, or pick another desk.`,
+      "assignedDeskId",
+    );
+  }
+  return holder ?? null;
+}
+
+// Deactivation is a flag, not a delete. History and the audit trail keep pointing at the person.
+export async function setPersonActive(db: Database, actorEmail: string, id: string, active: boolean) {
+  return db.transaction(async (tx) => {
+    const before = await loadPersonRecord(tx, id);
+    if (!before) throw new ValidationError("This person no longer exists.");
+    await tx.update(s.person).set({ active, updatedAt: new Date() }).where(eq(s.person.id, id));
+    const after = await loadPersonRecord(tx, id);
+    await recordAudit(tx, actorEmail, { entity: "person", entityId: id, action: "update", before, after });
+  });
+}
+

@@ -1,0 +1,124 @@
+@import "tailwindcss";
+/* The defaults sit in a cascade layer, so the unlayered /theme.css the root layout links always
+   wins over them, whatever order the two stylesheets end up in. */
+@import "./theme-defaults.css" layer(theme-defaults);
+
+/* Utilities read only the semantic slots from packages/core/theme/slots.ts (plan.md §9.1).
+   Tailwind's own palette is cleared, so a raw class such as `bg-white` or `text-neutral-500`
+   produces no CSS at all, and a brand theme restyles everything by changing the slot values. */
+@theme inline {
+  --color-*: initial;
+  --color-transparent: transparent;
+  --color-current: currentColor;
+
+  --color-bg: var(--bg);
+  --color-fg: var(--fg);
+  --color-muted: var(--muted);
+  --color-muted-fg: var(--muted-fg);
+  --color-card: var(--card);
+  --color-card-fg: var(--card-fg);
+  --color-border: var(--border);
+  --color-ring: var(--ring);
+  --color-primary: var(--primary);
+  --color-primary-fg: var(--primary-fg);
+  --color-accent: var(--accent);
+  --color-accent-fg: var(--accent-fg);
+  --color-destructive: var(--destructive);
+  --color-destructive-fg: var(--destructive-fg);
+
+  --color-map-bg: var(--map-bg);
+  --color-map-selection: var(--map-selection);
+  --color-map-highlight: var(--map-highlight);
+  --color-room-free: var(--room-free);
+  --color-room-busy: var(--room-busy);
+  --color-room-soon: var(--room-soon);
+  --color-room-stale: var(--room-stale);
+  --color-presence-in-office: var(--presence-in-office);
+  --color-presence-wfh: var(--presence-wfh);
+  --color-presence-away: var(--presence-away);
+  --color-presence-vacation: var(--presence-vacation);
+  --color-presence-sick: var(--presence-sick);
+
+  --font-sans: var(--theme-font-sans);
+  --font-mono: var(--theme-font-mono);
+  --font-weight-heading: var(--theme-font-weight-heading);
+
+  --radius-sm: calc(var(--theme-radius) * 0.5);
+  --radius-md: var(--theme-radius);
+  --radius-lg: calc(var(--theme-radius) * 1.5);
+  --radius-xl: calc(var(--theme-radius) * 2);
+
+  /* Every spacing utility is a multiple of this, so density scales the whole layout. */
+  --spacing: var(--theme-spacing);
+}
+
+@layer base {
+  html {
+    font-size: var(--theme-font-size-base);
+  }
+
+  * {
+    border-color: var(--border);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+}
+
+/* Floor map (plan.md §6). The app owns the fill and stroke of every desk, room and point of
+   interest; the drawing's own colors for those are overridden (docs/map-authoring.md). These
+   rules are deliberately unlayered: for !important declarations the cascade inverts layer
+   order, so a layered rule here would beat the per-state <style> block the map generates. */
+[data-floor-map] svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  color: var(--muted-fg);
+}
+
+/* The viewer's map (components/map/floor-map.tsx) fits the drawing to its box. An SVG's default
+   preserveAspectRatio (xMidYMid meet) letterboxes and centers it, and the overlay layer, with the
+   same viewBox and box, lines up with it. The admin seat picker keeps the natural height. */
+[data-floor-map][data-fit] svg {
+  height: 100%;
+}
+
+[data-floor-map] :is([id^="desk-"], [id^="desk-"] *) {
+  fill: var(--card) !important;
+  stroke: var(--border) !important;
+  stroke-width: 2px;
+}
+
+[data-floor-map] :is([id^="room-"], [id^="room-"] *, [id^="poi-"], [id^="poi-"] *) {
+  fill: var(--muted) !important;
+  stroke: var(--border) !important;
+  stroke-width: 2px;
+}
+
+[data-floor-map] :is([id^="desk-"], [id^="room-"]) {
+  cursor: pointer;
+}
+
+[data-floor-map] :is([id^="desk-"], [id^="room-"]):hover {
+  stroke: var(--ring) !important;
+}
+
+/* Area view: everything outside the open area. */
+[data-floor-map] [data-dim] {
+  opacity: var(--map-dim-opacity);
+  transition: opacity 0.2s;
+}
+
+/* Org chart (components/org/org-chart.tsx). d3-org-chart sets fixed link colors and a font as
+   SVG presentation attributes, which any stylesheet rule outranks, so these need no !important. */
+[data-org-chart] svg {
+  font-family: inherit;
+}
+
+[data-org-chart] path.link {
+  stroke: var(--muted-fg);
+  stroke-width: 1.5px;
+  fill: none;
+}

@@ -1,0 +1,102 @@
+name: CI
+
+on:
+  push:
+    branches: [main, dev, "phase/**", "feature/**"]
+  pull_request:
+
+# Jobs only read the repository. Actions are pinned to commits, so a moved tag can't change what
+# runs; Dependabot (.github/dependabot.yml) proposes updates.
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: No known high or critical vulnerabilities in production dependencies
+        run: pnpm audit --prod --audit-level=high
+      - name: Lint
+        run: pnpm lint
+      - name: Typecheck
+        run: pnpm typecheck
+      - name: Unit tests
+        run: pnpm --filter @orov/core test && pnpm --filter @orov/integrations test
+      - name: Database tests (Testcontainers)
+        run: pnpm --filter @orov/db test
+      - name: Migrations match the schema
+        run: |
+          pnpm --filter @orov/db db:generate
+          # `git diff` misses new files, so check for any change under the migrations folder.
+          if [ -n "$(git status --porcelain packages/db/migrations)" ]; then
+            echo "Schema changed without a migration. Run pnpm db:generate and commit the result."
+            git status --porcelain packages/db/migrations
+            exit 1
+          fi
+      - name: Theme defaults match the slot list
+        run: |
+          pnpm theme:defaults
+          if [ -n "$(git status --porcelain apps/web/app/theme-defaults.css theme/default.tokens.json)" ]; then
+            echo "slots.ts changed without regenerating the defaults. Run pnpm theme:defaults and commit the result."
+            exit 1
+          fi
+      - name: No raw palette classes
+        run: |
+          # Components style only through theme slots (plan.md §9.1). Tailwind's palette is cleared,
+          # so a raw class would silently render unstyled; fail loudly instead.
+          if grep -rnE "(^|[^-[:alnum:]])(bg|text|border|ring|outline|fill|stroke|divide|from|to|via)-(white|black|(slate|gray|zinc|neutral|stone|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose)-[0-9]{2,3})" apps/web/app apps/web/components --include='*.tsx' --include='*.ts'; then
+            echo "Use a theme slot class (bg-bg, text-muted-fg, bg-primary, ...) instead."
+            exit 1
+          fi
+      - name: No chat, calendar or booking vendor names
+        run: |
+          # Integrations are provider-neutral (docs/integrations/): vendor code lives only in a
+          # provider's own folder, packages/integrations/providers/<id>/. Migrations are immutable
+          # history, and slack_channel_id is a legacy CSV header that still imports.
+          if git grep -n -i -I -E "slack|gcal|google calendar|outlook|microsoft teams|ms teams|\brobin\b|skedda|envoy" \
+              -- apps packages e2e ':!packages/db/migrations' ':!packages/integrations/providers' \
+              | grep -v "slack_channel_id"; then
+            echo "Name the capability (messaging, calendar, rooms), not a vendor. See docs/integrations/."
+            exit 1
+          fi
+      - name: Build
+        run: pnpm --filter @orov/web build
+
+  e2e:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: orov
+          POSTGRES_PASSWORD: orov
+          POSTGRES_DB: orov_e2e
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U orov"
+          --health-interval 2s --health-timeout 2s --health-retries 30
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Install Chromium
+        run: pnpm exec playwright install --with-deps chromium
+      - name: End-to-end tests
+        run: pnpm test:e2e
+      - name: Upload the Playwright report
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: playwright-report
+          path: playwright-report

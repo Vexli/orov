@@ -1,0 +1,10 @@
+node_modules
+.next
+dist
+pnpm-lock.yaml
+packages/db/migrations
+plan.md
+claude.md
+apps/web/app/theme-defaults.css
+theme/default.tokens.json
+demo/orov-demo.json

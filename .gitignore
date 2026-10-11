@@ -1,0 +1,22 @@
+node_modules
+.next
+dist
+*.tsbuildinfo
+.env
+.env.*
+!.env.example
+next-env.d.ts
+playwright-report
+test-results
+.venv
+.DS_Store
+
+# Local working notes, never published. Every other Markdown file is documentation and is tracked.
+/note.md
+/claude.md
+/CLAUDE.md
+/report.md
+
+# Written by `next dev` for coding agents; regenerated on every run.
+/apps/web/AGENTS.md
+/apps/web/CLAUDE.md

@@ -1,0 +1,20 @@
+{
+  "Global": {
+    "palette": {
+      "green": { "$type": "color", "$value": "#047857" },
+      "white": { "$type": "color", "$value": "#ffffff" },
+      "ink": { "$type": "color", "$value": "#0f172a" }
+    },
+    "size": { "base": { "$type": "dimension", "$value": "16px" } }
+  },
+  "Mode/Light": {
+    "surface": { "$type": "color", "$value": "{palette.white}" },
+    "primary": { "$type": "color", "$value": "{palette.green}" }
+  },
+  "Mode/Dark": {
+    "surface": { "$type": "color", "$value": "{palette.ink}" },
+    "primary": { "$type": "color", "$value": "#34d399" }
+  },
+  "$themes": [],
+  "$metadata": { "tokenSetOrder": ["Global", "Mode/Light", "Mode/Dark"] }
+}

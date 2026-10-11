@@ -1,0 +1,45 @@
+{
+  "color": {
+    "$type": "color",
+    "neutral": {
+      "0": {
+        "$value": { "colorSpace": "srgb", "components": [1, 1, 1], "alpha": 1, "hex": "#FFFFFF" },
+        "$extensions": { "com.figma.variableId": "VariableID:1:1", "com.figma.scopes": ["ALL_SCOPES"] }
+      },
+      "100": {
+        "$value": { "colorSpace": "srgb", "components": [0.957, 0.961, 0.965], "alpha": 1, "hex": "#F4F5F6" }
+      },
+      "600": {
+        "$value": { "colorSpace": "srgb", "components": [0.333, 0.353, 0.388], "alpha": 1, "hex": "#555A63" }
+      },
+      "900": {
+        "$value": { "colorSpace": "srgb", "components": [0.071, 0.078, 0.098], "alpha": 1, "hex": "#121419" }
+      }
+    },
+    "brand": {
+      "600": {
+        "$value": { "colorSpace": "srgb", "components": [0.0, 0.322, 0.784], "alpha": 1, "hex": "#0052C8" }
+      }
+    },
+    "background": {
+      "default": { "$value": "{color.neutral.0}" },
+      "subtle": { "$value": "{color.neutral.100}" }
+    },
+    "text": {
+      "default": { "$value": "{color.neutral.900}" },
+      "subtle": { "$value": "{color.neutral.600}" },
+      "on-brand": { "$value": "{color.neutral.0}" }
+    },
+    "action": {
+      "primary": { "$value": "{color.brand.600}" }
+    }
+  },
+  "radius": {
+    "md": { "$type": "dimension", "$value": { "value": 8, "unit": "px" } }
+  },
+  "font": {
+    "family": {
+      "body": { "$type": "fontFamily", "$value": ["Acme Sans", "Helvetica Neue", "sans-serif"] }
+    }
+  }
+}

@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 800" font-family="sans-serif" font-size="18">
+  <rect x="20" y="20" width="1160" height="760" rx="8" fill="none" stroke="currentColor" stroke-width="4"/>
+  <path d="M720 20V780M20 450H720" fill="none" stroke="currentColor" stroke-width="2"/>
+
+  <g id="area-north-wing">
+    <rect x="30" y="30" width="680" height="410" fill="none"/>
+    <rect id="desk-2-010" x="60" y="110" width="90" height="56" rx="4"/>
+    <rect id="desk-2-011" x="170" y="110" width="90" height="56" rx="4"/>
+    <rect id="desk-2-012" x="280" y="110" width="90" height="56" rx="4"/>
+    <rect id="desk-2-013" x="390" y="110" width="90" height="56" rx="4"/>
+    <rect id="desk-2-014" x="60" y="250" width="90" height="56" rx="4"/>
+    <rect id="desk-2-015" x="170" y="250" width="90" height="56" rx="4"/>
+    <rect id="desk-2-016" x="280" y="250" width="90" height="56" rx="4"/>
+  </g>
+
+  <g id="area-south-wing">
+    <rect x="30" y="460" width="680" height="310" fill="none"/>
+    <rect id="desk-2-001" x="60" y="540" width="90" height="56" rx="4"/>
+    <rect id="desk-2-002" x="170" y="540" width="90" height="56" rx="4"/>
+    <rect id="desk-2-003" x="280" y="540" width="90" height="56" rx="4"/>
+    <rect id="desk-2-004" x="60" y="660" width="90" height="56" rx="4"/>
+    <rect id="desk-2-005" x="170" y="660" width="90" height="56" rx="4"/>
+    <rect id="desk-2-006" x="280" y="660" width="90" height="56" rx="4"/>
+    <rect id="room-huddle-a" x="440" y="540" width="230" height="176" rx="4"/>
+  </g>
+
+  <rect id="room-boardroom" x="760" y="60" width="380" height="220" rx="4"/>
+  <rect id="room-phone-1" x="760" y="320" width="120" height="100" rx="4"/>
+  <rect id="poi-kitchen" x="920" y="320" width="220" height="160" rx="4"/>
+  <rect id="poi-elevator" x="760" y="540" width="120" height="100" rx="4"/>
+  <rect id="poi-restroom" x="920" y="540" width="220" height="100" rx="4"/>
+</svg>

@@ -1,0 +1,143 @@
+"use server";
+
+import { revalidatePath } from "next/cache";
+import { areaEditSchema, drawingEditSchema, spaceEditSchema, type FloorDiff } from "@orov/core";
+import { getDb } from "@orov/db/client";
+import { ValidationError } from "@orov/db/queries/errors";
+import {
+  applyFloorUpload,
+  previewFloorRollback,
+  previewDrawingEdit,
+  previewFloorUpload,
+  rollbackFloor,
+  saveArea,
+  saveSpace,
+} from "@orov/db/queries/floors";
+import { requireAdmin } from "@/lib/session";
+
+// The drawing travels as text both times: once to preview, once to apply. Apply re-runs the
+// whole pipeline inside its transaction, so the preview can't go stale between the two.
+
+export type PreviewState =
+  | { ok: true; diff: FloorDiff; identical: boolean; sanitizedSvg: string }
+  | { ok: false; error: string };
+
+export type ApplyState = { ok: true; version: number } | { ok: false; error: string };
+
+// Server actions are public endpoints, so the arguments are checked rather than trusted.
+function text(value: unknown): string {
+  if (typeof value !== "string" || value.length === 0) throw new Error("Bad request");
+  return value;
+}
+
+async function attempt<T>(run: () => Promise<T>): Promise<T | { ok: false; error: string }> {
+  try {
+    return await run();
+  } catch (error) {
+    if (error instanceof ValidationError) return { ok: false, error: error.message };
+    throw error;
+  }
+}
+
+export async function previewUploadAction(floorId: string, svg: string): Promise<PreviewState> {
+  await requireAdmin();
+  const input = { floorId: text(floorId), svg: text(svg) };
+  return attempt(async () => ({
+    ok: true as const,
+    ...(await previewFloorUpload(getDb(), input.floorId, input.svg)),
+  }));
+}
+
+export async function applyUploadAction(
+  floorId: string,
+  svg: string,
+  confirmDeskless: boolean,
+): Promise<ApplyState> {
+  const user = await requireAdmin();
+  const input = { floorId: text(floorId), svg: text(svg) };
+  return attempt(async () => {
+    const result = await applyFloorUpload(getDb(), user.email, input.floorId, input.svg, {
+      confirmDeskless: confirmDeskless === true,
+    });
+    revalidatePath(`/admin/floors/${input.floorId}`);
+    return { ok: true as const, version: result.version };
+  });
+}
+
+export async function previewRollbackAction(
+  floorId: string,
+  assetId: string,
+): Promise<PreviewState> {
+  await requireAdmin();
+  const input = { floorId: text(floorId), assetId: text(assetId) };
+  return attempt(async () => ({
+    ok: true as const,
+    ...(await previewFloorRollback(getDb(), input.floorId, input.assetId)),
+  }));
+}
+
+export async function rollbackAction(
+  floorId: string,
+  assetId: string,
+  confirmDeskless: boolean,
+): Promise<ApplyState> {
+  const user = await requireAdmin();
+  const input = { floorId: text(floorId), assetId: text(assetId) };
+  return attempt(async () => {
+    const result = await rollbackFloor(getDb(), user.email, input.floorId, input.assetId, {
+      confirmDeskless: confirmDeskless === true,
+    });
+    revalidatePath(`/admin/floors/${input.floorId}`);
+    return { ok: true as const, version: result.version };
+  });
+}
+
+export type RenameState = { ok: true } | { ok: false; error: string; field?: string };
+
+// Renames a room or point of interest, and sets a meeting room's capacity (#21).
+export async function saveSpaceAction(floorId: string, id: string, input: unknown): Promise<RenameState> {
+  const user = await requireAdmin();
+  const parsed = spaceEditSchema.safeParse(input);
+  if (!parsed.success) {
+    const issue = parsed.error.issues[0];
+    return { ok: false, error: issue?.message ?? "Check the values", field: String(issue?.path[0] ?? "") };
+  }
+  const result = await attempt(async () => {
+    await saveSpace(getDb(), user.email, text(id), parsed.data);
+    return { ok: true as const };
+  });
+  revalidatePath(`/admin/floors/${text(floorId)}`);
+  revalidatePath("/map");
+  return result;
+}
+
+export async function saveAreaAction(floorId: string, id: string, input: unknown): Promise<RenameState> {
+  const user = await requireAdmin();
+  const parsed = areaEditSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? "Check the name", field: "name" };
+  const result = await attempt(async () => {
+    await saveArea(getDb(), user.email, text(id), parsed.data);
+    return { ok: true as const };
+  });
+  revalidatePath(`/admin/floors/${text(floorId)}`);
+  revalidatePath("/map");
+  return result;
+}
+
+export type EditState =
+  | { ok: true; svg: string; svgElementId: string; diff: FloorDiff; identical: boolean; sanitizedSvg: string }
+  | { ok: false; error: string };
+
+// One edit made on the drawing in the browser (#21), applied to `base` (the drawing being edited,
+// or null for the current version) and previewed like an upload. Applying is applyUploadAction
+// with the returned drawing.
+export async function editDrawingAction(floorId: string, base: string | null, edit: unknown): Promise<EditState> {
+  await requireAdmin();
+  const parsed = drawingEditSchema.safeParse(edit);
+  if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? "That edit isn't possible" };
+  const baseSvg = base === null ? null : text(base);
+  return attempt(async () => ({
+    ok: true as const,
+    ...(await previewDrawingEdit(getDb(), text(floorId), baseSvg, parsed.data)),
+  }));
+}
