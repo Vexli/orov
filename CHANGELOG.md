@@ -3,7 +3,7 @@
 Notable changes, newest first. The project follows [Semantic Versioning](https://semver.org); while
 it is in `0.x`, a minor version can include breaking changes, which are called out here.
 
-## 0.1.0: first public release (unreleased)
+## 0.1.0: first public release (2026-10-11)
 
 The first public version. It is a working directory, floor map and org chart, without any chat,
 calendar or room-booking connection.
