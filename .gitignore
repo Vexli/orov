@@ -9,6 +9,7 @@ next-env.d.ts
 playwright-report
 test-results
 .venv
+.DS_Store
 
 # Local working notes, never published. Every other Markdown file is documentation and is tracked.
 /note.md
