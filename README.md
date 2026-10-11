@@ -258,7 +258,8 @@ migrating at once can race.
 
 Put the web container behind a reverse proxy that terminates TLS and sets `X-Forwarded-For`.
 Better Auth rate-limits its sign-in routes per client address, read from that header, and per
-process; exposed directly, a client could set the header itself.
+process; exposed directly, a client could set the header itself. The proxy must not cache pages
+or rewrite their `Content-Security-Policy`: each page carries a nonce made for that request.
 
 The worker container needs no settings until an integration is configured. It exits at startup if
 an integration setting names an unknown provider.

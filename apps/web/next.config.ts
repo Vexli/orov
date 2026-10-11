@@ -1,9 +1,10 @@
 import type { NextConfig } from "next";
 
-// Sent with every response. The CSP covers what can be locked down without per-request nonces:
-// no framing by another origin (admin actions can't be clickjacked), no <base> or plugin injection.
-// Same-origin frames stay allowed: the Branding page previews a draft theme in one. A script-src
-// policy (plan.md §10) is still to come; /api/brand-assets/* adds its own sandboxing CSP.
+// Sent with every response. The CSP is the base policy (BASE_CSP in @orov/core/security/csp): no
+// framing by another origin (admin actions can't be clickjacked), no <base> or plugin injection.
+// Same-origin frames stay allowed: the Branding page previews a draft theme in one. proxy.ts
+// replaces it on pages with one that adds a nonce-based script-src; /api/brand-assets/* sets its
+// own sandboxing CSP.
 // HSTS is ignored by browsers over plain HTTP, so local development is unaffected.
 const SECURITY_HEADERS = [
   {

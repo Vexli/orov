@@ -62,6 +62,10 @@ calendar or room-booking connection.
 - Every response sends security headers: no framing by other sites (`frame-ancestors 'self'`,
   `X-Frame-Options: SAMEORIGIN`), HSTS, a referrer policy, `nosniff` and a permissions policy. `X-Powered-By`
   is no longer sent.
+- Pages send a Content-Security-Policy with a per-request nonce (`script-src 'nonce-…'
+'strict-dynamic'`), so a script that reaches a page through injected markup doesn't run. A
+  reverse proxy or CDN in front of OrOv must pass the header through unchanged and must not cache
+  pages, since each one carries its own nonce.
 
 ### Licensing
 
